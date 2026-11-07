@@ -1,0 +1,206 @@
+package app.caddis.data
+
+import app.caddis.Fixture
+import app.caddis.domain.analytics.AnalyticsEvent
+import app.caddis.domain.analytics.AnalyticsEvent.SaveEntry
+import app.caddis.domain.details.LinkDetails
+import app.caddis.domain.link.LinkCheck
+import app.caddis.domain.link.Links
+import app.caddis.domain.model.EditableField
+import app.caddis.domain.model.IntentSource
+import app.caddis.domain.model.Intents
+import app.caddis.domain.model.ItemStatus
+import app.caddis.domain.model.Platform
+import app.caddis.domain.model.ReturnRule
+import app.caddis.domain.schedule.Weeks
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import java.time.Duration
+
+@RunWith(RobolectricTestRunner::class)
+class LibraryRepositoryTest {
+    private lateinit var f: Fixture
+    private val repo get() = f.repo
+
+    @Before fun setUp() = runBlocking { f = Fixture(); repo.seedDefaultsIfNeeded() }
+    @After fun tearDown() = f.close()
+
+    private fun link(url: String) = Links.check(url) as LinkCheck.Valid
+
+    private suspend fun save(url: String, hint: String = "", entry: SaveEntry = SaveEntry.IN_APP) =
+        (repo.saveLink(link(url), entry, titleHint = hint) as SaveOutcome.Saved).item
+
+    private suspend fun week() = repo.observeWeek(Weeks.weekStart(f.clock.instant(), f.clock.zone)).first()
+
+    @Test
+    fun `seeds the eight default intents and their rules once`() = runBlocking {
+        repo.seedDefaultsIfNeeded()
+        assertEquals(8, repo.observeIntents().first().size)
+        assertEquals(7, repo.observeRules().first().size) // Just keep has no rule
+    }
+
+    @Test
+    fun `a share is saved instantly with a guess, then details are scheduled`() = runBlocking {
+        val item = save("https://www.youtube.com/watch?v=Lm0&si=x", entry = SaveEntry.SHARE_SHEET)
+        assertEquals(Platform.YOUTUBE, item.platform)
+        assertEquals(Intents.WATCH, item.intentId)
+        assertEquals(listOf(item.id), f.scheduler.scheduled)
+        assertEquals(1, week().savedCount)
+        val ev = f.analytics.events.single() as AnalyticsEvent.SaveCreated
+        assertEquals(SaveEntry.SHARE_SHEET, ev.entry)
+    }
+
+    @Test
+    fun `meta links are never sent for details and keep the handle from the url`() = runBlocking {
+        val item = save("https://www.instagram.com/oven.notes/reel/Cx9/")
+        assertTrue(f.scheduler.scheduled.isEmpty())
+        assertEquals("@oven.notes", item.creator)
+    }
+
+    @Test
+    fun `the same link is flagged as a duplicate, and can still be saved again`() = runBlocking {
+        val first = save("https://www.instagram.com/reel/Cx9bT2/?igsh=1")
+        val dup = repo.saveLink(link("instagram.com/reel/Cx9bT2"), SaveEntry.IN_APP)
+        assertTrue(dup is SaveOutcome.Duplicate)
+        assertEquals(first.id, (dup as SaveOutcome.Duplicate).existing.id)
+        val again = repo.saveLink(dup.link, SaveEntry.IN_APP, allowDuplicate = true)
+        assertTrue(again is SaveOutcome.Saved)
+        assertEquals(2, repo.observeLibrary().first().size)
+    }
+
+    @Test
+    fun `search matches any words in any order across fields, as prefixes, and skips Trash`() = runBlocking {
+        val cookies = save("https://example.com/a", hint = "Brown butter cookies")
+        repo.setReason(cookies.id, "Try for Saturday brunch")
+        val dal = repo.saveNote("Weeknight dal", "Red **lentils**, one pot")
+        save("https://example.com/c", hint = "Rome day trips")
+
+        assertEquals(listOf(cookies.id), repo.search("cookies butter").first().map { it.id })
+        assertEquals(listOf(cookies.id), repo.search("satur").first().map { it.id })
+        assertEquals(listOf(dal.id), repo.search("lentils").first().map { it.id })
+        assertEquals(listOf(cookies.id), repo.search("example.com/a").first().map { it.id }.filter { it == cookies.id })
+        assertTrue(repo.search("   ").first().isEmpty())
+
+        repo.delete(cookies.id, AnalyticsEvent.DeleteSource.ITEM_PAGE)
+        assertTrue(repo.search("cookies").first().isEmpty())
+    }
+
+    @Test
+    fun `done and undo move the weekly used count`() = runBlocking {
+        val item = save("https://example.com/x")
+        repo.markDone(item.id)
+        assertEquals(ItemStatus.DONE, repo.get(item.id)!!.status)
+        assertEquals(1, week().usedCount)
+        repo.markActive(item.id)
+        assertEquals(ItemStatus.ACTIVE, repo.get(item.id)!!.status)
+        assertEquals(0, week().usedCount)
+    }
+
+    @Test
+    fun `delete goes to Trash, restore brings it back as it was, purge after 30 days`() = runBlocking {
+        val done = save("https://example.com/done")
+        repo.markDone(done.id)
+        repo.delete(done.id, AnalyticsEvent.DeleteSource.ITEM_PAGE)
+        assertEquals(1, week().deletedCount)
+        assertEquals(1, repo.observeTrash().first().size)
+        repo.restore(done.id)
+        assertEquals(ItemStatus.DONE, repo.get(done.id)!!.status)
+        assertEquals(0, week().deletedCount)
+
+        val gone = save("https://example.com/gone")
+        repo.delete(gone.id, AnalyticsEvent.DeleteSource.TIDY_UP)
+        f.clock.advance(Duration.ofDays(29))
+        assertEquals(0, repo.purgeExpiredTrash())
+        f.clock.advance(Duration.ofDays(2))
+        assertEquals(1, repo.purgeExpiredTrash())
+        assertNull(repo.get(gone.id))
+    }
+
+    @Test
+    fun `changing a guessed intent is remembered and shifts later guesses`() = runBlocking {
+        repeat(2) {
+            val reel = save("https://www.instagram.com/reel/r$it/")
+            repo.setIntent(reel.id, Intents.COOK)
+            assertEquals(IntentSource.USER, repo.get(reel.id)!!.intentSource)
+        }
+        val next = save("https://www.instagram.com/reel/new/")
+        assertEquals(Intents.COOK, next.intentId)
+    }
+
+    @Test
+    fun `fetched details never overwrite the person's edits and refine a guessed intent`() = runBlocking {
+        val item = save("https://example.com/post")
+        repo.setTitle(item.id, "My own title")
+        repo.applyDetails(item.id, LinkDetails(title = "Their title", description = "An easy lemon orzo recipe", lengthSeconds = 300))
+        val after = repo.get(item.id)!!
+        assertEquals("My own title", after.title)
+        assertTrue(EditableField.TITLE in after.userEdited)
+        assertEquals("An easy lemon orzo recipe", after.description)
+        assertEquals(Intents.COOK, after.intentId)
+        assertNotNull(after.detailsFetchedAt)
+    }
+
+    @Test
+    fun `deleting an intent moves its saves to Just keep, which cannot be deleted`() = runBlocking {
+        val r = repo.createIntent("Gift", "Gifted") as LibraryRepository.NameResult.Ok
+        val intents = repo.observeIntents().first()
+        assertEquals("Gift", intents[intents.size - 2].name) // just before Just keep
+        assertEquals(Intents.KEEP, intents.last().id)
+        assertTrue(repo.observeRules().first().containsKey(r.id))
+
+        val item = save("https://example.com/g")
+        repo.setIntent(item.id, r.id)
+        assertEquals(1, repo.deleteIntent(r.id))
+        assertEquals(Intents.KEEP, repo.get(item.id)!!.intentId)
+        assertEquals(0, repo.deleteIntent(Intents.KEEP))
+        assertTrue(repo.createIntent("cook", "") is LibraryRepository.NameResult.Error)
+    }
+
+    @Test
+    fun `collections have unique names, many per item, deleting keeps the items`() = runBlocking {
+        val a = (repo.createCollection("Weekend recipes") as LibraryRepository.NameResult.Ok).id
+        val b = (repo.createCollection("Gift ideas") as LibraryRepository.NameResult.Ok).id
+        assertTrue(repo.createCollection("weekend RECIPES") is LibraryRepository.NameResult.Error)
+        val item = save("https://example.com/i")
+        repo.setInCollection(item.id, a, true)
+        repo.setInCollection(item.id, b, true)
+        assertEquals(setOf(a, b), repo.observeItem(item.id).first()!!.collectionIds)
+        repo.deleteCollection(a)
+        assertEquals(setOf(b), repo.observeItem(item.id).first()!!.collectionIds)
+        assertNotNull(repo.get(item.id))
+    }
+
+    @Test
+    fun `bring back later sets a future return, surfacing is counted once a day`() = runBlocking {
+        val item = save("https://example.com/l")
+        val label = repo.bringBackLater(item.id, ReturnRule.TONIGHT)
+        assertEquals("tonight at 7 pm", label)
+        assertTrue(repo.get(item.id)!!.returnAt!!.isAfter(f.clock.instant()))
+
+        repo.markSurfaced(listOf(item.id))
+        repo.markSurfaced(listOf(item.id))
+        assertEquals(1, repo.get(item.id)!!.surfacedCount)
+        f.clock.advance(Duration.ofDays(1))
+        repo.markSurfaced(listOf(item.id))
+        assertEquals(2, repo.get(item.id)!!.surfacedCount)
+    }
+
+    @Test
+    fun `export and delete all data`() = runBlocking {
+        save("https://example.com/e", hint = "Exported")
+        assertTrue(repo.exportJson().contains("Exported"))
+        assertTrue(repo.exportHtml().contains("https://example.com/e"))
+        repo.deleteAllData()
+        assertTrue(repo.observeLibrary().first().isEmpty())
+        assertEquals(8, repo.observeIntents().first().size)
+    }
+}
