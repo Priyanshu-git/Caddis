@@ -6,6 +6,14 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 
+    <!-- Cold start: hold the paper-coloured splash until settings are known, then hand over to Theme.Caddis. -->
+    <style name="Theme.Caddis.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/bg</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/accent_tint</item>
+        <item name="postSplashScreenTheme">@style/Theme.Caddis</item>
+    </style>
+
     <!-- The save sheet floats over whatever app shared the link. -->
     <style name="Theme.Caddis.Share" parent="Theme.Caddis">
         <item name="android:windowIsTranslucent">true</item>

@@ -12,13 +12,18 @@ import app.caddis.data.db.toEntity
 import app.caddis.domain.analytics.AnalyticsEvent
 import app.caddis.domain.analytics.AnalyticsSink
 import app.caddis.domain.analytics.ageBucket
+import app.caddis.domain.details.DetailEdits
 import app.caddis.domain.details.LinkDetails
+import app.caddis.domain.details.needsDetails
+import app.caddis.domain.details.withEdits
+import app.caddis.domain.details.withLink
 import app.caddis.domain.details.mergeDetails
 import app.caddis.domain.export.Exporter
 import app.caddis.domain.intent.CorrectionStats
 import app.caddis.domain.intent.GuessInput
 import app.caddis.domain.intent.IntentGuesser
 import app.caddis.domain.link.LinkCheck
+import app.caddis.domain.link.Links
 import app.caddis.domain.link.PlatformDetector
 import app.caddis.domain.model.Collection
 import app.caddis.domain.model.ContentKind
@@ -197,9 +202,11 @@ class LibraryRepository @Inject constructor(
     // ---------- details ----------
 
     /** MET-02/03: merge fetched details, keep the person's edits, and refine a guessed intent. */
-    suspend fun applyDetails(id: String, d: LinkDetails) {
+    /** [forUrl]: the link these details were fetched for; if the link was edited since, they are dropped. */
+    suspend fun applyDetails(id: String, d: LinkDetails, forUrl: String? = null) {
         db.withTransaction {
             val current = items.get(id)?.toDomain() ?: return@withTransaction
+            if (forUrl != null && forUrl != current.url) return@withTransaction
             var merged = current.mergeDetails(d, now())
             if (current.intentSource == IntentSource.GUESSED) {
                 merged = merged.copy(intentId = guess(GuessInput(merged.platform, merged.kind, merged.url.orEmpty(), merged.title, merged.description)))
@@ -209,7 +216,13 @@ class LibraryRepository @Inject constructor(
     }
 
     /** A fetch that will never succeed (404, blocked): stop retrying, keep what we have (MET-05). */
-    suspend fun markDetailsAttempted(id: String) = edit(id) { it.copy(detailsFetchedAt = now()) }
+    suspend fun markDetailsAttempted(id: String, forUrl: String? = null) {
+        db.withTransaction {
+            val current = items.get(id)?.toDomain() ?: return@withTransaction
+            if (forUrl != null && forUrl != current.url) return@withTransaction
+            edit(id) { it.copy(detailsFetchedAt = now()) }
+        }
+    }
 
     suspend fun refreshDetails(id: String) {
         val it = items.get(id) ?: return
@@ -252,6 +265,61 @@ class LibraryRepository @Inject constructor(
     suspend fun setNote(id: String, markdown: String) = edit(id) { it.copy(note = markdown) }
 
     suspend fun setTitle(id: String, title: String) = edit(id) { it.copy(title = title, userEdited = it.userEdited + EditableField.TITLE) }
+
+    /**
+     * MET-03: the Edit details sheet. [edits] is built from the stored item inside the transaction,
+     * so a details fetch that lands at the same moment is never mistaken for the person's edit.
+     */
+    suspend fun editDetails(id: String, edits: (Item) -> DetailEdits) {
+        db.withTransaction {
+            val current = items.get(id)?.toDomain() ?: return@withTransaction
+            val next = current.withEdits(edits(current), now())
+            if (next != current) items.upsert(next.toEntity())
+        }
+    }
+
+    sealed interface DetailsResult {
+        /** [refetching]: the link moved and details are being fetched again. */
+        data class Saved(val refetching: Boolean = false) : DetailsResult
+        data class BadLink(val message: String) : DetailsResult
+        data class LinkTaken(val other: Item) : DetailsResult
+    }
+
+    /**
+     * The Edit details sheet (MET-03): text edits, then the link. A link that points somewhere new
+     * re-reads the platform, re-guesses the intent while it is still a guess, and fetches details
+     * again. Text edits are applied first so the old link's fetched title is never mistaken for yours.
+     */
+    suspend fun saveDetails(id: String, rawUrl: String?, edits: DetailEdits): DetailsResult {
+        val before = items.get(id)?.toDomain() ?: return DetailsResult.Saved()
+        val link = if (before.isNote || rawUrl == null || rawUrl.trim() == before.url) null else when (val c = Links.check(rawUrl)) {
+            is LinkCheck.Invalid -> return DetailsResult.BadLink(c.message)
+            is LinkCheck.Valid -> c
+        }
+        if (link != null && link.normalized != before.normalizedUrl) {
+            findDuplicate(link.normalized)?.takeIf { it.id != id }?.let { return DetailsResult.LinkTaken(it) }
+        }
+        var refetch = false
+        db.withTransaction {
+            val current = items.get(id)?.toDomain() ?: return@withTransaction
+            var next = current.withEdits(edits, now())
+            if (link != null) {
+                val moved = next.withLink(link, now())
+                if (moved.platform != next.platform || moved.normalizedUrl != next.normalizedUrl) {
+                    refetch = moved.needsDetails()
+                    if (moved.intentSource == IntentSource.GUESSED) {
+                        next = moved.copy(intentId = guess(GuessInput(moved.platform, moved.kind, moved.url.orEmpty(), moved.title, moved.description)))
+                    } else next = moved
+                } else next = moved
+            }
+            if (next != current) items.upsert(next.toEntity())
+        }
+        if (refetch) details.schedule(id)
+        return DetailsResult.Saved(refetch)
+    }
+
+    /** The title field on the save sheet; everything else stays as it is. */
+    suspend fun editTitle(id: String, title: String) = editDetails(id) { DetailEdits(title, it.description, it.creator) }
 
     // ---------- finish and delete ----------
 

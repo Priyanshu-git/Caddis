@@ -31,7 +31,14 @@ import javax.inject.Inject
 
 sealed interface CaptureSheet {
     data object None : CaptureSheet
-    data class Add(val mode: Mode = Mode.LINK, val url: String = "", val error: String = "", val clipboard: String? = null) : CaptureSheet {
+    /** [offerNote]: what was typed is not a web link, so the sheet asks to save it as a note (CAP-05). */
+    data class Add(
+        val mode: Mode = Mode.LINK,
+        val url: String = "",
+        val error: String = "",
+        val clipboard: String? = null,
+        val offerNote: Boolean = false,
+    ) : CaptureSheet {
         enum class Mode { LINK, NOTE }
     }
     data class Saved(val itemId: String, val entry: SaveEntry, val sharedFrom: String) : CaptureSheet
@@ -83,14 +90,31 @@ class CaptureViewModel @Inject constructor(
         _sheet.value = CaptureSheet.Add(clipboard = suggestion)
     }
 
-    fun setAddMode(mode: CaptureSheet.Add.Mode) = _sheet.update { (it as? CaptureSheet.Add)?.copy(mode = mode, error = "") ?: it }
+    fun setAddMode(mode: CaptureSheet.Add.Mode) = _sheet.update { (it as? CaptureSheet.Add)?.copy(mode = mode, error = "", offerNote = false) ?: it }
 
-    fun setAddUrl(url: String) = _sheet.update { (it as? CaptureSheet.Add)?.copy(url = url, error = "") ?: it }
+    fun setAddUrl(url: String) = _sheet.update { (it as? CaptureSheet.Add)?.copy(url = url, error = "", offerNote = false) ?: it }
 
     fun submitLink(raw: String) = viewModelScope.launch {
         when (val c = Links.check(raw)) {
-            is LinkCheck.Invalid -> _sheet.update { (it as? CaptureSheet.Add)?.copy(url = raw, error = c.message) ?: it }
+            is LinkCheck.Invalid -> _sheet.update { s ->
+                val add = s as? CaptureSheet.Add ?: return@update s
+                if (Links.couldBeNote(raw)) add.copy(url = raw, error = "", offerNote = true)
+                else add.copy(url = raw, error = c.message, offerNote = false)
+            }
             is LinkCheck.Valid -> save(c, SaveEntry.IN_APP, sourceApp = "", titleHint = "", sharedFrom = "")
+        }
+    }
+
+    /** "Save as a note instead": the typed text becomes a note and the save sheet confirms it. */
+    fun saveTypedAsNote() {
+        val add = _sheet.value as? CaptureSheet.Add ?: return
+        val text = add.url.trim()
+        if (text.isEmpty()) return
+        _sheet.value = CaptureSheet.None
+        appScope.launch {
+            val title = Links.noteTitleFrom(text)
+            val item = repo.saveNote(title, body = if (text == title) "" else text)
+            _sheet.value = CaptureSheet.Saved(item.id, SaveEntry.IN_APP, sharedFrom = "")
         }
     }
 
@@ -153,6 +177,9 @@ class CaptureViewModel @Inject constructor(
     fun setReason(itemId: String, reason: String) {
         reasonDrafts.value = itemId to reason
     }
+
+    /** Runs on the app scope: the sheet is closing as this is called. */
+    fun setTitle(itemId: String, title: String) = appScope.launch { repo.editTitle(itemId, title) }
 
     fun setFrom(itemId: String, from: String) = viewModelScope.launch { repo.setSourceFrom(itemId, from) }
 

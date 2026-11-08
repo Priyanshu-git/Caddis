@@ -1,6 +1,15 @@
 package app.caddis.ui.manage
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import app.caddis.ui.Motion
+import app.caddis.ui.calmItem
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -69,20 +78,29 @@ fun TidyScreen(onBack: () -> Unit, onLibrary: () -> Unit, vm: TidyViewModel = hi
         Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 18.dp)) {
             Row(Modifier.padding(top = 6.dp, bottom = 14.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 s.queue.indices.forEach { k ->
+                    val segment by animateColorAsState(if (k <= s.index) c.accent else c.line, tween(Motion.Short), label = "tidySegment")
                     androidx.compose.foundation.layout.Box(
                         Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(2.dp))
-                            .background(if (k <= s.index) c.accent else c.line),
+                            .background(segment),
                     )
                 }
             }
-            CCard(Modifier.fillMaxWidth()) {
-                Thumb(cur, size = 1000.dp, height = 130.dp, modifier = Modifier.fillMaxWidth())
-                Row(Modifier.padding(top = 14.dp, bottom = 6.dp)) { Tag(intentName(intents, cur.intentId)) }
-                Text(cur.displayTitle, style = CaddisType.sheetTitle.copy(fontSize = CaddisType.sheetTitle.fontSize * 1.05f), color = c.fg)
-                Sub(cur.meta())
-                val months = (Duration.between(cur.createdAt, java.time.Instant.now()).toDays() / 30).coerceAtLeast(3)
-                Fine("Saved $months months ago · " + if (cur.lastOpenedAt == null) "never opened" else "not opened lately", Modifier.padding(top = 8.dp))
-                if (cur.reason.isNotBlank()) Text("“${cur.reason}”", style = CaddisType.body.copy(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic), color = c.fg, modifier = Modifier.padding(top = 10.dp))
+            // Keep / Delete moves to the next save with a fade, not a swap.
+            AnimatedContent(
+                targetState = cur,
+                contentKey = { it.id },
+                transitionSpec = { fadeIn(tween(Motion.Short, delayMillis = 60, easing = LinearEasing)) togetherWith fadeOut(tween(Motion.Quick, easing = LinearEasing)) },
+                label = "tidyCard",
+            ) { card ->
+                CCard(Modifier.fillMaxWidth()) {
+                    Thumb(card, size = 1000.dp, height = 130.dp, modifier = Modifier.fillMaxWidth())
+                    Row(Modifier.padding(top = 14.dp, bottom = 6.dp)) { Tag(intentName(intents, card.intentId)) }
+                    Text(card.displayTitle, style = CaddisType.sheetTitle.copy(fontSize = CaddisType.sheetTitle.fontSize * 1.05f), color = c.fg)
+                    Sub(card.meta())
+                    val months = (Duration.between(card.createdAt, java.time.Instant.now()).toDays() / 30).coerceAtLeast(3)
+                    Fine("Saved $months months ago · " + if (card.lastOpenedAt == null) "never opened" else "not opened lately", Modifier.padding(top = 8.dp))
+                    if (card.reason.isNotBlank()) Text("“${card.reason}”", style = CaddisType.body.copy(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic), color = c.fg, modifier = Modifier.padding(top = 10.dp))
+                }
             }
             Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 CButton("Keep", onClick = vm::keep, modifier = Modifier.weight(1f))
@@ -104,9 +122,9 @@ fun TrashScreen(onBack: () -> Unit, vm: TrashViewModel = hiltViewModel()) {
         Fine("Removed for good after 30 days.", Modifier.padding(start = 70.dp, end = 18.dp, bottom = 4.dp))
         val list = items ?: return@Column
         LazyColumn(contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 40.dp)) {
-            if (list.isEmpty()) item { EmptyState(null, "Nothing here. Deleted saves stay here for 30 days.", rings = false) }
+            if (list.isEmpty()) item(key = "empty") { EmptyState(null, "Nothing here. Deleted saves stay here for 30 days.", rings = false) }
             items(list, key = { it.id }) { i ->
-                Column {
+                Column(calmItem()) {
                     Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Thumb(i, 44.dp)
                         Column(Modifier.weight(1f)) {
@@ -128,7 +146,7 @@ fun TrashScreen(onBack: () -> Unit, vm: TrashViewModel = hiltViewModel()) {
                     HorizontalDivider(color = c.line)
                 }
             }
-            if (list.isNotEmpty()) item { Fine("Restored saves go back to your Library.", Modifier.padding(top = 14.dp)) }
+            if (list.isNotEmpty()) item(key = "note") { Fine("Restored saves go back to your Library.", Modifier.padding(top = 14.dp)) }
         }
     }
 }
@@ -145,7 +163,7 @@ fun CollectionsScreen(onBack: () -> Unit, onOpen: (String) -> Unit, vm: Collecti
         TopBar("Collections", onBack)
         LazyColumn(contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 40.dp)) {
             items(cols, key = { it.first.id }) { (col, n) ->
-                Column {
+                Column(calmItem()) {
                     if (editing == col.id) {
                         var draft by remember(col.id) { mutableStateOf(col.name) }
                         Row(Modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {

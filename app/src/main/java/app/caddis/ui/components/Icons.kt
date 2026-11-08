@@ -50,5 +50,6 @@ object CIcons {
     val Trash = icon("trash", "M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12M10 11v5M14 11v5")
     val Down = icon("down", "M6 9l6 6 6-6")
     val Alert = icon("alert", circle(12f, 12f, 9f), "M12 7.5v5M12 16.2v.1")
+    val Edit = icon("edit", "M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4")
     val Mark = icon("mark", circle(9f, 9f, 3f), circle(16f, 11f, 2f), circle(12f, 17f, 3.2f))
 }

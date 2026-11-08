@@ -203,4 +203,76 @@ class LibraryRepositoryTest {
         assertTrue(repo.observeLibrary().first().isEmpty())
         assertEquals(8, repo.observeIntents().first().size)
     }
+
+    @Test
+    fun `edited details survive a refresh, the favicon is stored, and a cleared field refills`() = runBlocking {
+        val item = save("https://example.com/post")
+        repo.applyDetails(item.id, LinkDetails(title = "Their title", creator = "Site", faviconUrl = "https://example.com/i.png"))
+        repo.saveDetails(item.id, null, app.caddis.domain.details.DetailEdits("My title", "My summary", ""))
+        var now = repo.observeItem(item.id).first()!!
+        assertEquals(setOf(EditableField.TITLE, EditableField.DESCRIPTION), now.userEdited)
+        assertEquals("https://example.com/i.png", now.faviconUrl)
+
+        repo.applyDetails(item.id, LinkDetails(title = "Newer title", description = "Their summary", creator = "Site again"))
+        now = repo.observeItem(item.id).first()!!
+        assertEquals("My title", now.title)
+        assertEquals("My summary", now.description)
+        assertEquals("Site again", now.creator)
+    }
+
+    private fun edits(title: String = "", description: String = "", creator: String = "") =
+        app.caddis.domain.details.DetailEdits(title, description, creator)
+
+    @Test
+    fun `editing the link re-reads the platform, re-guesses the intent and fetches again`() = runBlocking {
+        val item = save("https://example.com/how-to-read-faster")
+        repo.applyDetails(item.id, LinkDetails(title = "How to read faster", creator = "example.com"))
+        f.scheduler.scheduled.clear()
+        val now = repo.get(item.id)!!
+
+        val r = repo.saveDetails(item.id, "youtu.be/abc", edits(now.title, now.description, now.creator))
+        assertEquals(LibraryRepository.DetailsResult.Saved(refetching = true), r)
+        val moved = repo.get(item.id)!!
+        assertEquals(Platform.YOUTUBE, moved.platform)
+        assertEquals("youtube.com/watch?v=abc", moved.normalizedUrl)
+        assertEquals(Intents.WATCH, moved.intentId)
+        assertEquals("", moved.title)
+        assertNull(moved.detailsFetchedAt)
+        assertEquals(listOf(item.id), f.scheduler.scheduled)
+    }
+
+    @Test
+    fun `a late fetch for the old link is dropped`() = runBlocking {
+        val item = save("https://example.com/a")
+        repo.saveDetails(item.id, "https://other.org/b", edits(creator = "example.com"))
+        repo.applyDetails(item.id, LinkDetails(title = "Old page"), forUrl = "https://example.com/a")
+        repo.markDetailsAttempted(item.id, forUrl = "https://example.com/a")
+        val now = repo.get(item.id)!!
+        assertEquals("", now.title)
+        assertNull(now.detailsFetchedAt)
+        repo.applyDetails(item.id, LinkDetails(title = "New page"), forUrl = "https://other.org/b")
+        assertEquals("New page", repo.get(item.id)!!.title)
+    }
+
+    @Test
+    fun `a bad or taken link is refused and nothing changes`() = runBlocking {
+        val a = save("https://example.com/a")
+        val b = save("https://example.com/b")
+        assertEquals(LibraryRepository.DetailsResult.BadLink("That doesn't look like a web link."), repo.saveDetails(a.id, "not a link", edits("Mine", creator = "example.com")))
+        assertTrue(repo.saveDetails(a.id, "https://www.example.com/b/", edits()) is LibraryRepository.DetailsResult.LinkTaken)
+        val after = repo.get(a.id)!!
+        assertEquals("https://example.com/a", after.url)
+        assertEquals("", after.title)
+        assertEquals(b.normalizedUrl, repo.get(b.id)!!.normalizedUrl)
+    }
+
+    @Test
+    fun `a link changed to instagram is not fetched`() = runBlocking {
+        val item = save("https://example.com/a")
+        f.scheduler.scheduled.clear()
+        val r = repo.saveDetails(item.id, "https://instagram.com/oven.notes/reel/xyz", edits(creator = "example.com"))
+        assertEquals(LibraryRepository.DetailsResult.Saved(refetching = false), r)
+        assertEquals(Platform.INSTAGRAM, repo.get(item.id)!!.platform)
+        assertTrue(f.scheduler.scheduled.isEmpty())
+    }
 }

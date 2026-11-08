@@ -1,6 +1,15 @@
 package app.caddis.ui.library
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Box
+import app.caddis.ui.Motion
+import app.caddis.ui.calmItem
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -76,51 +85,72 @@ fun LibraryScreen(
     val s by vm.state.collectAsStateWithLifecycle()
     var filters by remember { mutableStateOf(false) }
 
-    if (s.searching) {
-        SearchView(s, vm, onOpenItem, onFilters = { filters = true })
-    } else {
-        Column(Modifier.fillMaxSize()) {
-            BigTitle("Library") {
-                IconBtn(CIcons.Trash, "Trash", onTrash)
-            }
-            Row(
-                Modifier
-                    .padding(horizontal = 18.dp)
-                    .padding(bottom = 10.dp)
-                    .fillMaxWidth()
-                    .heightIn(min = 46.dp)
-                    .border(1.dp, C.colors.line, RoundedCornerShape(24.dp))
-                    .clickable(role = Role.Button) { vm.openSearch() }
-                    .semantics { contentDescription = "Search your saves" }
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Icon(CIcons.Search, null, tint = C.colors.fg2, modifier = Modifier.size(20.dp))
-                Text("Search your saves", style = CaddisType.body, color = C.colors.fg2)
-            }
-            Segmented(
-                listOf("All saves", "Collections"), if (s.showCollections) 1 else 0, { vm.showCollections(it == 1) }, "Library view",
-                Modifier.padding(horizontal = 18.dp).padding(bottom = 0.dp),
-            )
-            if (s.showCollections) {
-                LazyColumn(contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 100.dp)) {
-                    items(s.collections, key = { it.first.id }) { (c, n) -> CollectionRow(c.name, n) { onCollection(c.id) } }
-                    item { CButton("Manage collections", onClick = onManageCollections, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) }
+    // Search opens and closes with a fade rather than a cut.
+    AnimatedContent(
+        targetState = s.searching,
+        modifier = Modifier.fillMaxSize(),
+        transitionSpec = { fadeIn(tween(Motion.Short, delayMillis = 60, easing = LinearEasing)) togetherWith fadeOut(tween(Motion.Quick, easing = LinearEasing)) },
+        label = "librarySearch",
+    ) { searching ->
+        if (searching) {
+            SearchView(s, vm, onOpenItem, onFilters = { filters = true })
+        } else {
+            Column(Modifier.fillMaxSize()) {
+                BigTitle("Library") {
+                    IconBtn(CIcons.Trash, "Trash", onTrash)
                 }
-            } else {
-                IntentChipRow(s, vm, onFilters = { filters = true }, onIntents = onIntents)
-                LazyColumn(contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 100.dp)) {
-                    item {
-                        val n = s.items.size
-                        val what = s.filters.intentId?.let { " for " + intentName(s.intents, it) } ?: " and notes"
-                        Fine("$n ${if (n == 1) "save" else "saves"}$what · newest first", Modifier.padding(top = 6.dp))
-                    }
-                    if (s.items.isEmpty()) {
-                        item { EmptyState(null, "Nothing matches these filters.", { CButton("Clear filters", onClick = vm::resetFilters, small = true) }, rings = false) }
-                    }
-                    items(s.items, key = { it.id }) { i ->
-                        ItemRow(i, i.meta() + " · " + i.savedLabel(), onClick = { onOpenItem(i) }, right = { Tag(i.rightTag(s.intents) ?: intentName(s.intents, i.intentId)) })
+                Row(
+                    Modifier
+                        .padding(horizontal = 18.dp)
+                        .padding(bottom = 10.dp)
+                        .fillMaxWidth()
+                        .heightIn(min = 46.dp)
+                        .border(1.dp, C.colors.line, RoundedCornerShape(24.dp))
+                        .clickable(role = Role.Button) { vm.openSearch() }
+                        .semantics { contentDescription = "Search your saves" }
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Icon(CIcons.Search, null, tint = C.colors.fg2, modifier = Modifier.size(20.dp))
+                    Text("Search your saves", style = CaddisType.body, color = C.colors.fg2)
+                }
+                Segmented(
+                    listOf("All saves", "Collections"), if (s.showCollections) 1 else 0, { vm.showCollections(it == 1) }, "Library view",
+                    Modifier.padding(horizontal = 18.dp).padding(bottom = 0.dp),
+                )
+                AnimatedContent(
+                    targetState = s.showCollections,
+                    modifier = Modifier.weight(1f),
+                    transitionSpec = { fadeIn(tween(Motion.Short, delayMillis = Motion.Out, easing = LinearEasing)) togetherWith fadeOut(tween(Motion.Out, easing = LinearEasing)) },
+                    label = "libraryView",
+                ) { showCollections ->
+                    if (showCollections) {
+                        LazyColumn(contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 100.dp)) {
+                            items(s.collections, key = { it.first.id }) { (c, n) -> Box(calmItem()) { CollectionRow(c.name, n) { onCollection(c.id) } } }
+                            item(key = "manage") { CButton("Manage collections", onClick = onManageCollections, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) }
+                        }
+                    } else {
+                        Column(Modifier.fillMaxSize()) {
+                            IntentChipRow(s, vm, onFilters = { filters = true }, onIntents = onIntents)
+                            LazyColumn(contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 100.dp)) {
+                                item(key = "count") {
+                                    val n = s.items.size
+                                    val what = s.filters.intentId?.let { " for " + intentName(s.intents, it) } ?: " and notes"
+                                    Fine("$n ${if (n == 1) "save" else "saves"}$what · newest first", Modifier.padding(top = 6.dp))
+                                }
+                                if (s.items.isEmpty()) {
+                                    item(key = "empty") { EmptyState(null, "Nothing matches these filters.", { CButton("Clear filters", onClick = vm::resetFilters, small = true) }, rings = false) }
+                                }
+                                items(s.items, key = { it.id }) { i ->
+                                    ItemRow(
+                                        i, i.meta() + " · " + i.savedLabel(), onClick = { onOpenItem(i) },
+                                        right = { Tag(i.rightTag(s.intents) ?: intentName(s.intents, i.intentId)) },
+                                        modifier = calmItem(), share = "library",
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }

@@ -12,6 +12,8 @@ import coil3.SingletonImageLoader
 import coil3.disk.DiskCache
 import coil3.disk.directory
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
+import coil3.request.crossfade
+import app.caddis.ui.Motion
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -47,6 +49,8 @@ class CaddisApp : Application(), Configuration.Provider, SingletonImageLoader.Fa
     override fun newImageLoader(context: PlatformContext): ImageLoader =
         ImageLoader.Builder(context)
             .components { add(OkHttpNetworkFetcherFactory(callFactory = { http })) }
+            // Images from disk or network fade in; memory-cache hits (scrolling back) stay instant.
+            .crossfade(Motion.Short)
             .diskCache {
                 DiskCache.Builder()
                     .directory(cacheDir.resolve(THUMB_CACHE_DIR))

@@ -2,7 +2,9 @@ package app.caddis.ui.home
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import app.caddis.ui.calmItem
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -51,7 +53,7 @@ import java.time.LocalDate
 /** Screens 7, 8, 21: Home — at most 3 picks, then This week, then the tidy-up card. */
 @Composable
 fun HomeScreen(
-    onOpenItem: (String) -> Unit,
+    onOpenItem: (Item) -> Unit,
     onLibrary: () -> Unit,
     onTidy: () -> Unit,
     scrollToWeek: Boolean,
@@ -71,11 +73,11 @@ fun HomeScreen(
     Column(Modifier.fillMaxSize()) {
         BigTitle("Home")
         LazyColumn(state = list, modifier = Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 18.dp, end = 18.dp, top = 6.dp, bottom = 100.dp)) {
-            item { SectionTitle("Today", Modifier.padding(top = 6.dp, bottom = 12.dp).semantics { heading() }) }
+            item(key = "today") { SectionTitle("Today", Modifier.padding(top = 6.dp, bottom = 12.dp).semantics { heading() }) }
             if (!s.loaded) {
-                item { Spacer(Modifier.height(120.dp)) }
+                item(key = "loading") { Spacer(Modifier.height(120.dp)) }
             } else if (s.picks.isEmpty()) {
-                item {
+                item(key = "empty") {
                     EmptyState(
                         "You’re all caught up",
                         "Nothing fits right now. Your saves are waiting in the Library.",
@@ -95,18 +97,20 @@ fun HomeScreen(
                         featured = i == 0,
                         intentLabel = intentName(s.intents, item.intentId),
                         doneText = doneLabel(s.intents, item.intentId),
-                        onOpenItem = { onOpenItem(item.id) },
+                        onOpenItem = { onOpenItem(item) },
                         onOpen = { vm.open(item) },
                         onDone = { vm.done(item) },
                         onLater = { laterFor = item },
+                        modifier = calmItem(),
                     )
                 }
-                item { Fine("Everything else waits in the Library.", Modifier.fillMaxWidth().padding(top = 6.dp), align = TextAlign.Center) }
+                item(key = "hint") { Fine("Everything else waits in the Library.", Modifier.fillMaxWidth().padding(top = 6.dp).then(calmItem()), align = TextAlign.Center) }
             }
-            item { WeekCard(s.week, s.weekLabel) }
+            // Shown once data is in, so the week card fades in with the picks instead of popping in empty.
+            if (s.loaded) item(key = "week") { Box(calmItem()) { WeekCard(s.week, s.weekLabel) } }
             if (s.staleCount > 0) {
-                item {
-                    CCard(Modifier.fillMaxWidth().padding(top = 24.dp), feature = true) {
+                item(key = "tidy") {
+                    CCard(Modifier.fillMaxWidth().padding(top = 24.dp).then(calmItem()), feature = true) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             Column(Modifier.weight(1f)) {
                                 Text("Time for a tidy-up", style = CaddisType.strong, color = C.colors.fg)
@@ -135,15 +139,16 @@ private fun PickCard(
     onOpen: () -> Unit,
     onDone: () -> Unit,
     onLater: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val c = C.colors
-    CCard(Modifier.fillMaxWidth().padding(bottom = 12.dp), feature = featured) {
+    CCard(modifier.fillMaxWidth().padding(bottom = 12.dp), feature = featured) {
         Row(
             Modifier.fillMaxWidth().clickable(onClick = onOpenItem),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.Top,
         ) {
-            Thumb(item, if (featured) 84.dp else 68.dp)
+            Thumb(item, if (featured) 84.dp else 68.dp, share = "home")
             Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Tag(intentLabel)
                 Text(item.displayTitle, style = CaddisType.cardTitle, color = c.fg, maxLines = 3, overflow = TextOverflow.Ellipsis)

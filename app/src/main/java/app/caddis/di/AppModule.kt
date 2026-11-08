@@ -34,7 +34,9 @@ object AppModule {
     @Provides
     @Singleton
     fun database(@ApplicationContext context: Context): CaddisDatabase =
-        Room.databaseBuilder(context, CaddisDatabase::class.java, CaddisDatabase.NAME).build()
+        Room.databaseBuilder(context, CaddisDatabase::class.java, CaddisDatabase.NAME)
+            .addMigrations(*CaddisDatabase.MIGRATIONS)
+            .build()
 
     @Provides
     @Singleton

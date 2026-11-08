@@ -75,8 +75,9 @@ class CaptureViewModelTest {
         vm.openAdd(clipboard = "look https://youtu.be/abc")
         assertEquals("https://youtu.be/abc", (vm.sheet.value as CaptureSheet.Add).clipboard)
 
-        vm.submitLink("tel:123").join()
-        assertEquals("Only web links (http or https) can be saved.", (vm.sheet.value as CaptureSheet.Add).error)
+        vm.submitLink("   ").join()
+        assertEquals("Paste or type a link first.", (vm.sheet.value as CaptureSheet.Add).error)
+        assertFalse((vm.sheet.value as CaptureSheet.Add).offerNote)
 
         vm.submitLink("youtu.be/abc").join()
         assertTrue(vm.sheet.value is CaptureSheet.Saved)
@@ -84,5 +85,38 @@ class CaptureViewModelTest {
         vm.openAdd(null)
         vm.submitLink("https://www.youtube.com/watch?v=abc").join()
         assertTrue(vm.sheet.value is CaptureSheet.Duplicate)
+    }
+
+    @Test
+    fun `typed text that is not a link is offered as a note and saved on yes`() = runBlocking {
+        vm.openAdd(null)
+        vm.setAddUrl("Buy oat milk\nand eggs")
+        vm.submitLink("Buy oat milk\nand eggs").join()
+        val add = vm.sheet.value as CaptureSheet.Add
+        assertTrue(add.offerNote)
+        assertEquals("", add.error)
+
+        vm.setAddUrl("Buy oat milk")
+        assertFalse((vm.sheet.value as CaptureSheet.Add).offerNote)
+        vm.submitLink("Buy oat milk\nand eggs").join()
+
+        vm.saveTypedAsNote()
+        val saved = withTimeout(5_000) { vm.sheet.first { it is CaptureSheet.Saved } } as CaptureSheet.Saved
+        val note = f.repo.observeItem(saved.itemId).first()!!
+        assertEquals(ItemType.NOTE, note.type)
+        assertEquals("Buy oat milk", note.title)
+        assertEquals("Buy oat milk\nand eggs", note.note)
+    }
+
+    @Test
+    fun `a title typed on the save sheet is kept when details arrive`() = runBlocking {
+        vm.openAdd(null)
+        vm.submitLink("https://example.com/post").join()
+        val id = (awaitSheet() as CaptureSheet.Saved).itemId
+        vm.setTitle(id, "My own title").join()
+        f.repo.applyDetails(id, app.caddis.domain.details.LinkDetails(title = "Their title", creator = "Site"))
+        val item = f.repo.observeItem(id).first()!!
+        assertEquals("My own title", item.title)
+        assertEquals("Site", item.creator)
     }
 }

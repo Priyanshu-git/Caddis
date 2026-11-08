@@ -13,7 +13,7 @@ noted gap. **Deferred** = waits for the sync/account phase. **Later** = PRD prio
 | CAP-02 | Built | Save sheet never blocks; dismiss keeps the save |
 | CAP-03 | Built | Row first, details via `DetailsWorker` with a network constraint |
 | CAP-04 | Built | Clipboard read only on tapping +, shown as a suggestion |
-| CAP-05 | Built | Notes from Add, and shared text without a link becomes a note |
+| CAP-05 | Built | Notes from Add; shared text without a link becomes a note; typed text that is not a link is offered as a note |
 | CAP-06 | Built | `Links.normalize` + `findByNormalizedUrl`; "Save again" keeps both |
 | CAP-07 | Built | Source app from the share referrer; optional "Who sent it" field |
 | CAP-08 | Later | Widget |
@@ -79,8 +79,8 @@ noted gap. **Deferred** = waits for the sync/account phase. **Later** = PRD prio
 | --- | --- | --- |
 | MET-01 | Built | Public oEmbed (YouTube, X, Reddit), page metadata (Medium, Web, plus Reddit for a thumbnail); keyless, direct from the source; Meta never called |
 | MET-02 | Built | Save sheet updates live from Room |
-| MET-03 | Partial | Edited fields are protected and Refresh exists; only the note title is editable in the UI so far |
-| MET-04 | Built | Coil disk cache capped at 200 MB, clearable; thumbnails only |
+| MET-03 | Built | Edit details sheet on the item page (link, title, by, description; a new link re-reads the platform and refetches), title field on the save sheet; edits survive Refresh, an emptied field refills |
+| MET-04 | Built | Coil disk cache capped at 200 MB, clearable; thumbnails only; the site icon stands in when there is no thumbnail (never for Meta) |
 | MET-05 | Built | Merge never blanks a known field; failures keep what we have; bot-check pages are ignored; `DefaultTitles` names a save from its URL until a real title arrives |
 
 ## Notes

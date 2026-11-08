@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.caddis.data.LibraryRepository
 import app.caddis.domain.analytics.AnalyticsEvent
+import app.caddis.domain.details.DetailEdits
 import app.caddis.domain.model.Collection
 import app.caddis.domain.model.Intent
 import app.caddis.domain.model.Item
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import javax.inject.Inject
@@ -65,6 +67,19 @@ class ItemViewModel @Inject constructor(
     }
 
     fun setTitle(t: String) = appScope.launch { repo.setTitle(id, t) }
+    /**
+     * Saves the Edit details sheet. Runs on the app scope so closing the screen never drops it.
+     * Returns a message to show on the sheet when the link cannot be used, or null when saved.
+     */
+    suspend fun saveDetails(url: String?, e: DetailEdits): String? =
+        when (val r = appScope.async { repo.saveDetails(id, url, e) }.await()) {
+            is LibraryRepository.DetailsResult.BadLink -> r.message
+            is LibraryRepository.DetailsResult.LinkTaken -> "Another save already has this link: “${r.other.displayTitle}”."
+            is LibraryRepository.DetailsResult.Saved -> {
+                if (r.refetching) messenger.show("Link changed. Fetching its details.")
+                null
+            }
+        }
     fun setIntent(intentId: String) = viewModelScope.launch { repo.setIntent(id, intentId) }
     fun setReason(r: String) = viewModelScope.launch { repo.setReason(id, r) }
     fun toggleCollection(cid: String, on: Boolean) = viewModelScope.launch { repo.setInCollection(id, cid, on) }

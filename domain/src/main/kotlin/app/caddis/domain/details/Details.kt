@@ -19,6 +19,8 @@ data class LinkDetails(
     val creator: String? = null,
     val thumbnailUrl: String? = null,
     val lengthSeconds: Int? = null,
+    /** Not counted by [isEmpty]: an icon alone says nothing about the link. */
+    val faviconUrl: String? = null,
 ) {
     val isEmpty: Boolean get() = listOf(title, description, creator, thumbnailUrl).all { it.isNullOrBlank() } && lengthSeconds == null
 }
@@ -70,7 +72,22 @@ object DetailsParser {
             creator = creator?.let(::clean),
             thumbnailUrl = image?.let { doc.selectFirst("meta[property=og:image]")?.absUrl("content")?.ifBlank { null } ?: it },
             lengthSeconds = length,
+            faviconUrl = favicon(doc),
         )
+    }
+
+    /**
+     * The page's declared icon. The touch icon is larger, so it reads better as a thumbnail. SVG is
+     * skipped because the image loader has no SVG decoder.
+     */
+    private fun favicon(doc: Document): String? {
+        val links = doc.select("link[rel][href]").filterNot {
+            it.attr("type").contains("svg", ignoreCase = true) || it.attr("href").substringBefore('?').endsWith(".svg", ignoreCase = true)
+        }
+        fun find(match: (List<String>) -> Boolean) = links
+            .firstOrNull { match(it.attr("rel").lowercase().split(Regex("\\s+"))) }
+            ?.absUrl("href")?.takeIf { it.startsWith("http") }
+        return find { "apple-touch-icon" in it || "apple-touch-icon-precomposed" in it } ?: find { "icon" in it }
     }
 
     /** Parse a public oEmbed response (YouTube, X). */
@@ -163,6 +180,7 @@ fun Item.mergeDetails(d: LinkDetails, now: Instant): Item {
         creator = pick(EditableField.CREATOR, creator, d.creator),
         thumbnailUrl = if (EditableField.THUMBNAIL in userEdited || d.thumbnailUrl.isNullOrBlank()) thumbnailUrl else d.thumbnailUrl,
         lengthSeconds = if (EditableField.LENGTH in userEdited || d.lengthSeconds == null) lengthSeconds else d.lengthSeconds,
+        faviconUrl = d.faviconUrl?.takeIf { it.isNotBlank() } ?: faviconUrl,
         detailsFetchedAt = now,
         updatedAt = now,
         revision = revision + 1,

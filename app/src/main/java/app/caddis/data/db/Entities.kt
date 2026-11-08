@@ -1,5 +1,6 @@
 package app.caddis.data.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Fts4
@@ -35,6 +36,8 @@ data class ItemEntity(
     val description: String,
     val creator: String,
     val thumbnailUrl: String?,
+    /** Added in version 2. */
+    @ColumnInfo(defaultValue = "NULL") val faviconUrl: String? = null,
     val lengthSeconds: Int?,
     val note: String,
     val intentId: String,

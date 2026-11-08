@@ -1,5 +1,13 @@
 package app.caddis.ui.item
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import app.caddis.ui.LocalOpenedItem
+import app.caddis.ui.Motion
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -42,6 +50,7 @@ import app.caddis.ui.components.Sub
 import app.caddis.ui.components.Thumb
 import app.caddis.ui.intentName
 import app.caddis.ui.savedLabel
+import app.caddis.ui.sheets.EditDetailsSheet
 import app.caddis.ui.sheets.IntentSheet
 import app.caddis.ui.sheets.LaterSheet
 import app.caddis.ui.theme.C
@@ -57,16 +66,21 @@ fun ItemScreen(onBack: () -> Unit, onNote: (String) -> Unit, onManageIntents: ()
     var editReason by rememberSaveable { mutableStateOf(false) }
     var showCollections by rememberSaveable { mutableStateOf(false) }
     val c = C.colors
-    val it = item ?: return
+    // The list we came from handed over the item, so the screen (and its thumbnail) exist on the first frame.
+    val opened = LocalOpenedItem.current
+    val origin = remember { opened.origin }
+    val preview = remember { opened.previewFor(vm.id) }
+    val it = item ?: preview ?: return
 
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             IconBtn(CIcons.Back, "Back", onBack)
             androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+            IconBtn(CIcons.Edit, "Edit details", { sheet = "edit" })
             IconBtn(CIcons.More, "Bring back later", { sheet = "later" })
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 18.dp).padding(bottom = 20.dp)) {
-            Thumb(it, size = 1000.dp, height = 150.dp, radius = 16.dp, modifier = Modifier.fillMaxWidth())
+            Thumb(it, size = 1000.dp, height = 150.dp, radius = 16.dp, modifier = Modifier.fillMaxWidth(), share = origin.ifBlank { null })
             Row(Modifier.padding(top = 14.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 CChip(intentName(intents, it.intentId), selected = true, onClick = { sheet = "intent" }, trailing = CIcons.Down, contentDescription = "Intent: ${intentName(intents, it.intentId)}. Change")
                 CChip(it.platform.label)
@@ -107,7 +121,9 @@ fun ItemScreen(onBack: () -> Unit, onNote: (String) -> Unit, onManageIntents: ()
                 collections.filter { col -> col.id in it.collectionIds }.forEach { col -> CChip(col.name) }
                 CChip(if (showCollections) "Done" else "+ Add", onClick = { showCollections = !showCollections })
             }
-            if (showCollections) CollectionPicker(collections, it.collectionIds, vm::toggleCollection, Modifier.padding(top = 10.dp))
+            AnimatedVisibility(showCollections, enter = fadeIn(tween(Motion.Short)) + expandVertically(), exit = fadeOut(tween(Motion.Quick)) + shrinkVertically()) {
+                CollectionPicker(collections, it.collectionIds, vm::toggleCollection, Modifier.padding(top = 10.dp))
+            }
 
             Row(Modifier.fillMaxWidth().padding(top = 18.dp), verticalAlignment = Alignment.CenterVertically) {
                 Fine(it.savedLabel() + if (it.detailsFetchedAt != null) " · details loaded" else "", Modifier.weight(1f))
@@ -125,6 +141,7 @@ fun ItemScreen(onBack: () -> Unit, onNote: (String) -> Unit, onManageIntents: ()
 
     when (sheet) {
         "later" -> LaterSheet(it, vm.today(), onPick = { r, d -> vm.later(r, d); sheet = null }, onDismiss = { sheet = null })
+        "edit" -> EditDetailsSheet(it, onSave = vm::saveDetails, onDone = { sheet = null })
         "intent" -> IntentSheet(it, intents, onPick = vm::setIntent, onManage = { sheet = null; onManageIntents() }, onDismiss = { sheet = null })
     }
 }

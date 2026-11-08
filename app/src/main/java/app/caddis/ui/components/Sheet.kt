@@ -1,6 +1,9 @@
 package app.caddis.ui.components
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import app.caddis.ui.Motion
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -49,8 +52,10 @@ fun CSheet(onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
                 .imePadding()
                 .navigationBarsPadding()
                 .padding(start = 18.dp, end = 18.dp, bottom = 22.dp),
-            content = content,
-        )
+        ) {
+            // Inside the keyboard padding, so growing sections ease open without lagging the keyboard.
+            Column(Modifier.fillMaxWidth().animateContentSize(tween(Motion.Short, easing = Motion.Standard)), content = content)
+        }
     }
 }
 

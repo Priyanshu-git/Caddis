@@ -31,6 +31,16 @@ object Links {
         return LinkCheck.Valid(url = withScheme, normalized = normalize(withScheme))
     }
 
+    /**
+     * Typed text that is not a web link but is worth keeping: offer to save it as a note instead
+     * (CAP-05). Empty input is just "nothing typed yet".
+     */
+    fun couldBeNote(raw: String): Boolean = raw.isNotBlank() && check(raw) is LinkCheck.Invalid
+
+    /** A note's title from free text: its first non-blank line, at most 80 characters. */
+    fun noteTitleFrom(text: String): String =
+        text.lineSequence().map { it.trim() }.firstOrNull { it.isNotEmpty() }.orEmpty().take(80)
+
     /** The first web link inside shared text, e.g. "Look at this https://youtu.be/x?si=1". */
     fun extractFirst(text: String): String? =
         urlInText.find(text)?.value?.trimEnd('.', ',', ')', ']', '!', '?', ';', ':')

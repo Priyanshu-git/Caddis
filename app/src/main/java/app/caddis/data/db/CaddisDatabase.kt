@@ -3,6 +3,8 @@ package app.caddis.data.db
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [
@@ -15,7 +17,7 @@ import androidx.room.TypeConverters
         WeeklySummaryEntity::class,
         IntentCorrectionEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -27,5 +29,14 @@ abstract class CaddisDatabase : RoomDatabase() {
 
     companion object {
         const val NAME = "caddis.db"
+
+        /** v2: the site icon shown when a save has no thumbnail. */
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE items ADD COLUMN faviconUrl TEXT DEFAULT NULL")
+            }
+        }
+
+        val MIGRATIONS = arrayOf(MIGRATION_1_2)
     }
 }

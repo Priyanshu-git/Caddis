@@ -63,6 +63,7 @@ dependencies {
     implementation(project(":domain"))
 
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -104,6 +105,7 @@ dependencies {
     testImplementation(libs.androidx.room.testing)
     testImplementation(libs.androidx.work.testing)
     testImplementation(libs.okhttp.mockwebserver)
+    testImplementation(libs.androidx.navigation.testing)
 
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.test.runner)

@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,6 +30,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.runtime.rememberCoroutineScope
+import app.caddis.domain.details.DetailEdits
+import app.caddis.domain.details.EditLimits
 import app.caddis.domain.model.Intent
 import app.caddis.domain.model.IntentSource
 import app.caddis.domain.model.Intents
@@ -36,6 +42,7 @@ import app.caddis.domain.model.Item
 import app.caddis.domain.model.ReturnRule
 import app.caddis.ui.components.BtnStyle
 import app.caddis.ui.components.CButton
+import app.caddis.ui.components.CField
 import app.caddis.ui.components.CSheet
 import app.caddis.ui.components.Fine
 import app.caddis.ui.theme.C
@@ -153,3 +160,59 @@ class MutableConfirm {
 
 @Composable
 fun CenteredFine(text: String) = Fine(text, Modifier.fillMaxWidth().padding(top = 14.dp), align = TextAlign.Center)
+
+/**
+ * Edit details (MET-03): the link, title, who made it, and the description. What you type is kept
+ * when details refresh; an emptied field goes back to what Caddis finds. A new link re-reads the
+ * platform and fetches details again. [onSave] returns a message when the link cannot be used.
+ */
+@Composable
+fun EditDetailsSheet(item: Item, onSave: suspend (String?, DetailEdits) -> String?, onDone: () -> Unit) {
+    var url by rememberSaveable(item.id) { mutableStateOf(item.url.orEmpty()) }
+    var title by rememberSaveable(item.id) { mutableStateOf(item.title) }
+    var creator by rememberSaveable(item.id) { mutableStateOf(item.creator) }
+    var description by rememberSaveable(item.id) { mutableStateOf(item.description) }
+    var error by remember(item.id) { mutableStateOf("") }
+    var saving by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val linkChanged = !item.isNote && url.trim() != item.url
+    val save = {
+        if (!saving) {
+            saving = true
+            scope.launch {
+                val message = onSave(if (item.isNote) null else url, DetailEdits(title, description, creator))
+                saving = false
+                if (message == null) onDone() else error = message
+            }
+        }
+    }
+    CSheet(onDone) {
+        Text("Edit details", style = CaddisType.sheetTitle, color = C.colors.fg)
+        Fine(
+            if (item.platform.isMeta) "Caddis doesn’t fetch ${item.platform.label} details, so what you type here is what you’ll see."
+            else "Your words are kept when details refresh. Leave a field empty to let Caddis fill it in.",
+            Modifier.padding(top = 2.dp, bottom = 12.dp),
+        )
+        if (!item.isNote) {
+            Fine("Link", Modifier.padding(bottom = 6.dp))
+            CField(
+                url, { url = it; error = "" }, "https://", label = "Link", maxLength = 2000, lines = 3,
+                keyboardType = KeyboardType.Uri, modifier = Modifier.fillMaxWidth(),
+            )
+            when {
+                error.isNotEmpty() -> Text(error, style = CaddisType.fine.copy(fontSize = CaddisType.sub.fontSize), color = C.colors.crit, modifier = Modifier.padding(top = 6.dp))
+                linkChanged -> Fine("Caddis will read the new link and fetch its details again.", Modifier.padding(top = 6.dp))
+            }
+        }
+        Fine("Title", Modifier.padding(top = 12.dp, bottom = 6.dp))
+        CField(title, { title = it }, item.displayTitle, label = "Title", maxLength = EditLimits.TITLE, lines = 3, modifier = Modifier.fillMaxWidth())
+        Fine("By", Modifier.padding(top = 12.dp, bottom = 6.dp))
+        CField(creator, { creator = it }, "Who made it", label = "By", maxLength = EditLimits.CREATOR, modifier = Modifier.fillMaxWidth())
+        Fine("Description", Modifier.padding(top = 12.dp, bottom = 6.dp))
+        CField(description, { description = it }, "What it’s about (optional)", label = "Description", maxLength = EditLimits.DESCRIPTION, lines = 5, modifier = Modifier.fillMaxWidth())
+        Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            CButton("Cancel", onClick = onDone, modifier = Modifier.weight(1f))
+            CButton(if (saving) "Saving…" else "Save", onClick = { save() }, style = BtnStyle.Primary, modifier = Modifier.weight(1f))
+        }
+    }
+}

@@ -31,6 +31,7 @@ import app.caddis.ui.components.IconBtn
 import app.caddis.ui.components.ItemRow
 import app.caddis.ui.components.Sub
 import app.caddis.ui.components.Tag
+import app.caddis.ui.calmItem
 import app.caddis.ui.meta
 import app.caddis.ui.rightTag
 import app.caddis.ui.theme.C
@@ -57,9 +58,9 @@ fun ShelfScreen(onBack: () -> Unit, onOpenItem: (Item) -> Unit, vm: LibraryViewM
             items(StatusFilter.entries) { st -> CChip(st.label, s.filters.status == st, onClick = { vm.setStatus(st) }) }
         }
         LazyColumn(contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 40.dp)) {
-            if (s.items.isEmpty()) item { EmptyState(null, "Nothing here yet.", { CButton("Clear filters", onClick = vm::resetFilters, small = true) }, rings = false) }
+            if (s.items.isEmpty()) item(key = "empty") { EmptyState(null, "Nothing here yet.", { CButton("Clear filters", onClick = vm::resetFilters, small = true) }, rings = false) }
             items(s.items, key = { it.id }) { i ->
-                ItemRow(i, i.meta(), onClick = { onOpenItem(i) }, right = i.rightTag(s.intents)?.let { t -> { Tag(t) } })
+                ItemRow(i, i.meta(), onClick = { onOpenItem(i) }, right = i.rightTag(s.intents)?.let { t -> { Tag(t) } }, modifier = calmItem(), share = "shelf")
             }
         }
     }

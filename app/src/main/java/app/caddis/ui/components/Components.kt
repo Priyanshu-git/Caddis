@@ -1,6 +1,16 @@
 package app.caddis.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import app.caddis.ui.Motion
+import app.caddis.ui.pressScale
+import app.caddis.ui.sharedThumb
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -46,6 +56,7 @@ import app.caddis.domain.model.Item
 import app.caddis.ui.theme.C
 import app.caddis.ui.theme.CaddisType
 import coil3.compose.SubcomposeAsyncImage
+import app.caddis.domain.details.Favicons
 
 enum class BtnStyle { Primary, Accent, Default, Danger, Ghost }
 
@@ -69,14 +80,16 @@ fun CButton(
         BtnStyle.Danger -> Triple(Color.Transparent, c.crit, c.crit)
         BtnStyle.Ghost -> Triple(Color.Transparent, c.fg2, Color.Transparent)
     }
+    val source = remember { MutableInteractionSource() }
     Row(
         modifier = modifier
+            .pressScale(source)
             .defaultMinSize(minHeight = if (small) 38.dp else 48.dp)
             .alpha(if (enabled) 1f else 0.5f)
             .clip(shape)
             .background(bg)
             .border(1.dp, border, shape)
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .clickable(interactionSource = source, indication = LocalIndication.current, enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(horizontal = if (small) 14.dp else 18.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
@@ -98,13 +111,17 @@ fun CChip(
 ) {
     val c = C.colors
     val shape = RoundedCornerShape(18.dp)
+    val source = remember { MutableInteractionSource() }
+    val fill by animateColorAsState(if (selected) c.accentTint else Color.Transparent, tween(Motion.Quick), label = "chipFill")
+    val edge by animateColorAsState(if (selected) c.accent else c.line, tween(Motion.Quick), label = "chipEdge")
     Row(
         modifier = modifier
+            .then(if (onClick != null) Modifier.pressScale(source) else Modifier)
             .heightIn(min = 36.dp)
             .clip(shape)
-            .background(if (selected) c.accentTint else Color.Transparent)
-            .border(1.dp, if (selected) c.accent else c.line, shape)
-            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
+            .background(fill)
+            .border(1.dp, edge, shape)
+            .then(if (onClick != null) Modifier.clickable(interactionSource = source, indication = LocalIndication.current, role = Role.Button, onClick = onClick) else Modifier)
             .semantics {
                 if (contentDescription != null) this.contentDescription = contentDescription
                 if (onClick != null) stateDescription = if (selected) "Selected" else "Not selected"
@@ -146,12 +163,14 @@ fun CCard(
 ) {
     val c = C.colors
     val shape = RoundedCornerShape(18.dp)
+    val source = remember { MutableInteractionSource() }
     Column(
         modifier
+            .then(if (onClick != null) Modifier.pressScale(source, 0.985f) else Modifier)
             .clip(shape)
             .background(if (feature) c.accentTint else c.surface)
             .border(if (feature) 1.5.dp else 1.dp, borderColor ?: if (feature) c.accent else c.line, shape)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(if (onClick != null) Modifier.clickable(interactionSource = source, indication = LocalIndication.current, onClick = onClick) else Modifier)
             .padding(padding),
         content = content,
     )
@@ -159,18 +178,21 @@ fun CCard(
 
 /** Thumbnail with a plain fallback. Meta links never have one (MET-01). */
 @Composable
-fun Thumb(item: Item, size: Dp, modifier: Modifier = Modifier, loading: Boolean = false, height: Dp = size, radius: Dp = 12.dp) {
+fun Thumb(item: Item, size: Dp, modifier: Modifier = Modifier, loading: Boolean = false, height: Dp = size, radius: Dp = 12.dp, share: String? = null) {
     val c = C.colors
     val shape = RoundedCornerShape(radius)
+    // [share] names the list the thumbnail lives in; the same name on the item screen makes it fly between them.
+    val shared = if (share != null) Modifier.sharedThumb("thumb:$share:${item.id}") else Modifier
     Box(
         modifier
+            .then(shared)
             .size(width = size, height = height)
             .clip(shape)
             .background(c.tint)
             .border(1.dp, c.line, shape),
         contentAlignment = Alignment.Center,
     ) {
-        val fallback: @Composable () -> Unit = {
+        val glyph: @Composable () -> Unit = {
             if (!loading) {
                 Icon(
                     if (item.isNote) CIcons.Note else if (item.kind.isVideo) CIcons.Play else CIcons.Doc,
@@ -178,13 +200,28 @@ fun Thumb(item: Item, size: Dp, modifier: Modifier = Modifier, loading: Boolean 
                 )
             }
         }
+        // No thumbnail (or it failed): the site's own icon, small and centred; then the glyph.
+        val icon = Favicons.forItem(item)
+        val fallback: @Composable () -> Unit = {
+            if (icon != null && !loading) {
+                val side = (minOf(size, height) * 0.5f).coerceAtMost(48.dp)
+                SubcomposeAsyncImage(
+                    model = icon,
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.size(side).clip(RoundedCornerShape(side * 0.22f)),
+                    loading = { glyph() },
+                    error = { glyph() },
+                )
+            } else glyph()
+        }
         if (item.thumbnailUrl != null) {
             SubcomposeAsyncImage(
                 model = item.thumbnailUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.matchParentSizeCompat(size, height),
-                loading = { fallback() },
+                loading = { glyph() },
                 error = { fallback() },
             )
         } else fallback()
@@ -200,9 +237,11 @@ fun ItemRow(
     onClick: () -> Unit,
     why: String? = null,
     right: (@Composable () -> Unit)? = null,
+    modifier: Modifier = Modifier,
+    share: String? = null,
 ) {
     val c = C.colors
-    Column {
+    Column(modifier) {
         Row(
             Modifier
                 .fillMaxWidth()
@@ -212,7 +251,7 @@ fun ItemRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Thumb(item, 52.dp)
+            Thumb(item, 52.dp, share = share)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(item.displayTitle, style = CaddisType.strong, color = c.fg, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(meta, style = CaddisType.fine, color = c.fg2, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -288,12 +327,16 @@ fun Dot(color: Color = C.colors.good) = Box(Modifier.size(8.dp).clip(CircleShape
 fun Toggle(on: Boolean, label: String, onChange: (Boolean) -> Unit) {
     val c = C.colors
     val shape = RoundedCornerShape(14.dp)
+    val track by animateColorAsState(if (on) c.accentTint else c.tint, tween(Motion.Short), label = "toggleTrack")
+    val edge by animateColorAsState(if (on) c.accent else c.line, tween(Motion.Short), label = "toggleEdge")
+    val knob by animateColorAsState(if (on) c.accent else c.fg2, tween(Motion.Short), label = "toggleKnob")
+    val knobX by animateDpAsState(if (on) 18.dp else 0.dp, tween(Motion.Short, easing = Motion.Standard), label = "toggleX")
     Box(
         Modifier
             .size(width = 46.dp, height = 28.dp)
             .clip(shape)
-            .background(if (on) c.accentTint else c.tint)
-            .border(1.5.dp, if (on) c.accent else c.line, shape)
+            .background(track)
+            .border(1.5.dp, edge, shape)
             .clickable(role = Role.Switch) { onChange(!on) }
             .semantics {
                 contentDescription = label
@@ -303,10 +346,10 @@ fun Toggle(on: Boolean, label: String, onChange: (Boolean) -> Unit) {
         Box(
             Modifier
                 .padding(3.dp)
-                .offset(x = if (on) 18.dp else 0.dp)
+                .offset(x = knobX)
                 .size(20.dp)
                 .clip(CircleShape)
-                .background(if (on) c.accent else c.fg2),
+                .background(knob),
         )
     }
 }

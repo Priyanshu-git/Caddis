@@ -79,6 +79,7 @@ class DetailsFetcher @Inject constructor(private val http: OkHttpClient) {
             creator = a.creator ?: b.creator,
             thumbnailUrl = a.thumbnailUrl ?: b.thumbnailUrl,
             lengthSeconds = a.lengthSeconds ?: b.lengthSeconds,
+            faviconUrl = a.faviconUrl ?: b.faviconUrl,
         )
     }
 

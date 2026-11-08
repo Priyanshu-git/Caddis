@@ -8,7 +8,7 @@ import java.time.DayOfWeek
 
 fun ItemEntity.toDomain(collectionIds: Set<String> = emptySet()) = Item(
     id = id, type = type, url = url, normalizedUrl = normalizedUrl, platform = platform, kind = kind,
-    title = title, description = description, creator = creator, thumbnailUrl = thumbnailUrl,
+    title = title, description = description, creator = creator, thumbnailUrl = thumbnailUrl, faviconUrl = faviconUrl,
     lengthSeconds = lengthSeconds, note = note, intentId = intentId, intentSource = intentSource,
     reason = reason, sourceApp = sourceApp, sourceFrom = sourceFrom, status = status,
     createdAt = createdAt, updatedAt = updatedAt, doneAt = doneAt, deletedAt = deletedAt,
@@ -20,7 +20,7 @@ fun ItemEntity.toDomain(collectionIds: Set<String> = emptySet()) = Item(
 
 fun Item.toEntity() = ItemEntity(
     id = id, type = type, url = url, normalizedUrl = normalizedUrl, platform = platform, kind = kind,
-    title = title, description = description, creator = creator, thumbnailUrl = thumbnailUrl,
+    title = title, description = description, creator = creator, thumbnailUrl = thumbnailUrl, faviconUrl = faviconUrl,
     lengthSeconds = lengthSeconds, note = note, intentId = intentId, intentSource = intentSource,
     reason = reason, sourceApp = sourceApp, sourceFrom = sourceFrom, status = status,
     createdAt = createdAt, updatedAt = updatedAt, doneAt = doneAt, deletedAt = deletedAt,

@@ -35,6 +35,8 @@ fun CField(
     onIme: (() -> Unit)? = null,
     boxed: Boolean = true,
     textStyle: TextStyle = CaddisType.bodyLarge,
+    /** More than 1 lets the text wrap up to this many lines (Return still ends the edit). */
+    lines: Int = 1,
 ) {
     val c = C.colors
     val interaction = remember { MutableInteractionSource() }
@@ -42,7 +44,8 @@ fun CField(
     BasicTextField(
         value = value,
         onValueChange = { onValueChange(it.take(maxLength)) },
-        singleLine = true,
+        singleLine = lines == 1,
+        maxLines = lines,
         textStyle = textStyle.copy(color = c.fg),
         cursorBrush = SolidColor(c.accent),
         interactionSource = interaction,

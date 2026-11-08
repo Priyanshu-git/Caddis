@@ -74,6 +74,8 @@ data class Item(
     val description: String = "",
     val creator: String = "",
     val thumbnailUrl: String? = null,
+    /** The site's own icon, read from the page; shown when there is no thumbnail. */
+    val faviconUrl: String? = null,
     val lengthSeconds: Int? = null,
     val note: String = "",
     val intentId: String,

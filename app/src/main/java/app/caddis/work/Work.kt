@@ -85,8 +85,8 @@ class DetailsWorker @AssistedInject constructor(
         val item = repo.get(id) ?: return Result.success()
         val url = item.url ?: return Result.success()
         return when (val r = fetcher.fetch(url, item.platform)) {
-            is FetchResult.Ok -> { repo.applyDetails(id, r.details); Result.success() }
-            FetchResult.GiveUp -> { repo.markDetailsAttempted(id); Result.success() }
+            is FetchResult.Ok -> { repo.applyDetails(id, r.details, forUrl = url); Result.success() }
+            FetchResult.GiveUp -> { repo.markDetailsAttempted(id, forUrl = url); Result.success() }
             FetchResult.Retry -> if (runAttemptCount < MAX_ATTEMPTS) Result.retry() else {
                 // Leave detailsFetchedAt empty: the next app open tries again (risk table: fallback).
                 Result.success()

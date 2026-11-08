@@ -1,5 +1,15 @@
 package app.caddis.ui.capture
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
+import app.caddis.ui.Motion
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -33,6 +43,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.caddis.domain.details.EditLimits
 import app.caddis.domain.model.Collection
 import app.caddis.domain.model.Intent
 import app.caddis.domain.model.IntentSource
@@ -93,6 +104,23 @@ private fun AddSheet(s: CaptureSheet.Add, vm: CaptureViewModel) {
                 keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go, onIme = { vm.submitLink(s.url) },
                 modifier = Modifier.fillMaxWidth(),
             )
+            if (s.offerNote) {
+                Column(
+                    Modifier
+                        .padding(top = 12.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(c.tint)
+                        .border(1.dp, c.line, RoundedCornerShape(14.dp))
+                        .padding(12.dp),
+                ) {
+                    Text("This doesn’t seem like a web URL. Save as a note instead?", style = CaddisType.strong, color = c.fg)
+                    Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CButton("Edit link", onClick = { vm.setAddUrl(s.url) }, small = true, modifier = Modifier.weight(1f))
+                        CButton("Save as note", onClick = vm::saveTypedAsNote, style = BtnStyle.Primary, small = true, modifier = Modifier.weight(1f))
+                    }
+                }
+            }
             if (s.error.isNotEmpty()) Text(s.error, style = CaddisType.fine.copy(fontSize = CaddisType.sub.fontSize), color = c.crit, modifier = Modifier.padding(top = 8.dp))
             if (s.url.isEmpty() && s.clipboard != null) {
                 Row(
@@ -114,7 +142,7 @@ private fun AddSheet(s: CaptureSheet.Add, vm: CaptureViewModel) {
                 }
                 Fine("Read from the clipboard only after you tapped Add.", Modifier.padding(top = 10.dp))
             }
-            CButton("Continue", onClick = { vm.submitLink(s.url) }, style = BtnStyle.Primary, modifier = Modifier.fillMaxWidth().padding(top = 16.dp))
+            if (!s.offerNote) CButton("Continue", onClick = { vm.submitLink(s.url) }, style = BtnStyle.Primary, modifier = Modifier.fillMaxWidth().padding(top = 16.dp))
         } else {
             CField(value = noteTitle, onValueChange = { noteTitle = it }, placeholder = "Note title (optional)", label = "Note title", modifier = Modifier.fillMaxWidth(), maxLength = 120)
             CButton("Continue", onClick = { vm.submitNote(noteTitle) }, style = BtnStyle.Primary, modifier = Modifier.fillMaxWidth().padding(top = 16.dp))
@@ -130,8 +158,12 @@ private fun SaveSheet(item: Item, sharedFrom: String, intents: List<Intent>, col
     var from by remember(item.id) { mutableStateOf(item.sourceFrom) }
     var showCollections by rememberSaveable { mutableStateOf(false) }
     var showFrom by rememberSaveable { mutableStateOf(false) }
+    // null until the person taps "Edit title"; the prefill is remembered so an untouched field saves nothing.
+    var titleDraft by remember(item.id) { mutableStateOf<String?>(null) }
+    var titlePrefill by remember(item.id) { mutableStateOf("") }
     val loading = !item.isNote && item.detailsFetchedAt == null && item.title.isBlank() && !item.platform.isMeta
     val close = {
+        titleDraft?.let { t -> if (t.trim() != titlePrefill.trim()) vm.setTitle(item.id, t) }
         if (from != item.sourceFrom) vm.setFrom(item.id, from)
         vm.dismiss(item.id to reason)
     }
@@ -144,17 +176,39 @@ private fun SaveSheet(item: Item, sharedFrom: String, intents: List<Intent>, col
         CCard {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Thumb(item, 64.dp, loading = loading)
-                Column(Modifier.weight(1f)) {
-                    if (loading) {
-                        SkeletonLine(0.9f); Spacer(Modifier.height(8.dp)); SkeletonLine(0.62f); Spacer(Modifier.height(8.dp)); SkeletonLine(0.36f)
-                        Fine("Loading details", Modifier.padding(top = 8.dp))
-                    } else {
-                        Text(item.displayTitle, style = CaddisType.strong, color = c.fg, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        Fine(item.meta())
-                        if (item.creator.isNotBlank()) Fine(item.creator)
+                // Details arriving replace the skeleton with a fade, and the card eases to its new height.
+                AnimatedContent(
+                    targetState = loading && titleDraft == null,
+                    modifier = Modifier.weight(1f),
+                    transitionSpec = { fadeIn(tween(Motion.Short, delayMillis = 60, easing = LinearEasing)) togetherWith fadeOut(tween(Motion.Quick, easing = LinearEasing)) },
+                    label = "saveDetails",
+                ) { showSkeleton ->
+                    Column(Modifier.fillMaxWidth()) {
+                        if (showSkeleton) {
+                            SkeletonLine(0.9f); Spacer(Modifier.height(8.dp)); SkeletonLine(0.62f); Spacer(Modifier.height(8.dp)); SkeletonLine(0.36f)
+                            Fine("Loading details", Modifier.padding(top = 8.dp))
+                        } else {
+                            Text(titleDraft?.takeIf { it.isNotBlank() } ?: item.displayTitle, style = CaddisType.strong, color = c.fg, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Fine(item.meta())
+                            if (item.creator.isNotBlank()) Fine(item.creator)
+                        }
                     }
                 }
             }
+        }
+        val draft = titleDraft
+        if (draft == null) {
+            CButton(
+                "Edit title",
+                onClick = { titlePrefill = item.title.ifBlank { item.displayTitle }; titleDraft = titlePrefill },
+                style = BtnStyle.Ghost, small = true, modifier = Modifier.padding(top = 4.dp),
+            )
+        } else {
+            CField(
+                value = draft, onValueChange = { titleDraft = it }, placeholder = item.displayTitle, label = "Title",
+                maxLength = EditLimits.TITLE, lines = 3, modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+            )
+            Fine("Your title is kept when details load.", Modifier.padding(top = 6.dp))
         }
         Eyebrow("Why are you keeping it?", Modifier.padding(top = 16.dp, bottom = 8.dp))
         Chips {
@@ -173,10 +227,10 @@ private fun SaveSheet(item: Item, sharedFrom: String, intents: List<Intent>, col
             maxLength = 140,
             modifier = Modifier.fillMaxWidth(),
         )
-        if (showFrom) {
+        AnimatedVisibility(showFrom, enter = fadeIn(tween(Motion.Short)) + expandVertically(), exit = fadeOut(tween(Motion.Quick)) + shrinkVertically()) {
             CField(value = from, onValueChange = { from = it }, placeholder = "Who sent it? e.g. Rohan", label = "From", maxLength = 60, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
         }
-        if (showCollections) {
+        AnimatedVisibility(showCollections, enter = fadeIn(tween(Motion.Short)) + expandVertically(), exit = fadeOut(tween(Motion.Quick)) + shrinkVertically()) {
             CollectionPicker(collections, item.collectionIds, { id, on -> vm.toggleCollection(item.id, id, on) }, Modifier.padding(top = 10.dp))
         }
         Row(Modifier.fillMaxWidth().padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
