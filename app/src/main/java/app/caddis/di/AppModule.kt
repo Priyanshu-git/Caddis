@@ -21,6 +21,7 @@ import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import app.caddis.data.details.UserAgentInterceptor
 import okhttp3.OkHttpClient
 import java.time.Clock
 import java.util.concurrent.TimeUnit
@@ -56,6 +57,7 @@ object AppModule {
         .readTimeout(15, TimeUnit.SECONDS)
         .callTimeout(30, TimeUnit.SECONDS)
         .followRedirects(true)
+        .addInterceptor(UserAgentInterceptor())
         .build()
 
     /**

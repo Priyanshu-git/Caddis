@@ -37,6 +37,7 @@ import app.caddis.domain.model.Collection
 import app.caddis.domain.model.Intent
 import app.caddis.domain.model.IntentSource
 import app.caddis.domain.model.Item
+import app.caddis.domain.model.Platform
 import app.caddis.ui.components.BtnStyle
 import app.caddis.ui.components.CButton
 import app.caddis.ui.components.CCard
@@ -159,8 +160,9 @@ private fun SaveSheet(item: Item, sharedFrom: String, intents: List<Intent>, col
         Chips {
             intents.forEach { i -> CChip(i.name, selected = item.intentId == i.id, onClick = { vm.setIntent(item.id, i.id) }) }
         }
+        val subject = guessSubject(item)
         Fine(
-            if (item.intentSource == IntentSource.GUESSED) "Guessed from ${article(item.platform.label)} ${item.platform.label} ${item.kind.label}. Tap to change." else "Set by you.",
+            if (item.intentSource == IntentSource.GUESSED) "Guessed from ${article(subject)} $subject. Tap to change." else "Set by you.",
             Modifier.padding(top = 8.dp, bottom = 12.dp),
         )
         CField(
@@ -248,7 +250,13 @@ fun Segmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit, lab
     }
 }
 
-private fun article(word: String) = if (word.firstOrNull()?.uppercaseChar() in setOf('A', 'E', 'I', 'O', 'U')) "an" else "a"
+/** What the intent guess was based on: "Instagram Reel", "X Post", or just "webpage" for the open web. */
+private fun guessSubject(item: Item): String =
+    if (item.platform == Platform.WEB) item.kind.label.let { if (it == "Webpage") "webpage" else it }
+    else "${item.platform.label} ${item.kind.label}"
+
+/** "an" before a vowel sound: Instagram, Article, and the letter X ("ex"). */
+private fun article(word: String) = if (word.firstOrNull()?.uppercaseChar() in setOf('A', 'E', 'I', 'O', 'U', 'X')) "an" else "a"
 
 private fun Modifier.clickableRole(onClick: () -> Unit): Modifier =
     this.clickable(role = Role.Tab, onClick = onClick)

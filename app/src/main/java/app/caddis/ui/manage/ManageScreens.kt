@@ -166,7 +166,7 @@ fun CollectionsScreen(onBack: () -> Unit, onOpen: (String) -> Unit, vm: Collecti
                                     Fine("$n ${if (n == 1) "save" else "saves"}")
                                 }
                             }
-                            IconBtn(CIcons.More, "Rename or delete ${col.name}", { editing = col.id; confirm.armed = null }, size = 20.dp)
+                            IconBtn(CIcons.More, "Rename or delete ${col.name}", { editing = col.id; confirm.armed = null; vm.error.value = "" }, size = 20.dp)
                         }
                     }
                     HorizontalDivider(color = c.line)

@@ -118,12 +118,13 @@ class CollectionsViewModel @Inject constructor(
 
     fun rename(id: String, name: String, onOk: () -> Unit) = viewModelScope.launch {
         when (val r = repo.renameCollection(id, name)) {
-            is LibraryRepository.NameResult.Ok -> { messenger.show("Renamed."); onOk() }
+            is LibraryRepository.NameResult.Ok -> { error.value = ""; messenger.show("Renamed."); onOk() }
             is LibraryRepository.NameResult.Error -> messenger.show(r.message)
         }
     }
 
     fun delete(id: String) = viewModelScope.launch {
+        error.value = ""
         repo.deleteCollection(id)
         messenger.show("Collection deleted. Its saves are still in your library.")
     }

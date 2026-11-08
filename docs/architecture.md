@@ -25,11 +25,11 @@ metadata parsing is testable on the JVM.
 | Package | What it holds | PRD |
 | --- | --- | --- |
 | `model` | `Item`, `Intent`, `IntentRule`, `Collection`, `WeeklySummary`, enums; `Intents` defaults and rules | INT-01/04/05, data model |
-| `link` | `Links.check/normalize/extractFirst`, `PlatformDetector` (platform, kind, handle from the URL) | CAP-01/04/06, MET-01 |
+| `link` | `Links.check/normalize/extractFirst`, `PlatformDetector` (platform, kind, handle from the URL), `DefaultTitles` (readable title from the URL alone, used until a real one arrives) | CAP-01/04/06, MET-01/05 |
 | `intent` | `IntentGuesser` — keyword rules, then local correction counts, then platform default | INT-02, tech arch §5 |
 | `schedule` | `HomePicker` (≤3 picks), `ReturnScheduler` (later options), `TidyUp`, `Trash`, `Weeks`, `Reminders` + `QuietHours` | BRB-01–04, FIN-02/03, WK-01/02 |
 | `search` | `SearchQuery.toFtsMatch/explain`, result buckets | SRC-01/02 |
-| `details` | `DetailsPlanner` (what to fetch; never Meta), `DetailsParser` (OG tags, oEmbed, YouTube length, reading time), `mergeDetails` (never overwrites edits) | MET-01–05 |
+| `details` | `DetailsPlanner` (what to fetch; never Meta), `DetailsParser` (OG tags, oEmbed, YouTube length, reading time; drops bot-check pages and bare site names), `mergeDetails` (never overwrites edits) | MET-01–05 |
 | `notes` | `Markdown.toPlainText/preview` | NOTE-01 |
 | `export` | `Exporter.toJson`, `toHtmlBookmarks` (Netscape format) | ACC-02 |
 | `analytics` | `AnalyticsEvent` — the only allowed events, typed so no content can be attached; `AnalyticsSink` port | tech arch §1.3 |
@@ -40,7 +40,7 @@ metadata parsing is testable on the JVM.
 | --- | --- |
 | `data.db` | Room: `items` (+ `items_fts` FTS4 external-content index), `intents`, `intent_rules`, `collections`, `item_collections`, `weekly_summaries`, `intent_corrections`. Schema exported to `app/schemas/`. |
 | `data` | `LibraryRepository` (the single owner of library writes), `SettingsRepository` (DataStore) |
-| `data.details` | `DetailsFetcher` — OkHttp, reads at most 512 KB, classifies Retry / GiveUp |
+| `data.details` | `DetailsFetcher` — OkHttp, reads at most 512 KB, classifies Retry / GiveUp, never throws; `UserAgentInterceptor` names Caddis on every request without its own User-Agent, including Coil thumbnails |
 | `work` | `WorkScheduler` (implements `DetailsScheduler`), `DetailsWorker` (unique per item, backoff), `ReminderWorker` (hourly, decides via `Reminders`) |
 | `notify` | `Notifier` — channels, daily pick and weekly summary notifications |
 | `share` | `ShareActivity` — translucent share target; saves in `onCreate` before drawing |
@@ -55,10 +55,16 @@ on the app-wide scope → `LibraryRepository.saveLink` writes the row and bumps 
 count in one transaction → schedules `DetailsWorker` (not for Instagram/Facebook) → the save sheet
 observes the row and fills in as details arrive. Dismissing the sheet only flushes the reason.
 
-**Details** (MET-01–05): `DetailsWorker` → `DetailsFetcher` (oEmbed for YouTube/X, page metadata for
-the rest) → `applyDetails` merges without touching `userEdited` fields or blanking known fields,
-and re-guesses the intent only while it is still a guess. Network constraint plus the person's
-battery / mobile-data choices. Missing details are re-queued on every app start.
+**Details** (MET-01–05): `DetailsWorker` → `DetailsFetcher` (public oEmbed for YouTube, X and Reddit,
+page metadata for the rest; no API keys, no login, no third-party proxy) → `applyDetails` merges
+without touching `userEdited` fields or blanking known fields, and re-guesses the intent only while
+it is still a guess. Network constraint plus the person's battery / mobile-data choices. Missing
+details are re-queued on every app start.
+
+When a source refuses (Reddit and Medium often serve a bot check to non-browsers), is offline, or is
+never called (Instagram, Facebook), the save keeps no title and `Item.displayTitle` falls back to
+`DefaultTitles`: for example "Instagram reel by @name", "Post by @name", or the words in a Reddit or
+Medium URL slug. The real title replaces it as soon as one is fetched.
 
 **Home** (BRB-01/02): `HomeViewModel` combines items, rules, intents, the week's counts and a
 5-minute tick → `HomePicker.pick`. Picks are marked surfaced once per day per item.
@@ -96,5 +102,7 @@ offers "Delete all data" in place of account deletion.
   italic, bulleted and numbered lists and inline code. Headings and quotes imported from Markdown
   render, but have no toolbar button yet.
 - Recent searches are kept in memory only.
-- X details come from the public oEmbed endpoint; if it stops answering, X saves fall back to
-  the URL and handle.
+- X and Reddit details come from public oEmbed endpoints; if one stops answering, those saves fall
+  back to the URL and handle (Reddit: the URL slug). Reddit pages usually refuse non-browsers, so
+  Reddit saves rarely get a thumbnail. Medium articles fetch when Medium's bot check lets the phone
+  in, otherwise they show the slug title.

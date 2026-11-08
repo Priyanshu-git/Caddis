@@ -38,7 +38,9 @@ object DetailsPlanner {
             Platform.INSTAGRAM, Platform.FACEBOOK, Platform.NOTE -> FetchPlan.Skip
             Platform.YOUTUBE -> FetchPlan.OEmbed("https://www.youtube.com/oembed?format=json&url=$enc", alsoPage = true)
             Platform.X -> FetchPlan.OEmbed("https://publish.twitter.com/oembed?omit_script=true&url=$enc", alsoPage = false)
-            Platform.REDDIT, Platform.MEDIUM, Platform.WEB -> FetchPlan.Page
+            // Reddit's public oEmbed needs no key or login; the page adds a thumbnail when it lets us in.
+            Platform.REDDIT -> FetchPlan.OEmbed("https://www.reddit.com/oembed?url=$enc", alsoPage = true)
+            Platform.MEDIUM, Platform.WEB -> FetchPlan.Page
         }
     }
 }
@@ -51,6 +53,8 @@ object DetailsParser {
     fun parsePage(html: String, baseUrl: String, platform: Platform): LinkDetails {
         val doc = Jsoup.parse(html, baseUrl)
         val title = meta(doc, "og:title") ?: meta(doc, "twitter:title") ?: doc.title().takeIf { it.isNotBlank() }
+        // A challenge page or a site-wide title says nothing about this link: no details beats wrong ones.
+        if (isGenericTitle(title, platform)) return LinkDetails()
         val description = meta(doc, "og:description") ?: meta(doc, "twitter:description") ?: meta(doc, "description")
         val image = meta(doc, "og:image:secure_url") ?: meta(doc, "og:image") ?: meta(doc, "twitter:image")
         val creator = meta(doc, "author") ?: meta(doc, "article:author")?.takeUnless { it.startsWith("http") }
@@ -122,6 +126,28 @@ object DetailsParser {
             ?.attr("content")?.trim()?.takeIf { it.isNotEmpty() }
 
     private fun clean(s: String) = s.replace(Regex("\\s+"), " ").trim()
+
+    /** Bot-check and error pages whose wording is unmistakable, matched by prefix. */
+    private val interstitialPrefix = Regex(
+        "^(just a moment|attention required|access denied|whoa there, pardner|you['’]ve been blocked|verify(ing)? you are human|" +
+            "are you a (human|robot)|robot or human|pardon our interruption|checking your browser|security check)",
+        RegexOption.IGNORE_CASE,
+    )
+
+    /** Ambiguous words only count as an error page when they are the whole title ("Blocked drains" is a real title). */
+    private val interstitialExact = setOf(
+        "error", "blocked", "forbidden", "403", "404", "429", "403 forbidden", "404 not found",
+        "page not found", "not found", "too many requests", "please wait",
+    )
+
+    private val siteWide = Regex("^(reddit|medium)\\s*[-–—|:]\\s*(dive into anything|the heart of the internet|where good ideas find you).*", RegexOption.IGNORE_CASE)
+
+    private fun isGenericTitle(title: String?, platform: Platform): Boolean {
+        val t = title?.let(::clean)?.lowercase()?.takeIf { it.isNotEmpty() } ?: return false
+        if (t in interstitialExact || interstitialPrefix.containsMatchIn(t) || siteWide.matches(t)) return true
+        // The bare site name (what a login wall or blocked page serves) is not a title for a post on that site.
+        return platform != Platform.WEB && platform != Platform.NOTE && t == platform.label.lowercase()
+    }
 }
 
 /**

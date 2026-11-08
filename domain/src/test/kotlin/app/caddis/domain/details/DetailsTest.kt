@@ -71,6 +71,52 @@ class DetailsTest {
     }
 
     @Test
+    fun `reddit uses its public keyless oembed, then the page for a thumbnail`() {
+        val plan = DetailsPlanner.plan(Platform.REDDIT, "https://www.reddit.com/r/androiddev/comments/abc123/hello/")
+            .shouldBeInstanceOf<FetchPlan.OEmbed>()
+        plan.endpoint shouldContain "https://www.reddit.com/oembed?url="
+        plan.alsoPage shouldBe true
+
+        val d = DetailsParser.parseOEmbed(
+            """{"title":"What is your favourite Compose tip?","author_name":"u/redlentil","provider_name":"Reddit","type":"rich"}""",
+            Platform.REDDIT,
+        )
+        d.title shouldBe "What is your favourite Compose tip?"
+        d.creator shouldBe "u/redlentil"
+    }
+
+    @Test
+    fun `challenge pages and site-wide titles are treated as no details`() {
+        fun page(title: String) = "<html><head><title>$title</title><meta property=\"og:image\" content=\"https://x.com/logo.png\"></head></html>"
+        val blocked = listOf(
+            "Just a moment..." to Platform.MEDIUM,
+            "Attention Required! | Cloudflare" to Platform.WEB,
+            "Access denied" to Platform.WEB,
+            "Whoa there, pardner!" to Platform.REDDIT,
+            "Reddit" to Platform.REDDIT,
+            "Reddit - Dive into anything" to Platform.REDDIT,
+            "Medium" to Platform.MEDIUM,
+            "Medium – Where good ideas find you." to Platform.MEDIUM,
+            "403 Forbidden" to Platform.WEB,
+            "404" to Platform.WEB,
+        )
+        blocked.forEach { (title, platform) ->
+            DetailsParser.parsePage(page(title), "https://e.com/p", platform).isEmpty shouldBe true
+        }
+    }
+
+    @Test
+    fun `real titles that merely start with a risky word are kept`() {
+        fun title(t: String, platform: Platform = Platform.WEB) =
+            DetailsParser.parsePage("<html><head><title>$t</title></head></html>", "https://e.com/p", platform).title
+        title("Error handling in Go") shouldBe "Error handling in Go"
+        title("Blocked drains: a field guide") shouldBe "Blocked drains: a field guide"
+        title("Forbidden fruit and other pies") shouldBe "Forbidden fruit and other pies"
+        title("Reddit's API changes, explained", Platform.REDDIT) shouldBe "Reddit's API changes, explained"
+        title("Medium rare: how to steak", Platform.MEDIUM) shouldBe "Medium rare: how to steak"
+    }
+
+    @Test
     fun `merging details never overwrites what the person edited or blanks known fields`() {
         val now = Instant.parse("2026-11-04T05:00:00Z")
         val item = Item(

@@ -127,7 +127,8 @@ class CaptureViewModel @Inject constructor(
 
     private suspend fun save(link: LinkCheck.Valid, entry: SaveEntry, sourceApp: String, titleHint: String, sharedFrom: String, allowDuplicate: Boolean = false) {
         when (val r = repo.saveLink(link, entry, sourceApp = sourceApp, titleHint = titleHint, allowDuplicate = allowDuplicate)) {
-            is SaveOutcome.Saved -> _sheet.value = CaptureSheet.Saved(r.item.id, entry, sharedFrom.ifBlank { r.item.platform.label })
+            // Only name a source we actually know; a link added in-app was not "shared from" its own platform.
+            is SaveOutcome.Saved -> _sheet.value = CaptureSheet.Saved(r.item.id, entry, sharedFrom)
             is SaveOutcome.Duplicate -> _sheet.value = CaptureSheet.Duplicate(r.existing, r.link, entry, sourceApp, titleHint)
         }
     }

@@ -77,11 +77,11 @@ noted gap. **Deferred** = waits for the sync/account phase. **Later** = PRD prio
 
 | ID | Status | Where / notes |
 | --- | --- | --- |
-| MET-01 | Built | oEmbed (YouTube, X), page metadata (Reddit, Medium, Web); Meta never called |
+| MET-01 | Built | Public oEmbed (YouTube, X, Reddit), page metadata (Medium, Web, plus Reddit for a thumbnail); keyless, direct from the source; Meta never called |
 | MET-02 | Built | Save sheet updates live from Room |
 | MET-03 | Partial | Edited fields are protected and Refresh exists; only the note title is editable in the UI so far |
 | MET-04 | Built | Coil disk cache capped at 200 MB, clearable; thumbnails only |
-| MET-05 | Built | Merge never blanks a known field; failures keep what we have |
+| MET-05 | Built | Merge never blanks a known field; failures keep what we have; bot-check pages are ignored; `DefaultTitles` names a save from its URL until a real title arrives |
 
 ## Notes
 

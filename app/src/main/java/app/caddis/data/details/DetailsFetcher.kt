@@ -5,6 +5,7 @@ import app.caddis.domain.details.DetailsPlanner
 import app.caddis.domain.details.FetchPlan
 import app.caddis.domain.details.LinkDetails
 import app.caddis.domain.model.Platform
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -23,26 +24,41 @@ sealed interface FetchResult {
 
 /**
  * MET-01: the phone fetches details directly from each source (tech arch decision 3). Only the link
- * itself is sent. Never called for Instagram or Facebook. Uses public metadata only; no login,
- * no paywall bypass (NFR platform rules).
+ * itself is sent. Never called for Instagram or Facebook. Uses public metadata only (public oEmbed
+ * endpoints and Open Graph tags): no API keys, no login, no paywall bypass, no third-party proxy
+ * (NFR platform rules). Anything that fails falls back to the defaults, see [DetailsParser] and
+ * `DefaultTitles`.
  */
 @Singleton
 class DetailsFetcher @Inject constructor(private val http: OkHttpClient) {
 
+    /**
+     * Never throws: any failure (offline, blocked, a page we cannot parse) becomes [FetchResult.Retry]
+     * or [FetchResult.GiveUp], and the save keeps its defaults (MET-05).
+     */
     suspend fun fetch(url: String, platform: Platform): FetchResult = withContext(Dispatchers.IO) {
-        when (val plan = DetailsPlanner.plan(platform, url)) {
-            FetchPlan.Skip -> FetchResult.GiveUp
-            FetchPlan.Page -> page(url, platform)
-            is FetchPlan.OEmbed -> {
-                val o = get(plan.endpoint, json = true)
-                val fromOEmbed = (o as? Body.Ok)?.let { DetailsParser.parseOEmbed(it.text, platform) }
-                val fromPage = if (plan.alsoPage) (page(url, platform) as? FetchResult.Ok)?.details else null
-                val merged = merge(fromOEmbed, fromPage)
-                when {
-                    merged != null && !merged.isEmpty -> FetchResult.Ok(merged)
-                    o is Body.Retry -> FetchResult.Retry
-                    else -> FetchResult.GiveUp
-                }
+        try {
+            fetchFor(url, platform)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            FetchResult.GiveUp
+        }
+    }
+
+    private fun fetchFor(url: String, platform: Platform): FetchResult = when (val plan = DetailsPlanner.plan(platform, url)) {
+        FetchPlan.Skip -> FetchResult.GiveUp
+        FetchPlan.Page -> page(url, platform)
+        is FetchPlan.OEmbed -> {
+            val o = get(plan.endpoint, json = true)
+            val fromOEmbed = (o as? Body.Ok)?.let { DetailsParser.parseOEmbed(it.text, platform) }
+            val pageResult = if (plan.alsoPage) page(url, platform) else null
+            val merged = merge(fromOEmbed, (pageResult as? FetchResult.Ok)?.details)
+            when {
+                merged != null && !merged.isEmpty -> FetchResult.Ok(merged)
+                // Either source may only be having a bad moment; give up only when both say never.
+                o is Body.Retry || pageResult == FetchResult.Retry -> FetchResult.Retry
+                else -> FetchResult.GiveUp
             }
         }
     }
@@ -76,7 +92,7 @@ class DetailsFetcher @Inject constructor(private val http: OkHttpClient) {
         val req = Request.Builder()
             .url(url)
             .header("User-Agent", USER_AGENT)
-            .header("Accept", if (json) "application/json" else "text/html,application/xhtml+xml")
+            .header("Accept", if (json) "application/json" else "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
             .header("Accept-Language", "en")
             .build()
         return try {

@@ -1,5 +1,6 @@
 package app.caddis.domain.model
 
+import app.caddis.domain.link.DefaultTitles
 import java.time.DayOfWeek
 import java.time.Instant
 
@@ -98,9 +99,9 @@ data class Item(
 ) {
     val isNote: Boolean get() = type == ItemType.NOTE
 
-    /** Display title: what we know, falling back to the link. */
+    /** Display title: what we know, falling back to a readable default built from the link (MET-05). */
     val displayTitle: String
-        get() = title.ifBlank { url?.removePrefix("https://")?.removePrefix("http://") ?: "Untitled note" }
+        get() = title.ifBlank { url?.let { DefaultTitles.of(platform, kind, it) } ?: "Untitled note" }
 
     /** Most recent moment the person touched this item; drives tidy-up (FIN-03). */
     val lastTouchedAt: Instant

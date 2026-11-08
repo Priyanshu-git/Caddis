@@ -92,7 +92,9 @@ fun OnboardingScreen(onDone: () -> Unit, vm: ProfileViewModel = hiltViewModel())
         Text("Want a nudge now and then?", style = CaddisType.h1.copy(fontSize = CaddisType.section.fontSize), color = C.colors.fg, modifier = Modifier.padding(top = 18.dp))
         Sub("One reminder a day at most, and only when something fits. Change it any time.", Modifier.padding(top = 4.dp, bottom = 22.dp))
         CCard(Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
-            SettingRowNoLine("Daily reminder", "Off until you turn it on") { Toggle(st.dailyReminder, "Daily reminder") { daily(it) } }
+            SettingRowNoLine("Daily reminder", if (st.dailyReminder) "At most one a day" else "Off until you turn it on") {
+                Toggle(st.dailyReminder, "Daily reminder") { daily(it) }
+            }
         }
         CCard(Modifier.fillMaxWidth().padding(bottom = 10.dp), onClick = vm::cycleQuiet) {
             SettingRowNoLine("Quiet hours", "No reminders in this window") { Text(st.quietHours.label, style = CaddisType.strong, color = C.colors.fg) }
@@ -256,7 +258,7 @@ fun IntentsScreen(onBack: () -> Unit, vm: ProfileViewModel = hiltViewModel()) {
                         Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             CButton("Save", onClick = { vm.updateIntent(i.id, name, verb) { editing = null } }, style = BtnStyle.Primary, small = true)
                             CButton(
-                                if (confirm.isArmed(i.id)) "Sure? $n ${if (n == 1) "save" else "saves"} move to Just keep" else "Delete",
+                                if (confirm.isArmed(i.id)) "Sure? ${if (n == 1) "1 save moves" else "$n saves move"} to Just keep" else "Delete",
                                 onClick = { confirm.tap(i.id) { vm.deleteIntent(i.id) { editing = null } } },
                                 style = BtnStyle.Danger, small = true,
                             )
