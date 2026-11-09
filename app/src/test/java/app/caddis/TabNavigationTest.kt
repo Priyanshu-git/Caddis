@@ -7,6 +7,8 @@ import androidx.navigation.createGraph
 import androidx.navigation.navArgument
 import androidx.navigation.testing.TestNavHostController
 import androidx.test.core.app.ApplicationProvider
+import app.caddis.ui.nav.HOME_ROUTE
+import app.caddis.ui.nav.navigateToTab
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test

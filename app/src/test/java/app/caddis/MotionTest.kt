@@ -2,6 +2,7 @@ package app.caddis
 
 import app.caddis.ui.NavMotion
 import app.caddis.ui.isTabRoute
+import app.caddis.ui.nav.HOME_ROUTE
 import app.caddis.ui.navMotion
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

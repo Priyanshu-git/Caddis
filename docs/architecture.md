@@ -46,6 +46,8 @@ metadata parsing is testable on the JVM.
 | `notify` | `Notifier` — channels, daily pick and weekly summary notifications |
 | `share` | `ShareActivity` — translucent share target; saves in `onCreate` before drawing |
 | `ui` | Compose screens, `ItemActions` (done/delete/later/open with Undo toasts, share via the system chooser), `Messenger` (toasts) |
+| `ui.shell` | The app frame that `MainActivity` hosts: `CaddisRoot` (theme and the onboarding-to-app fade), `CaddisShell` (nav host, bottom bar, add button, capture sheets), `BottomBar` + `Tab`, `ToastHost` |
+| `ui.nav` | `Navigation.kt` — the route table (`CaddisNavHost`, shared-element layer, transitions), `HOME_ROUTE`, `navigateToTab` |
 | `ui.theme` | Prototype tokens (light + dark), Bricolage Grotesque + DM Sans (variable fonts in `res/font`) |
 | `di` | Hilt `AppModule` (DB, DataStore, clock, app scope, OkHttp, analytics) |
 
