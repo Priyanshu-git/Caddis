@@ -1,16 +1,50 @@
-*.iml
+# Gradle / build output
 .gradle/
+build/
+.kotlin/
+*.class
+
+# Android
 /local.properties
-/.idea/
-.DS_Store
-/build/
-**/build/
 /captures/
 .externalNativeBuild/
 .cxx/
-.kotlin/
 *.apk
 *.aab
+*.ap_
+*.dex
+*.hprof
+lint-results*.xml
+lint-results*.html
+lint-report*
+
+# Signing and secrets (never commit)
 *.keystore
 *.jks
+keystore.properties
+signing.properties
 google-services.json
+service-account*.json
+.env
+.env.*
+
+# IDEs
+*.iml
+/.idea/
+.vscode/
+.fleet/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs and scratch
+*.log
+*.tmp
+*.swp
+
+# Claude Code: personal settings and worktrees stay local (shared files in .claude/ are still tracked)
+.claude/settings.local.json
+.claude/worktrees/
+CLAUDE.local.md
