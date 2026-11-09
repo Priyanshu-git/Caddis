@@ -4,6 +4,7 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import app.caddis.R
 import app.caddis.data.LibraryRepository
 import app.caddis.domain.analytics.AnalyticsEvent
 import app.caddis.domain.details.formatLength
@@ -14,6 +15,7 @@ import app.caddis.domain.model.Platform
 import app.caddis.domain.model.ReturnRule
 import app.caddis.domain.schedule.ReturnScheduler
 import app.caddis.domain.schedule.doneLabel
+import app.caddis.domain.share.ShareText
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -64,6 +66,19 @@ class ItemActions @Inject constructor(
             context.startActivity(i)
         } catch (e: ActivityNotFoundException) {
             messenger.show("No app on this phone can open that link.")
+        }
+    }
+
+    /** Opens the share sheet with the link, a real title if there is one, and "Shared via Caddis app". */
+    fun share(item: Item) {
+        val text = ShareText.of(item) ?: return
+        val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
+        ShareText.subject(item)?.let { send.putExtra(Intent.EXTRA_SUBJECT, it).putExtra(Intent.EXTRA_TITLE, it) }
+        val chooser = Intent.createChooser(send, context.getString(R.string.share_link_chooser)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+            context.startActivity(chooser)
+        } catch (e: ActivityNotFoundException) {
+            messenger.show("No app on this phone can share that.")
         }
     }
 

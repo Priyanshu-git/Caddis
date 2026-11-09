@@ -77,7 +77,8 @@ fun ItemScreen(onBack: () -> Unit, onNote: (String) -> Unit, onManageIntents: ()
             IconBtn(CIcons.Back, "Back", onBack)
             androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
             IconBtn(CIcons.Edit, "Edit details", { sheet = "edit" })
-            IconBtn(CIcons.More, "Bring back later", { sheet = "later" })
+            if (it.url != null) IconBtn(CIcons.Share, "Share link", { vm.share() })
+            IconBtn(CIcons.BringBack, "Bring back later", { sheet = "later" })
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 18.dp).padding(bottom = 20.dp)) {
             Thumb(it, size = 1000.dp, height = 150.dp, radius = 16.dp, modifier = Modifier.fillMaxWidth(), share = origin.ifBlank { null })

@@ -70,7 +70,7 @@ noted gap. **Deferred** = waits for the sync/account phase. **Later** = PRD prio
 | LIB-01 | Built | Newest first, intent chips |
 | LIB-02 | Built | Collections switch, manage screen, many per item |
 | LIB-03 | Built | Platform filter |
-| LIB-04 | Built | Item page |
+| LIB-04 | Built | Item page; top bar has Edit, Share link (`ShareText`, link only, "Shared via Caddis app") and Bring back later |
 | LIB-05 | Built | `ACTION_VIEW` lets Android open the platform app via app links, else the browser |
 
 ## Previews and details

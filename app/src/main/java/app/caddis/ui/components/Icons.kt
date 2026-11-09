@@ -51,5 +51,9 @@ object CIcons {
     val Down = icon("down", "M6 9l6 6 6-6")
     val Alert = icon("alert", circle(12f, 12f, 9f), "M12 7.5v5M12 16.2v.1")
     val Edit = icon("edit", "M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4")
+    /** Three linked nodes, like the Android share sheet. */
+    val Share = icon("share", circle(18f, 5.5f, 2.5f), circle(6f, 12f, 2.5f), circle(18f, 18.5f, 2.5f), "M8.2 10.8l7.6-4.1M8.2 13.2l7.6 4.1")
+    /** A clock running back: "bring it back later". */
+    val BringBack = icon("bring-back", "M3.5 12a8.5 8.5 0 1 0 2.6-6.1L3.5 8.5", "M3.5 3.5v5h5", "M12 7.5V12l3 2")
     val Mark = icon("mark", circle(9f, 9f, 3f), circle(16f, 11f, 2f), circle(12f, 17f, 3.2f))
 }

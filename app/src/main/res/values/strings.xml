@@ -2,6 +2,7 @@
 <resources>
     <string name="app_name">Caddis</string>
     <string name="share_label">Save to Caddis</string>
+    <string name="share_link_chooser">Share link</string>
     <string name="channel_reminders">Reminders</string>
     <string name="channel_reminders_desc">At most one a day, only when something fits.</string>
     <string name="channel_weekly">Weekly summary</string>

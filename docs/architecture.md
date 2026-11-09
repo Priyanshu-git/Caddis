@@ -31,6 +31,7 @@ metadata parsing is testable on the JVM.
 | `search` | `SearchQuery.toFtsMatch/explain`, result buckets | SRC-01/02 |
 | `details` | `DetailsPlanner` (what to fetch; never Meta), `DetailsParser` (OG tags, oEmbed, YouTube length, reading time; drops bot-check pages and bare site names), `mergeDetails` (never overwrites edits), `withEdits` (the Edit details sheet: a changed field becomes yours, an emptied one goes back to Caddis), `withLink` (a new link re-reads platform and kind, drops what was fetched for the old one, keeps your edits), `Favicons` (site icon fallback; none for Meta) | MET-01–05 |
 | `notes` | `Markdown.toPlainText/preview` | NOTE-01 |
+| `share` | `ShareText` — the text the item page's Share sends: real title (if any), the link without tracking ids, then "Shared via Caddis app"; never the reason, note, intent or collections | LIB-04, private by default |
 | `export` | `Exporter.toJson`, `toHtmlBookmarks` (Netscape format) | ACC-02 |
 | `analytics` | `AnalyticsEvent` — the only allowed events, typed so no content can be attached; `AnalyticsSink` port | tech arch §1.3 |
 
@@ -44,7 +45,7 @@ metadata parsing is testable on the JVM.
 | `work` | `WorkScheduler` (implements `DetailsScheduler`), `DetailsWorker` (unique per item, backoff), `ReminderWorker` (hourly, decides via `Reminders`) |
 | `notify` | `Notifier` — channels, daily pick and weekly summary notifications |
 | `share` | `ShareActivity` — translucent share target; saves in `onCreate` before drawing |
-| `ui` | Compose screens, `ItemActions` (done/delete/later/open with Undo toasts), `Messenger` (toasts) |
+| `ui` | Compose screens, `ItemActions` (done/delete/later/open with Undo toasts, share via the system chooser), `Messenger` (toasts) |
 | `ui.theme` | Prototype tokens (light + dark), Bricolage Grotesque + DM Sans (variable fonts in `res/font`) |
 | `di` | Hilt `AppModule` (DB, DataStore, clock, app scope, OkHttp, analytics) |
 

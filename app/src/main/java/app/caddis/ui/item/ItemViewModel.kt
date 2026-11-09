@@ -85,7 +85,8 @@ class ItemViewModel @Inject constructor(
     fun toggleCollection(cid: String, on: Boolean) = viewModelScope.launch { repo.setInCollection(id, cid, on) }
 
     fun open(entry: AnalyticsEvent.OpenEntry = AnalyticsEvent.OpenEntry.LIBRARY) = item.value?.let { actions.open(it, entry) }
-    fun done() = item.value?.let { actions.done(it, intents.value) }
+    fun share() = item.value?.let { actions.share(it) }
+    fun done() =item.value?.let { actions.done(it, intents.value) }
     fun markActive() = item.value?.let { actions.markActive(it) }
     fun delete() = item.value?.let { actions.delete(it) }
     fun later(rule: ReturnRule, date: LocalDate?) = item.value?.let { actions.later(it, rule, date) }
