@@ -23,6 +23,7 @@ user-edited fields tracked), but do not add network sync code until asked.
 ./gradlew assembleDebug                      # debug APK
 ./gradlew :app:lintDebug                     # Android lint
 ./gradlew test assembleDebug                 # what CI runs
+./gradlew :app:connectedDebugAndroidTest     # UI journey + migration tests on a connected device/emulator (not run in CI)
 ```
 
 On Windows use `gradlew.bat` or `./gradlew` from Git Bash. JDK 17+ is required (toolchain 17).
@@ -61,5 +62,6 @@ On Windows use `gradlew.bat` or `./gradlew` from Git Bash. JDK 17+ is required (
   `domain.md`, tables/repository/settings → `data.md`, routes/screens/components → `ui.md`, modules/workers/startup →
   `architecture.md`, user-visible flows → `flows.md`, what exists or not → `overview.md`.
 - Add or update tests in the same change: domain logic in `domain/src/test`, Room/repository/ViewModel
-  behaviour in `app/src/test` (Robolectric).
+  behaviour in `app/src/test` (Robolectric), and a user-visible journey in `app/src/androidTest/.../journeys`
+  (see [docs/development.md](docs/development.md)).
 - Run `./gradlew test` before committing.
