@@ -1,141 +1,152 @@
-# Caddis code architecture
-
-How the code is laid out today. Product rules: [prd.md](prd.md). Technical decisions:
-[technical-architecture.md](technical-architecture.md). Keep this file current when you add a
-module, table, worker or screen.
-
-## Phase
-
-Client only. Room on the phone is the only store; there is no sign-in, sync, Firebase or analytics
-backend yet. The data model already carries what sync needs (`revision`, `updatedAt`,
-`userEdited`), and analytics go through a port that logs locally.
+# Architecture
 
 ## Modules
 
 ```
-:domain   pure Kotlin/JVM — every product rule, fully unit-tested
-:app      Android: Room, DataStore, OkHttp, WorkManager, Compose UI, Hilt
+:domain   pure Kotlin/JVM  — every product rule, unit-tested, no Android
+:app      Android          — Room, DataStore, OkHttp, WorkManager, Compose UI, Hilt
 ```
 
-`:domain` never imports Android, Room, OkHttp or Compose. It does use Jsoup (pure Java) so page
-metadata parsing is testable on the JVM.
+`settings.gradle.kts` includes both. `:app` depends on `:domain` (`implementation(project(":domain"))`);
+`:domain` never depends on `:app`.
 
-### :domain packages
+**Dependency rule.** `:domain` must not import Android, Room, OkHttp, Hilt or Compose. It may use:
+`kotlinx-coroutines-core` (exposed as `api`), `kotlinx-serialization-json` (export only) and
+`jsoup` (HTML metadata parsing, pure Java so it is testable on the JVM). Tests use JUnit 5 + Kotest.
 
-| Package | What it holds | PRD |
-| --- | --- | --- |
-| `model` | `Item`, `Intent`, `IntentRule`, `Collection`, `WeeklySummary`, enums; `Intents` defaults and rules | INT-01/04/05, data model |
-| `link` | `Links.check/normalize/extractFirst`, `couldBeNote`/`noteTitleFrom` (typed text that is not a link becomes a note), `PlatformDetector` (platform, kind, handle from the URL), `DefaultTitles` (readable title from the URL alone, used until a real one arrives) | CAP-01/04/06, MET-01/05 |
-| `intent` | `IntentGuesser` — keyword rules, then local correction counts, then platform default | INT-02, tech arch §5 |
-| `schedule` | `HomePicker` (≤3 picks), `ReturnScheduler` (later options), `TidyUp`, `Trash`, `Weeks`, `Reminders` + `QuietHours` | BRB-01–04, FIN-02/03, WK-01/02 |
-| `search` | `SearchQuery.toFtsMatch/explain`, result buckets | SRC-01/02 |
-| `details` | `DetailsPlanner` (what to fetch; never Meta), `DetailsParser` (OG tags, oEmbed, YouTube length, reading time; drops bot-check pages and bare site names), `mergeDetails` (never overwrites edits), `withEdits` (the Edit details sheet: a changed field becomes yours, an emptied one goes back to Caddis), `withLink` (a new link re-reads platform and kind, drops what was fetched for the old one, keeps your edits), `Favicons` (site icon fallback; none for Meta) | MET-01–05 |
-| `notes` | `Markdown.toPlainText/preview` | NOTE-01 |
-| `share` | `ShareText` — the text the item page's Share sends: real title (if any), the link without tracking ids, then "Shared via Caddis app"; never the reason, note, intent or collections | LIB-04, private by default |
-| `export` | `Exporter.toJson`, `toHtmlBookmarks` (Netscape format) | ACC-02 |
-| `analytics` | `AnalyticsEvent` — the only allowed events, typed so no content can be attached; `AnalyticsSink` port | tech arch §1.3 |
+**Where new behaviour goes.** Write the rule in `:domain` with tests first, then wire it in `:app`.
+The app layer should be adapters (Room, network, scheduling, UI) around domain functions.
 
-### :app packages
+## Layers inside `:app`
 
-| Package | What it holds |
+```
+Compose screens  ──observe──►  ViewModels  ──call──►  LibraryRepository ──►  Room (DAOs)
+      │                           │                         │  ▲                │
+      │                           │                         │  └─ DetailsScheduler ─► WorkManager ─► DetailsWorker ─► DetailsFetcher (OkHttp)
+      └── ItemActions (shared) ───┘                         └─ AnalyticsSink (Logcat in debug)
+SettingsRepository (DataStore) ◄── ViewModels, workers
+```
+
+- **Reads** are cold `Flow`s from Room, combined in `LibraryRepository` / ViewModels and exposed to
+  Compose as `StateFlow` (`stateIn`, usually `WhileSubscribed(5_000)` or `Eagerly`).
+- **Writes** all go through `LibraryRepository` (the single owner of library writes). It writes
+  Room first, then logs analytics and schedules background work.
+- **Side effects that must outlive a screen** (saves, undo, item actions, the Edit details save)
+  run on the injected application `CoroutineScope`, not `viewModelScope`.
+
+## Package map
+
+### `:domain` (`domain/src/main/kotlin/app/caddis/domain/`)
+
+| Package | Contents |
 | --- | --- |
-| `data.db` | Room: `items` (+ `items_fts` FTS4 external-content index), `intents`, `intent_rules`, `collections`, `item_collections`, `weekly_summaries`, `intent_corrections`. Schema exported to `app/schemas/`; version 2 added `items.faviconUrl` (`MIGRATION_1_2`, tested in `MigrationTest`). |
-| `data` | `LibraryRepository` (the single owner of library writes), `SettingsRepository` (DataStore) |
-| `data.details` | `DetailsFetcher` — OkHttp, reads at most 512 KB, classifies Retry / GiveUp, never throws; `UserAgentInterceptor` names Caddis on every request without its own User-Agent, including Coil thumbnails |
-| `work` | `WorkScheduler` (implements `DetailsScheduler`), `DetailsWorker` (unique per item, backoff), `ReminderWorker` (hourly, decides via `Reminders`) |
-| `notify` | `Notifier` — channels, daily pick and weekly summary notifications |
-| `share` | `ShareActivity` — translucent share target; saves in `onCreate` before drawing |
-| `ui` | Compose screens, `ItemActions` (done/delete/later/open with Undo toasts, share via the system chooser), `Messenger` (toasts) |
-| `ui.shell` | The app frame that `MainActivity` hosts: `CaddisRoot` (theme and the onboarding-to-app fade), `CaddisShell` (nav host, bottom bar, add button, capture sheets), `BottomBar` + `Tab`, `ToastHost` |
-| `ui.nav` | `Navigation.kt` — the route table (`CaddisNavHost`, shared-element layer, transitions), `HOME_ROUTE`, `navigateToTab` |
-| `ui.theme` | Prototype tokens (light + dark), Bricolage Grotesque + DM Sans (variable fonts in `res/font`) |
-| `di` | Hilt `AppModule` (DB, DataStore, clock, app scope, OkHttp, analytics) |
+| `model` | `Item`, `Intent`, `IntentRule`, `Collection`, `WeeklySummary`, enums (`Platform`, `ContentKind`, `ItemType`, `ItemStatus`, `IntentSource`, `ReturnRule`, `TimeOfDay`, `EditableField`); `Intents` (defaults, default rules, `ruleForNewIntent`, `analyticsId`); `IntentRule?.label()` |
+| `link` | `Links` (check, normalize, extractFirst, couldBeNote, noteTitleFrom, host), `LinkCheck`, `PlatformDetector`/`Detection`, `DefaultTitles` |
+| `intent` | `IntentGuesser`, `GuessInput`, `CorrectionStats` |
+| `schedule` | `ReturnScheduler`, `HomePicker`/`Pick`, `TidyUp`, `Trash`, `Weeks`, `doneLabel()` (Scheduling.kt); `Reminders`, `ReminderState`, `ReminderDecision`, `QuietHours` (Reminders.kt) |
+| `search` | `SearchQuery` (FTS match string, "matched in…" text), `resultBucket()` |
+| `details` | `LinkDetails`, `FetchPlan`, `DetailsPlanner`, `DetailsParser`, `Item.mergeDetails`, `formatLength` (Details.kt); `DetailEdits`, `EditLimits`, `Item.withEdits`, `Item.withLink`, `Item.needsDetails` (Edits.kt); `Favicons` |
+| `notes` | `Markdown.toPlainText`, `Markdown.preview` |
+| `share` | `ShareText` |
+| `export` | `Exporter` (JSON + Netscape HTML bookmarks) |
+| `analytics` | `AnalyticsEvent` (closed set), `AnalyticsSink`, `ageBucket()` |
 
-## Key flows
+Details of every rule: [domain.md](domain.md).
 
-**Save from the share sheet** (CAP-01/02/03): `ShareActivity.onCreate` → `CaptureViewModel.fromShare`
-on the app-wide scope → `LibraryRepository.saveLink` writes the row and bumps the week's saved
-count in one transaction → schedules `DetailsWorker` (not for Instagram/Facebook) → the save sheet
-observes the row and fills in as details arrive. Dismissing the sheet only flushes the reason.
+### `:app` (`app/src/main/java/app/caddis/`)
 
-**Details** (MET-01–05): `DetailsWorker` → `DetailsFetcher` (public oEmbed for YouTube, X and Reddit,
-page metadata for the rest; no API keys, no login, no third-party proxy) → `applyDetails` merges
-without touching `userEdited` fields or blanking known fields, and re-guesses the intent only while
-it is still a guess. Network constraint plus the person's battery / mobile-data choices. Missing
-details are re-queued on every app start.
+| Package / file | Responsibility |
+| --- | --- |
+| `CaddisApp.kt` | `@HiltAndroidApp` Application. Startup work, WorkManager config (Hilt worker factory), Coil `ImageLoader` factory. |
+| `MainActivity.kt`, `MainViewModel.kt` | Launcher activity (`singleTask`). Splash, edge-to-edge, hands a route extra to the shell; `MainViewModel` exposes `onboarded` (null until DataStore answers), `pendingRoute`, and the toast `Messenger`. |
+| `share/ShareActivity.kt` | Translucent share-sheet target. Saves in `onCreate`, shows the capture sheet, then finishes. |
+| `data/LibraryRepository.kt` | The only writer of library data; all queries as `Flow`. Also `DetailsScheduler` interface, `SaveOutcome`, `DetailsResult`, `NameResult`. |
+| `data/SettingsRepository.kt` | DataStore `Preferences` wrapper; `Settings` data class. |
+| `data/db/` | `CaddisDatabase`, entities (`Entities.kt`), DAOs (`Daos.kt`), `Mappers.kt` (entity ↔ domain, weekday bitmask), `Converters.kt`. |
+| `data/details/` | `DetailsFetcher` (OkHttp, never throws), `UserAgentInterceptor`. |
+| `work/Work.kt` | `WorkScheduler` (implements `DetailsScheduler`, schedules reminders), `DetailsWorker`, `ReminderWorker`. |
+| `notify/Notifier.kt` | Notification channels; daily pick and weekly summary notifications; permission check. |
+| `di/AppModule.kt` | Hilt: DB, DataStore, `Clock`, app `CoroutineScope`, `OkHttpClient`, `AnalyticsSink`; `BindingsModule` binds `DetailsScheduler → WorkScheduler`. |
+| `ui/` | `ItemActions` (shared item actions), `Messenger` (toasts), `Motion.kt` (animation vocabulary). Sub-packages below. |
+| `ui/shell/` | `CaddisRoot`, `CaddisShell`, `BottomBar` (+ `Tab`), `ToastHost`. |
+| `ui/nav/Navigation.kt` | The route table (`CaddisNavHost`), `HOME_ROUTE`, `navigateToTab`. |
+| `ui/home/`, `ui/library/`, `ui/item/`, `ui/capture/`, `ui/manage/`, `ui/profile/`, `ui/sheets/` | Screens and their ViewModels. See [ui.md](ui.md). |
+| `ui/components/` | Shared composables (`Components.kt`, `Fields.kt`, `Icons.kt`, `Sheet.kt`). |
+| `ui/theme/Theme.kt` | `CaddisColors`, light/dark palettes, fonts, `CaddisType`, `C.colors`, `CaddisTheme`. |
 
-When a source refuses (Reddit and Medium often serve a bot check to non-browsers), is offline, or is
-never called (Instagram, Facebook), the save keeps no title and `Item.displayTitle` falls back to
-`DefaultTitles`: for example "Instagram reel by @name", "Post by @name", or the words in a Reddit or
-Medium URL slug. The real title replaces it as soon as one is fetched.
+## Dependency injection (Hilt)
 
-**Thumbnails** (MET-04): `Thumb` shows the fetched thumbnail; without one (or when it fails to load)
-it shows the site's icon (`Favicons.forItem`: the icon the page declared, else `https://<host>/favicon.ico`),
-then a glyph. Instagram and Facebook always get the glyph, since loading their icon would call Meta.
+`AppModule` (`SingletonComponent`):
 
-**Editing** (MET-03): the item page's pencil opens `EditDetailsSheet` (link, title, by, description) →
-`LibraryRepository.saveDetails`, which checks the link (bad links and links another save already
-has are refused on the sheet), then applies `withEdits` and `withLink` in one transaction. When the
-link points somewhere new, the intent is re-guessed while it is still a guess and details are
-fetched again (never for Instagram or Facebook). `DetailsWorker` passes the URL it fetched, and
-details for a link that has since changed are dropped. The save sheet has
-an "Edit title" field that commits through `editTitle` when the sheet closes.
+| Provides | Notes |
+| --- | --- |
+| `CaddisDatabase` | `Room.databaseBuilder(..., "caddis.db").addMigrations(*MIGRATIONS)`. No destructive fallback. |
+| `DataStore<Preferences>` | File `settings` (`preferencesDataStoreFile("settings")`). |
+| `Clock` | `Clock.systemDefaultZone()`. **Inject `Clock` everywhere; never call `Instant.now()` in logic** (tests substitute `MutableClock`). |
+| `CoroutineScope` | App-wide `SupervisorJob() + Dispatchers.Default`. Outlives screens. |
+| `OkHttpClient` | connect 10 s, read 15 s, call 30 s, follows redirects, `UserAgentInterceptor`. Shared by `DetailsFetcher` **and Coil** (`CaddisApp.newImageLoader`). |
+| `AnalyticsSink` | Logs `name + params` to Logcat tag `CaddisAnalytics` when `BuildConfig.DEBUG`; no-op in release. |
 
-**Add a link** (CAP-04/05): if what was typed is not a web link, the Add sheet asks "Save as a note
-instead?" and `CaptureViewModel.saveTypedAsNote` saves it (first line as the title).
+`BindingsModule` binds `DetailsScheduler` to `WorkScheduler` so `LibraryRepository` can request
+background fetches without knowing about WorkManager (tests pass a recording fake).
 
-**Bottom bar**: `navigateToTab` saves each tab's stack and restores it on return, except Home,
-which never restores: as the start destination it inherits the stack of the tab you just left
-(`TabNavigationTest`).
+Singletons: `LibraryRepository`, `SettingsRepository`, `DetailsFetcher`, `WorkScheduler`,
+`Notifier`, `ItemActions`, `Messenger`. ViewModels are `@HiltViewModel`; workers are `@HiltWorker`.
 
-**Home** (BRB-01/02): `HomeViewModel` combines items, rules, intents, the week's counts and a
-5-minute tick → `HomePicker.pick`. Picks are marked surfaced once per day per item.
-A "later" date gets one full day on Home, then the item falls back to its intent rule.
+## Threads and scopes
 
-**Search** (SRC-01–03): `SearchQuery.toFtsMatch` turns words into prefix terms (implicit AND) →
-`ItemDao.search` joins `items_fts` on rowid. Fully offline.
+| Scope | Used for |
+| --- | --- |
+| `viewModelScope` | Screen-local work that may be cancelled with the screen (filters, debounced drafts, loads). |
+| App `CoroutineScope` | Anything that must finish even if the screen/sheet closes: saves from the share sheet, `ItemActions`, last edits (`setTitle`, `editTitle`, final reason), Edit details save, `WorkScheduler.schedule`, startup tasks. |
+| WorkManager | Details fetching (`DetailsWorker`), hourly reminder check (`ReminderWorker`). |
+| `Dispatchers.IO` | `DetailsFetcher.fetch`, export file writing, cache size/clear. |
 
-**Trash** (FIN-02): delete sets `status = DELETED`, `deletedAt`; `CaddisApp.onCreate` purges rows
-older than 30 days.
+Room suspend DAO calls and `withTransaction` are used for multi-row consistency (saves + weekly
+counters, done/delete + counters, intent deletion + reassignment, delete-all).
 
-**Weekly summary** (WK-01): counters in `weekly_summaries` are adjusted inside the same
-transaction as each save / done / delete (and their undo), so past weeks stay as they were.
+## Startup sequence
 
-## Screens (prototype numbers)
+1. `CaddisApp.onCreate`: `notifier.createChannels()`, `work.scheduleReminders()` (unique periodic
+   hourly work, `KEEP`), then on the app scope: `repo.seedDefaultsIfNeeded()` (only if there are no
+   intents), `repo.purgeExpiredTrash()`, `repo.scheduleMissingDetails()` (retry links that never
+   got details; skips Instagram/Facebook).
+2. WorkManager auto-init is **disabled** in the manifest (`androidx.work.WorkManagerInitializer`
+   removed); `CaddisApp` implements `Configuration.Provider` with `HiltWorkerFactory`.
+3. `MainActivity.onCreate`: `installSplashScreen()`, `enableEdgeToEdge()`, keeps the splash until
+   `MainViewModel.onboarded` is non-null, fades the splash out over `Motion.Short`, reads the
+   `route` string extra into `MainViewModel.pendingRoute`, then `setContent { CaddisRoot(...) }`.
+4. `CaddisRoot` shows `OnboardingScreen` when `onboarded == false`, else `CaddisShell`.
+5. `CaddisShell` navigates to `pendingRoute` once (then clears it) and forwards `CaptureNav`
+   events (open note / open earlier save) from `CaptureViewModel`.
 
-| # | Screen | File |
+## Android entry points (manifest)
+
+| Component | Details |
+| --- | --- |
+| `MainActivity` | Launcher. `launchMode=singleTask`, theme `Theme.Caddis.Splash`, `adjustResize`. `onNewIntent` accepts a `route` extra. |
+| `ShareActivity` | Exported; `ACTION_SEND` + `text/plain` only. `launchMode=standard`, `taskAffinity=""`, `excludeFromRecents`, theme `Theme.Caddis.Share` (translucent). |
+| Route extras | `MainActivity.EXTRA_ROUTE = "route"`; `ROUTE_ITEM_PREFIX = "item/"`; `ROUTE_WEEK = "home?week=true"`. Notifications and `ShareActivity` hand routes this way. Notes use `note/<id>`. |
+| Permissions | `INTERNET`, `ACCESS_NETWORK_STATE`, `POST_NOTIFICATIONS` (requested at runtime on API 33+ only when a reminder is turned on). |
+| `<queries>` | `VIEW https` (to open links in the original app) and `MAIN/LAUNCHER` (to resolve the sharing app's label). |
+| `FileProvider` | `${applicationId}.files`, path `cache-path exports/` — used to hand export files to the share sheet. |
+| Backup | `allowBackup=true`; rules include database `caddis.db` and the `sharedpref` domain. |
+
+## Background work
+
+| Work | Scheduling | Behaviour |
 | --- | --- | --- |
-| 2 | Notifications onboarding | `ui/profile/ProfileScreens.kt` `OnboardingScreen` |
-| 3, 4, 5 | Save sheet, duplicate, Add | `ui/capture/CaptureSheets.kt` |
-| 7, 8, 21 | Home, all clear, This week | `ui/home/HomeScreen.kt` |
-| 9, 10 | Bring back later, change intent, edit details | `ui/sheets/Sheets.kt` |
-| 11, 13, 17, 18 | Library, filters, search | `ui/library/LibraryScreen.kt` |
-| 12 | Collection shelf | `ui/library/ShelfScreen.kt` |
-| 14, 19, 20 | Collections, tidy-up, Trash | `ui/manage/ManageScreens.kt` |
-| 15, 16 | Item page, note editor | `ui/item/` |
-| 22–29 | Profile, notifications, rules, intents, data, account, privacy | `ui/profile/ProfileScreens.kt` |
+| `DetailsWorker` | `WorkScheduler.schedule(itemId)`: unique name `details-<id>`, `ExistingWorkPolicy.REPLACE`, exponential backoff 30 s. Constraints from settings: network `UNMETERED` if "pause on mobile data" else `CONNECTED`; battery-not-low if "pause on low battery" (default on). | Loads the item; fetches; `Ok` → `repo.applyDetails(..., forUrl)`, `GiveUp` → `repo.markDetailsAttempted`, `Retry` → `Result.retry()` up to `MAX_ATTEMPTS = 4`, then success without marking (next app start retries). |
+| `ReminderWorker` | `WorkScheduler.scheduleReminders()`: unique periodic **every 1 hour**, battery-not-low, `KEEP`. | If neither reminder is on, return. Otherwise asks `HomePicker` for the top pick and `Reminders.decide(...)`; posts via `Notifier`; records the send date in settings only if the notification was actually posted. |
 
-## Motion
+## Image loading
 
-All movement lives in `ui/Motion.kt`: shared durations and easings (short, decelerating, never
-bouncy), `navMotion(from, to, pop)` which picks a fade-through for tabs and a shared-axis slide for
-going deeper or back (used by the `NavHost` in `MainActivity.kt`, so predictive back scrubs it),
-`calmItem()` for list rows, `pressScale` for buttons/chips/cards, and `sharedThumb` which makes a
-list thumbnail grow into the item header (`OpenedItem` tells the item screen which list it came from
-and hands it the item for its first frame). Cold start holds the AndroidX splash until settings are
-known (`Theme.Caddis.Splash`). Compose follows the system animator scale, so turning animations off
-in Android settings makes everything instant. Tests: `MotionTest`.
+Coil 3 with the shared OkHttp client (`OkHttpNetworkFetcherFactory`), crossfade `Motion.Short`, disk
+cache in `cacheDir/thumbnails` capped at 200 MB (`CaddisApp.THUMB_CACHE_BYTES`). Only thumbnails
+and site icons are cached; original media is never downloaded or re-hosted.
 
-Screen 1 (Google sign-in) is not built in the client-only phase; Account settings says so and
-offers "Delete all data" in place of account deletion.
+## Build configuration summary
 
-## Known limits
-
-- The notes editor (`richeditor-compose` 1.0.0-rc13, chosen to stay on Kotlin 2.2) supports bold,
-  italic, bulleted and numbered lists and inline code. Headings and quotes imported from Markdown
-  render, but have no toolbar button yet.
-- Recent searches are kept in memory only.
-- X and Reddit details come from public oEmbed endpoints; if one stops answering, those saves fall
-  back to the URL and handle (Reddit: the URL slug). Reddit pages usually refuse non-browsers, so
-  Reddit saves rarely get a thumbnail. Medium articles fetch when Medium's bot check lets the phone
-  in, otherwise they show the slug title.
+See [development.md](development.md) for commands. Key facts: AGP 8.13.2, Kotlin 2.2.20, KSP,
+Hilt, Room with `exportSchema` to `app/schemas`, JVM toolchain 17, Compose BOM 2025.06.00,
+release builds minified + resource-shrunk (`app/proguard-rules.pro` keeps the export serializers).

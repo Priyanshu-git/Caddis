@@ -20,10 +20,11 @@ Requirements: JDK 17+, Android SDK 36.
 
 ## Docs
 
-- [Product requirements](docs/prd.md)
-- [Technical decisions](docs/technical-architecture.md)
-- [Code architecture](docs/architecture.md)
-- [Requirements status](docs/requirements-status.md)
+Written for AI coding agents, and describing the code as it is:
+
+- [Docs index](docs/README.md): [overview](docs/overview.md), [architecture](docs/architecture.md),
+  [domain rules](docs/domain.md), [data layer](docs/data.md), [flows](docs/flows.md), [UI](docs/ui.md),
+  [development](docs/development.md), [invariants and traps](docs/invariants.md)
 - [Agent guidance](AGENTS.md)
 
 ## Privacy

@@ -5,8 +5,9 @@ edit this one.
 
 Caddis is a native Android app that turns what you save into what you use: save a link in one tap
 with a reason (an *intent*), get it back on Home when it fits, then finish it or delete it.
-Product spec: [docs/prd.md](docs/prd.md). Technical decisions: [docs/technical-architecture.md](docs/technical-architecture.md).
-How the code is laid out: [docs/architecture.md](docs/architecture.md). What is built: [docs/requirements-status.md](docs/requirements-status.md).
+Docs for agents live in [docs/](docs/README.md) and describe the code as it is: start with
+[docs/overview.md](docs/overview.md) (what exists), [docs/architecture.md](docs/architecture.md) (where code lives) and
+[docs/invariants.md](docs/invariants.md) (hard rules, traps, known gaps). The code is the source of truth.
 
 ## Current phase
 
@@ -31,14 +32,14 @@ On Windows use `gradlew.bat` or `./gradlew` from Git Bash. JDK 17+ is required (
 - `:domain` — pure Kotlin/JVM. **No Android, Room, OkHttp or Compose imports.** Models, URL
   validation/normalisation, platform detection, intent guessing, Home picks, return scheduling,
   week maths, tidy-up selection, search query building, metadata parsing (Jsoup), export,
-  analytics event definitions. Every rule the PRD states lives here, with tests.
+  analytics event definitions. Every product rule lives here, with tests.
 - `:app` — Android adapters and UI: Room database (+ FTS4 search), repositories, DataStore settings,
   OkHttp metadata fetcher, WorkManager workers, notifications, share-sheet `ShareActivity`, Compose
   screens, Hilt modules.
 
 ## Rules
 
-- **Product principles win** (PRD): used beats saved; zero taps to organise; Home shows at most 3;
+- **Product principles win** ([docs/overview.md](docs/overview.md)): used beats saved; zero taps to organise; Home shows at most 3;
   your words win (never overwrite user-edited fields); never lose a save; calm, no streaks;
   private by default.
 - **No language models or AI anywhere.** Intent guesses are rules; search is keyword FTS.
@@ -56,8 +57,9 @@ On Windows use `gradlew.bat` or `./gradlew` from Git Bash. JDK 17+ is required (
 
 ## Docs and tests are part of every change
 
-- Update `docs/requirements-status.md` when a PRD requirement changes state.
-- Update `docs/architecture.md` when you add a module, table, worker or screen.
+- Update the matching doc in `docs/` in the same change (the table in [docs/README.md](docs/README.md) says which): rules →
+  `domain.md`, tables/repository/settings → `data.md`, routes/screens/components → `ui.md`, modules/workers/startup →
+  `architecture.md`, user-visible flows → `flows.md`, what exists or not → `overview.md`.
 - Add or update tests in the same change: domain logic in `domain/src/test`, Room/repository/ViewModel
   behaviour in `app/src/test` (Robolectric).
 - Run `./gradlew test` before committing.
