@@ -4,26 +4,6 @@ import app.caddis.domain.link.DefaultTitles
 import java.time.DayOfWeek
 import java.time.Instant
 
-/** Where a save came from. LIB-03 filters use [label]. */
-enum class Platform(val label: String) {
-    INSTAGRAM("Instagram"),
-    FACEBOOK("Facebook"),
-    REDDIT("Reddit"),
-    YOUTUBE("YouTube"),
-    MEDIUM("Medium"),
-    X("X"),
-    WEB("Web"),
-    NOTE("Note");
-
-    /** MET-01: the app never calls Meta for these. */
-    val isMeta: Boolean get() = this == INSTAGRAM || this == FACEBOOK
-
-    companion object {
-        /** The platforms a person can filter by (notes are not a platform filter). */
-        val filterable = listOf(INSTAGRAM, FACEBOOK, REDDIT, YOUTUBE, MEDIUM, X, WEB)
-    }
-}
-
 enum class ContentKind(val label: String, val isVideo: Boolean = false) {
     REEL("Reel", isVideo = true),
     VIDEO("Video", isVideo = true),
@@ -35,6 +15,9 @@ enum class ContentKind(val label: String, val isVideo: Boolean = false) {
     ARTICLE("Article"),
     WEBPAGE("Webpage"),
     PDF("PDF"),
+    FILE("File"),
+    FOLDER("Folder"),
+    DOCUMENT("Document"),
     NOTE("Note"),
 }
 

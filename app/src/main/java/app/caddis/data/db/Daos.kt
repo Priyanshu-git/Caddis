@@ -42,7 +42,8 @@ interface ItemDao {
     )
     fun search(match: String): Flow<List<ItemEntity>>
 
-    @Query("SELECT * FROM items WHERE type = 'LINK' AND detailsFetchedAt IS NULL AND platform NOT IN ('INSTAGRAM','FACEBOOK') AND status != 'DELETED'")
+    /** Links still waiting for details. Platforms that are never contacted are filtered by the caller. */
+    @Query("SELECT * FROM items WHERE type = 'LINK' AND detailsFetchedAt IS NULL AND status != 'DELETED'")
     suspend fun needingDetails(): List<ItemEntity>
 
     @Upsert

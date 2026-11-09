@@ -3,7 +3,6 @@ package app.caddis.domain.details
 import app.caddis.domain.link.LinkCheck
 import app.caddis.domain.link.PlatformDetector
 import app.caddis.domain.model.EditableField
-import app.caddis.domain.model.Platform
 import app.caddis.domain.model.Item
 import java.time.Instant
 
@@ -63,7 +62,7 @@ fun Item.withLink(link: LinkCheck.Valid, now: Instant): Item {
         kind = d.kind,
         title = keep(EditableField.TITLE, title, ""),
         description = keep(EditableField.DESCRIPTION, description, ""),
-        creator = keep(EditableField.CREATOR, creator, d.handle ?: if (d.platform == Platform.WEB) d.host else ""),
+        creator = keep(EditableField.CREATOR, creator, d.creator),
         thumbnailUrl = keep(EditableField.THUMBNAIL, thumbnailUrl, null),
         lengthSeconds = keep(EditableField.LENGTH, lengthSeconds, null),
         faviconUrl = null,
@@ -74,4 +73,4 @@ fun Item.withLink(link: LinkCheck.Valid, now: Instant): Item {
 }
 
 /** Whether a link change means fetching details again (never for Instagram or Facebook). */
-fun Item.needsDetails(): Boolean = !isNote && url != null && !platform.isMeta && detailsFetchedAt == null
+fun Item.needsDetails(): Boolean = !isNote && url != null && !platform.neverContact && detailsFetchedAt == null

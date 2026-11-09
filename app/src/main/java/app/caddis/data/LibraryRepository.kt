@@ -161,7 +161,7 @@ class LibraryRepository @Inject constructor(
             kind = d.kind,
             // MET-01: for Meta links the handle from the URL is all we know; the share text may add a title.
             title = titleHint,
-            creator = d.handle ?: if (d.platform == Platform.WEB) d.host else "",
+            creator = d.creator,
             intentId = guessed,
             sourceApp = sourceApp,
             sourceFrom = sourceFrom,
@@ -172,7 +172,7 @@ class LibraryRepository @Inject constructor(
             bumpWeek(t, saved = 1)
         }
         analytics.log(AnalyticsEvent.SaveCreated(d.platform, entry, intentGuessed = true))
-        if (!d.platform.isMeta) details.schedule(item.id)
+        if (!d.platform.neverContact) details.schedule(item.id)
         return SaveOutcome.Saved(item)
     }
 
@@ -226,12 +226,12 @@ class LibraryRepository @Inject constructor(
 
     suspend fun refreshDetails(id: String) {
         val it = items.get(id) ?: return
-        if (it.platform.isMeta || it.type != ItemType.LINK) return
+        if (it.platform.neverContact || it.type != ItemType.LINK) return
         details.schedule(id)
     }
 
     suspend fun scheduleMissingDetails() {
-        items.needingDetails().forEach { details.schedule(it.id) }
+        items.needingDetails().filter { !it.platform.neverContact }.forEach { details.schedule(it.id) }
     }
 
     // ---------- edits ----------

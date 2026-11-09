@@ -48,7 +48,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.caddis.domain.model.Intent
 import app.caddis.domain.model.Item
-import app.caddis.domain.model.Platform
+import app.caddis.domain.platform.PlatformFacets
 import app.caddis.ui.capture.Segmented
 import app.caddis.ui.components.BigTitle
 import app.caddis.ui.components.BtnStyle
@@ -77,7 +77,6 @@ import app.caddis.ui.theme.CaddisType
 fun LibraryScreen(
     onOpenItem: (Item) -> Unit,
     onTrash: () -> Unit,
-    onIntents: () -> Unit,
     onCollection: (String) -> Unit,
     onManageCollections: () -> Unit,
     vm: LibraryViewModel = hiltViewModel(),
@@ -132,11 +131,15 @@ fun LibraryScreen(
                         }
                     } else {
                         Column(Modifier.fillMaxSize()) {
-                            IntentChipRow(s, vm, onFilters = { filters = true }, onIntents = onIntents)
+                            PlatformChipRow(s, vm, onFilters = { filters = true })
                             LazyColumn(contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 100.dp)) {
                                 item(key = "count") {
                                     val n = s.items.size
-                                    val what = s.filters.intentId?.let { " for " + intentName(s.intents, it) } ?: " and notes"
+                                    val what = buildString {
+                                        s.filters.intentId?.let { append(" for ", intentName(s.intents, it)) }
+                                        s.filters.platform?.let { append(" from ", it.label) }
+                                        if (isEmpty()) append(" and notes")
+                                    }
                                     Fine("$n ${if (n == 1) "save" else "saves"}$what · newest first", Modifier.padding(top = 6.dp))
                                 }
                                 if (s.items.isEmpty()) {
@@ -160,14 +163,17 @@ fun LibraryScreen(
     if (filters) FilterSheet(s, vm, onDismiss = { filters = false })
 }
 
+/** Platforms the library has, as scrolling chips. Intent and status live in the Filter sheet. */
 @Composable
-private fun IntentChipRow(s: LibraryState, vm: LibraryViewModel, onFilters: () -> Unit, onIntents: () -> Unit) {
-    val n = s.filters.sheetCount
+private fun PlatformChipRow(s: LibraryState, vm: LibraryViewModel, onFilters: () -> Unit) {
+    val n = s.filters.sheetCount(platformInRow = true)
     LazyRow(contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 4.dp, bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         item { CChip("Filter" + if (n > 0) " · $n" else "", selected = n > 0, onClick = onFilters, leading = CIcons.Filter, contentDescription = "More filters") }
-        item { CChip("All", selected = s.filters.intentId == null, onClick = { vm.setIntentFilter(null) }) }
-        items(s.intents, key = { it.id }) { i -> CChip(i.name, selected = s.filters.intentId == i.id, onClick = { vm.setIntentFilter(i.id) }) }
-        item { CChip("+ Intent", onClick = onIntents, contentDescription = "Create or edit intents") }
+        item { CChip("All", selected = s.filters.platform == null, onClick = { vm.setPlatform(null) }) }
+        items(s.platforms, key = { it.platform.id }) { f ->
+            val on = s.filters.platform == f.platform
+            CChip(f.platform.label, selected = on, onClick = { vm.setPlatform(if (on) null else f.platform) })
+        }
     }
 }
 
@@ -228,7 +234,7 @@ private fun SearchView(s: LibraryState, vm: LibraryViewModel, onOpenItem: (Item)
                 item { Fine("Search matches the words you type in titles, notes, creators and links. It runs on your phone, so it works offline.", Modifier.padding(top = 18.dp)) }
             } else {
                 item {
-                    Chips(Modifier.padding(top = 6.dp, bottom = 10.dp)) { CChip("Filter" + if (s.filters.sheetCount > 0) " · ${s.filters.sheetCount}" else "", s.filters.sheetCount > 0, onFilters) }
+                    Chips(Modifier.padding(top = 6.dp, bottom = 10.dp)) { CChip("Filter" + if (s.filters.sheetCount() > 0) " · ${s.filters.sheetCount()}" else "", s.filters.sheetCount() > 0, onFilters) }
                     Fine("${s.hits.size} ${if (s.hits.size == 1) "result" else "results"}", Modifier.padding(bottom = 4.dp))
                 }
                 if (s.hits.isEmpty()) item { EmptyState(null, "Nothing matches. Try fewer words.", rings = false) }
@@ -250,10 +256,24 @@ fun FilterSheet(s: LibraryState, vm: LibraryViewModel, onDismiss: () -> Unit) {
             CButton("Reset", onClick = vm::resetFilters, style = BtnStyle.Ghost, small = true)
         }
         FilterGroup("Intent", s.intents.map { it.name to (s.filters.intentId == it.id) }) { idx -> vm.setIntentFilter(s.intents[idx].id) }
-        val plats = listOf<Platform?>(null) + Platform.filterable
-        FilterGroup("Platform", plats.map { (it?.label ?: "All") to (s.filters.platform == it) }) { idx -> vm.setPlatform(plats[idx]) }
+        PlatformGroup(s, vm)
         FilterGroup("Status", StatusFilter.entries.map { it.label to (s.filters.status == it) }) { idx -> vm.setStatus(StatusFilter.entries[idx]) }
         CButton("Show $count ${if (count == 1) "save" else "saves"}", onClick = onDismiss, style = BtnStyle.Primary, modifier = Modifier.fillMaxWidth().padding(top = 18.dp))
+    }
+}
+
+/** Only platforms the library actually has; nothing to choose from, nothing shown. */
+@Composable
+private fun PlatformGroup(s: LibraryState, vm: LibraryViewModel) {
+    if (s.platforms.isEmpty()) return
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val shown = PlatformFacets.visible(s.platforms, s.filters.platform, expanded)
+    val hidden = s.platforms.size - shown.size
+    Eyebrow("Platform", Modifier.padding(top = 14.dp, bottom = 6.dp))
+    Chips {
+        CChip("All", s.filters.platform == null, onClick = { vm.setPlatform(null) })
+        shown.forEach { f -> CChip(f.platform.label, s.filters.platform == f.platform, onClick = { vm.setPlatform(f.platform) }) }
+        if (hidden > 0) CChip("More · $hidden", onClick = { expanded = true })
     }
 }
 

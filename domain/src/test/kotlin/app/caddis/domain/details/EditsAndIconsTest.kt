@@ -14,7 +14,7 @@ import java.time.Instant
 class EditsAndIconsTest {
     private val now = Instant.parse("2026-11-08T05:00:00Z")
 
-    private fun link(url: String, platform: Platform = Platform.WEB, favicon: String? = null) = Item(
+    private fun link(url: String, platform: Platform = Platform.site("example.com"), favicon: String? = null) = Item(
         id = "i", type = ItemType.LINK, url = url, normalizedUrl = url, platform = platform,
         kind = ContentKind.WEBPAGE, intentId = Intents.READ, createdAt = now, faviconUrl = favicon,
         title = "Fetched title", description = "Fetched description", creator = "Site",
@@ -26,15 +26,15 @@ class EditsAndIconsTest {
             <link rel="shortcut icon" href="/favicon-32.png">
             <link rel="apple-touch-icon" sizes="180x180" href="/apple.png">
             </head></html>"""
-        DetailsParser.parsePage(html, "https://blog.example.com/post", Platform.WEB).faviconUrl shouldBe "https://blog.example.com/apple.png"
+        DetailsParser.parsePage(html, "https://blog.example.com/post", Platform.site("example.com")).faviconUrl shouldBe "https://blog.example.com/apple.png"
         val plain = """<html><head><title>T</title><link rel="icon" type="image/svg+xml" href="/i.svg"><link rel="Shortcut Icon" href="https://cdn.example.com/f.ico"></head></html>"""
-        DetailsParser.parsePage(plain, "https://example.com/", Platform.WEB).faviconUrl shouldBe "https://cdn.example.com/f.ico"
+        DetailsParser.parsePage(plain, "https://example.com/", Platform.site("example.com")).faviconUrl shouldBe "https://cdn.example.com/f.ico"
     }
 
     @Test
     fun `an icon alone is not details`() {
         val html = """<html><head><link rel="icon" href="/f.png"></head></html>"""
-        DetailsParser.parsePage(html, "https://example.com/", Platform.WEB).isEmpty shouldBe true
+        DetailsParser.parsePage(html, "https://example.com/", Platform.site("example.com")).isEmpty shouldBe true
     }
 
     @Test
@@ -120,7 +120,7 @@ class EditsAndIconsTest {
         val moved = mine.withLink(valid("https://other.org/b"), now)
         moved.title shouldBe "My title"
         moved.creator shouldBe "other.org"
-        moved.platform shouldBe Platform.WEB
+        moved.platform shouldBe Platform.site("other.org")
     }
 
     @Test

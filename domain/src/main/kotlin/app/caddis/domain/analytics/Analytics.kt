@@ -17,7 +17,7 @@ sealed class AnalyticsEvent(val name: String) {
     enum class DeleteSource { ITEM_PAGE, TIDY_UP }
 
     data class SaveCreated(val platform: Platform, val entry: SaveEntry, val intentGuessed: Boolean) : AnalyticsEvent("save_created") {
-        override fun params() = mapOf("platform" to platform.name.lowercase(), "entry" to entry.name.lowercase(), "intent_guessed" to yes(intentGuessed))
+        override fun params() = mapOf("platform" to platform.analyticsId, "entry" to entry.name.lowercase(), "intent_guessed" to yes(intentGuessed))
     }
 
     data class IntentChanged(val fromIntent: String, val toIntent: String) : AnalyticsEvent("intent_changed") {
@@ -25,7 +25,7 @@ sealed class AnalyticsEvent(val name: String) {
     }
 
     data class ItemOpened(val platform: Platform, val entry: OpenEntry) : AnalyticsEvent("item_opened") {
-        override fun params() = mapOf("platform" to platform.name.lowercase(), "entry" to entry.name.lowercase())
+        override fun params() = mapOf("platform" to platform.analyticsId, "entry" to entry.name.lowercase())
     }
 
     data class ItemDone(val intent: String, val ageBucket: String) : AnalyticsEvent("item_done") {

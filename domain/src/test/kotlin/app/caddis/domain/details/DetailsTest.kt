@@ -90,15 +90,15 @@ class DetailsTest {
         fun page(title: String) = "<html><head><title>$title</title><meta property=\"og:image\" content=\"https://x.com/logo.png\"></head></html>"
         val blocked = listOf(
             "Just a moment..." to Platform.MEDIUM,
-            "Attention Required! | Cloudflare" to Platform.WEB,
-            "Access denied" to Platform.WEB,
+            "Attention Required! | Cloudflare" to Platform.site("example.com"),
+            "Access denied" to Platform.site("example.com"),
             "Whoa there, pardner!" to Platform.REDDIT,
             "Reddit" to Platform.REDDIT,
             "Reddit - Dive into anything" to Platform.REDDIT,
             "Medium" to Platform.MEDIUM,
             "Medium – Where good ideas find you." to Platform.MEDIUM,
-            "403 Forbidden" to Platform.WEB,
-            "404" to Platform.WEB,
+            "403 Forbidden" to Platform.site("example.com"),
+            "404" to Platform.site("example.com"),
         )
         blocked.forEach { (title, platform) ->
             DetailsParser.parsePage(page(title), "https://e.com/p", platform).isEmpty shouldBe true
@@ -107,7 +107,7 @@ class DetailsTest {
 
     @Test
     fun `real titles that merely start with a risky word are kept`() {
-        fun title(t: String, platform: Platform = Platform.WEB) =
+        fun title(t: String, platform: Platform = Platform.site("example.com")) =
             DetailsParser.parsePage("<html><head><title>$t</title></head></html>", "https://e.com/p", platform).title
         title("Error handling in Go") shouldBe "Error handling in Go"
         title("Blocked drains: a field guide") shouldBe "Blocked drains: a field guide"
@@ -120,7 +120,7 @@ class DetailsTest {
     fun `merging details never overwrites what the person edited or blanks known fields`() {
         val now = Instant.parse("2026-11-04T05:00:00Z")
         val item = Item(
-            id = "i", type = ItemType.LINK, url = "https://e.com", normalizedUrl = "e.com", platform = Platform.WEB,
+            id = "i", type = ItemType.LINK, url = "https://e.com", normalizedUrl = "e.com", platform = Platform.site("example.com"),
             kind = ContentKind.WEBPAGE, title = "My title", description = "Old description", intentId = Intents.READ,
             createdAt = now, userEdited = setOf(EditableField.TITLE),
         )

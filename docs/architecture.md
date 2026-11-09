@@ -40,8 +40,9 @@ SettingsRepository (DataStore) ◄── ViewModels, workers
 
 | Package | Contents |
 | --- | --- |
-| `model` | `Item`, `Intent`, `IntentRule`, `Collection`, `WeeklySummary`, enums (`Platform`, `ContentKind`, `ItemType`, `ItemStatus`, `IntentSource`, `ReturnRule`, `TimeOfDay`, `EditableField`); `Intents` (defaults, default rules, `ruleForNewIntent`, `analyticsId`); `IntentRule?.label()` |
+| `model` | `Item`, `Intent`, `IntentRule`, `Collection`, `WeeklySummary`, `Platform` (value type, see `platform`), enums (`ContentKind`, `ItemType`, `ItemStatus`, `IntentSource`, `ReturnRule`, `TimeOfDay`, `EditableField`); `Intents` (defaults, default rules, `ruleForNewIntent`, `analyticsId`); `IntentRule?.label()` |
 | `link` | `Links` (check, normalize, extractFirst, couldBeNote, noteTitleFrom, host), `LinkCheck`, `PlatformDetector`/`Detection`, `DefaultTitles` |
+| `platform` | `PlatformRegistry`/`PlatformSpec`/`Contact`/`UrlParts`/`Reading` (recognised services), `Sites.registrableDomain`, `PlatformFacets`/`PlatformFacet` (dynamic filter list) |
 | `intent` | `IntentGuesser`, `GuessInput`, `CorrectionStats` |
 | `schedule` | `ReturnScheduler`, `HomePicker`/`Pick`, `TidyUp`, `Trash`, `Weeks`, `doneLabel()` (Scheduling.kt); `Reminders`, `ReminderState`, `ReminderDecision`, `QuietHours` (Reminders.kt) |
 | `search` | `SearchQuery` (FTS match string, "matched in…" text), `resultBucket()` |
@@ -66,7 +67,7 @@ Details of every rule: [domain.md](domain.md).
 | `data/details/` | `DetailsFetcher` (OkHttp, never throws), `UserAgentInterceptor`. |
 | `work/Work.kt` | `WorkScheduler` (implements `DetailsScheduler`, schedules reminders), `DetailsWorker`, `ReminderWorker`. |
 | `notify/Notifier.kt` | Notification channels; daily pick and weekly summary notifications; permission check. |
-| `di/AppModule.kt` | Hilt: DB, DataStore, `Clock`, app `CoroutineScope`, `OkHttpClient`, `AnalyticsSink`; `BindingsModule` binds `DetailsScheduler → WorkScheduler`. |
+| `di/AppModule.kt` | Hilt: DB, DataStore, `Clock`, app `CoroutineScope`, `OkHttpClient`, `AnalyticsSink`; `BindingsModule` binds `DetailsScheduler → WorkScheduler`. Instrumented tests replace both with `androidTest/…/TestModule.kt` (so a binding added here needs a test counterpart there). |
 | `ui/` | `ItemActions` (shared item actions), `Messenger` (toasts), `Motion.kt` (animation vocabulary). Sub-packages below. |
 | `ui/shell/` | `CaddisRoot`, `CaddisShell`, `BottomBar` (+ `Tab`), `ToastHost`. |
 | `ui/nav/Navigation.kt` | The route table (`CaddisNavHost`), `HOME_ROUTE`, `navigateToTab`. |

@@ -64,7 +64,7 @@ Thumbnails: `Thumb` shows `thumbnailUrl`; if absent or failing, the site icon (`
   details are fetched again and a toast says "Link changed. Fetching its details."
 - Clearing a field hands it back to Caddis; a changed field becomes the person's own and is never overwritten.
 
-"Refresh" on the item page: Meta items get a toast ("Caddis doesn’t fetch <Platform> details. Edit them yourself any
+"Refresh" on the item page: `neverContact` (Meta) items get a toast ("Caddis doesn’t fetch <Platform> details. Edit them yourself any
 time."); others schedule a fetch ("Refreshing details. Your edits are kept.").
 
 ## 5. Home
@@ -96,7 +96,9 @@ All via `ItemActions` (app scope) so leaving a screen never drops them:
 `LibraryViewModel` keeps UI state (`Filters`, query, `searching`, `showCollections`, `recent`) in a private `MutableStateFlow` and
 combines it with the library, search results, intents and collections.
 
-- **Filters**: intent chip row (toggle), Filter sheet (platform, status Active/Done/All), applied in memory by `Filters.apply`.
+- **Filters**: Library chip row = Filter button + "All" + one chip per platform in the library (`LibraryState.platforms`, scrolls, tap again to clear); Filter sheet (intent, platform, status Active/Done/All; the button counts intent + status on the Library, plus platform in search), applied in memory by `Filters.apply`. The Platform group is **dynamic**: `LibraryState.platforms` comes from
+  `PlatformFacets.of` over the saves in scope (a collection shelf lists only its own), most saves first; first 6 shown, then "More · n"; the
+  chosen platform stays visible; the group is hidden when there are no link saves; a filter on a platform whose last save is gone is dropped.
 - **Search**: `openSearch()` resets query and filters. The query is debounced 120 ms into `repo.search(q)` (FTS prefix AND). Hits
   show `SearchQuery.explain` ("Matched in the title"). `submitSearch()` adds the words to `recent` (max 4, **memory only**) and logs
   `SearchRun(resultBucket)` — never the words.

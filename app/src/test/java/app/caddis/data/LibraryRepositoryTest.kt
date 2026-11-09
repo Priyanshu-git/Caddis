@@ -6,6 +6,7 @@ import app.caddis.domain.analytics.AnalyticsEvent.SaveEntry
 import app.caddis.domain.details.LinkDetails
 import app.caddis.domain.link.LinkCheck
 import app.caddis.domain.link.Links
+import app.caddis.domain.model.ContentKind
 import app.caddis.domain.model.EditableField
 import app.caddis.domain.model.IntentSource
 import app.caddis.domain.model.Intents
@@ -274,5 +275,30 @@ class LibraryRepositoryTest {
         assertEquals(LibraryRepository.DetailsResult.Saved(refetching = false), r)
         assertEquals(Platform.INSTAGRAM, repo.get(item.id)!!.platform)
         assertTrue(f.scheduler.scheduled.isEmpty())
+    }
+
+    @Test
+    fun `any site is its own platform and survives a round trip through the database`() = runBlocking {
+        val drive = save("https://drive.google.com/file/d/1AbC/view")
+        val site = save("https://www.nytimes.com/2025/01/01/world/story.html")
+        val storedDrive = repo.get(drive.id)!!
+        assertEquals("google-drive", storedDrive.platform.id)
+        assertEquals("Google Drive", storedDrive.platform.label)
+        assertEquals(ContentKind.FILE, storedDrive.kind)
+        val storedSite = repo.get(site.id)!!
+        assertEquals("nytimes.com", storedSite.platform.id)
+        assertEquals("nytimes.com", storedSite.creator)
+        assertEquals(listOf("SaveCreated"), f.analytics.events.take(1).map { it::class.simpleName })
+        assertEquals("other", (f.analytics.events.last() as AnalyticsEvent.SaveCreated).params()["platform"])
+    }
+
+    @Test
+    fun `missing details are only scheduled for platforms that may be contacted`() = runBlocking {
+        save("https://www.instagram.com/oven.notes/reel/Cx9/")
+        save("https://www.threads.net/@someone")
+        val site = save("https://example.com/a")
+        f.scheduler.scheduled.clear()
+        repo.scheduleMissingDetails()
+        assertEquals(listOf(site.id), f.scheduler.scheduled)
     }
 }

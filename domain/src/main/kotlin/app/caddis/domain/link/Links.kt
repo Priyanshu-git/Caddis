@@ -2,6 +2,10 @@ package app.caddis.domain.link
 
 import app.caddis.domain.model.ContentKind
 import app.caddis.domain.model.Platform
+import app.caddis.domain.platform.PlatformRegistry
+import app.caddis.domain.platform.Reading
+import app.caddis.domain.platform.Sites
+import app.caddis.domain.platform.UrlParts
 import java.net.URI
 
 sealed interface LinkCheck {
@@ -79,73 +83,31 @@ data class Detection(
     /** Handle or community read from the URL, e.g. "@oven.notes", "r/Cooking", "u/redlentil". */
     val handle: String?,
     val host: String,
-)
+) {
+    /**
+     * Who made it, as far as the link says: the handle, else the site's domain for a site we only know
+     * by its address. A recognised service without a handle has no creator to show.
+     */
+    val creator: String get() = handle ?: if (platform.readsLinks || platform.isNote) "" else host
+}
 
 /** Reads platform, content kind and handle from a URL without any network call. */
 object PlatformDetector {
-    private val instagramReserved = setOf("reel", "reels", "p", "tv", "stories", "explore", "accounts", "direct")
-    private val facebookReserved = setOf("watch", "reel", "videos", "photo", "photo.php", "story.php", "groups", "events", "share", "permalink.php")
-
     fun detect(url: String): Detection {
         val uri = runCatching { URI(url) }.getOrNull()
         val host = uri?.host?.lowercase()?.removePrefix("www.")?.removePrefix("m.") ?: ""
         val segments = (uri?.rawPath ?: "").split('/').filter { it.isNotBlank() }
-        val first = segments.firstOrNull()?.lowercase()
-        val lowerUrl = url.lowercase()
+        val parts = UrlParts(url, host, segments)
+        val isPdf = url.lowercase().substringBefore('?').endsWith(".pdf")
 
-        return when {
-            host.endsWith("instagram.com") -> {
-                val kind = when (first) {
-                    "reel", "reels", "tv" -> ContentKind.REEL
-                    "p" -> ContentKind.POST
-                    null -> ContentKind.PROFILE
-                    else -> if (segments.getOrNull(1)?.lowercase() in setOf("reel", "p")) {
-                        if (segments[1].lowercase() == "reel") ContentKind.REEL else ContentKind.POST
-                    } else ContentKind.PROFILE
-                }
-                val handle = segments.firstOrNull()?.takeIf { it.lowercase() !in instagramReserved }?.let { "@$it" }
-                Detection(Platform.INSTAGRAM, kind, handle, host)
-            }
-            host.endsWith("facebook.com") || host == "fb.watch" || host == "fb.com" -> {
-                val kind = when {
-                    first == "reel" || lowerUrl.contains("/reel/") -> ContentKind.REEL
-                    host == "fb.watch" || first == "watch" || lowerUrl.contains("/videos/") -> ContentKind.VIDEO
-                    else -> ContentKind.POST
-                }
-                val handle = segments.firstOrNull()
-                    ?.takeIf { host.endsWith("facebook.com") && it.lowercase() !in facebookReserved && !it.contains('.') }
-                Detection(Platform.FACEBOOK, kind, handle, host)
-            }
-            host.endsWith("youtube.com") || host == "youtu.be" -> {
-                val kind = when {
-                    first == "shorts" -> ContentKind.SHORT
-                    first != null && (first.startsWith("@") || first == "channel" || first == "c" || first == "user") -> ContentKind.CHANNEL
-                    else -> ContentKind.VIDEO
-                }
-                val handle = segments.firstOrNull()?.takeIf { it.startsWith("@") }
-                Detection(Platform.YOUTUBE, kind, handle, host)
-            }
-            host.endsWith("reddit.com") || host == "redd.it" -> {
-                val kind = if (segments.contains("comments") || host == "redd.it") ContentKind.POST else ContentKind.SUBREDDIT
-                val handle = when (first) {
-                    "r" -> segments.getOrNull(1)?.let { "r/$it" }
-                    "u", "user" -> segments.getOrNull(1)?.let { "u/$it" }
-                    else -> null
-                }
-                Detection(Platform.REDDIT, kind, handle, host)
-            }
-            host.endsWith("medium.com") -> {
-                val handle = segments.firstOrNull()?.takeIf { it.startsWith("@") }
-                    ?: host.removeSuffix(".medium.com").takeIf { it != "medium.com" && it.isNotBlank() }?.let { "@$it" }
-                Detection(Platform.MEDIUM, ContentKind.ARTICLE, handle, host)
-            }
-            host == "x.com" || host.endsWith(".x.com") || host.endsWith("twitter.com") -> {
-                val kind = if (segments.contains("status")) ContentKind.POST else ContentKind.PROFILE
-                val handle = segments.firstOrNull()?.takeIf { it.lowercase() !in setOf("i", "home", "search", "hashtag") }?.let { "@$it" }
-                Detection(Platform.X, kind, handle, host)
-            }
-            lowerUrl.substringBefore('?').endsWith(".pdf") -> Detection(Platform.WEB, ContentKind.PDF, null, host)
-            else -> Detection(Platform.WEB, ContentKind.WEBPAGE, null, host)
+        val spec = PlatformRegistry.match(parts)
+        if (spec != null) {
+            val r = spec.read?.invoke(parts) ?: Reading(if (isPdf) ContentKind.PDF else ContentKind.WEBPAGE)
+            return Detection(Platform.of(spec), r.kind, r.handle, host)
         }
+        // An ordinary site is its own platform, named by its domain. A link with no usable host still saves.
+        val domain = Sites.registrableDomain(host)
+        val platform = if (domain.isBlank()) Platform.fromId("web") else Platform.site(domain)
+        return Detection(platform, if (isPdf) ContentKind.PDF else ContentKind.WEBPAGE, null, host)
     }
 }

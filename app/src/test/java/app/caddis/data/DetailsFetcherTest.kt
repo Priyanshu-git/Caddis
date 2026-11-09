@@ -29,7 +29,7 @@ class DetailsFetcherTest {
             MockResponse().setHeader("Content-Type", "text/html; charset=utf-8")
                 .setBody("""<html><head><meta property="og:title" content="Rome day trips"><meta property="og:image" content="/t.jpg"></head></html>"""),
         )
-        val r = fetcher.fetch(url(), Platform.WEB)
+        val r = fetcher.fetch(url(), Platform.site("127.0.0.1"))
         assertTrue(r is FetchResult.Ok)
         assertEquals("Rome day trips", (r as FetchResult.Ok).details.title)
         val req = server.takeRequest()
@@ -41,11 +41,11 @@ class DetailsFetcherTest {
     @Test
     fun `server errors retry, client errors and non-html give up`() = runBlocking {
         server.enqueue(MockResponse().setResponseCode(503))
-        assertEquals(FetchResult.Retry, fetcher.fetch(url(), Platform.WEB))
+        assertEquals(FetchResult.Retry, fetcher.fetch(url(), Platform.site("127.0.0.1")))
         server.enqueue(MockResponse().setResponseCode(404))
-        assertEquals(FetchResult.GiveUp, fetcher.fetch(url(), Platform.WEB))
+        assertEquals(FetchResult.GiveUp, fetcher.fetch(url(), Platform.site("127.0.0.1")))
         server.enqueue(MockResponse().setHeader("Content-Type", "image/png").setBody("x"))
-        assertEquals(FetchResult.GiveUp, fetcher.fetch(url(), Platform.WEB))
+        assertEquals(FetchResult.GiveUp, fetcher.fetch(url(), Platform.site("127.0.0.1")))
     }
 
     @Test
@@ -67,7 +67,7 @@ class DetailsFetcherTest {
     @Test
     fun `an unreachable host is a retry, never a crash`() = runBlocking {
         // Nothing listens on port 1: the connection is refused, which is "worth retrying later".
-        assertEquals(FetchResult.Retry, fetcher.fetch("http://127.0.0.1:1/post", Platform.WEB))
+        assertEquals(FetchResult.Retry, fetcher.fetch("http://127.0.0.1:1/post", Platform.site("127.0.0.1")))
     }
 
     /** Sends every request to the mock server, whatever host the fetcher asked for, and records it. */

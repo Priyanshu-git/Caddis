@@ -4,10 +4,11 @@ Room is the single store; DataStore holds settings. Source: `app/src/main/java/a
 
 ## Database
 
-`CaddisDatabase` — name `caddis.db`, **version 2**, `exportSchema = true`, schemas committed in
-`app/schemas/app.caddis.data.db.CaddisDatabase/{1,2}.json`. Opened with `addMigrations(*MIGRATIONS)`
+`CaddisDatabase` — name `caddis.db`, **version 3**, `exportSchema = true`, schemas committed in
+`app/schemas/app.caddis.data.db.CaddisDatabase/{1,2,3}.json`. Opened with `addMigrations(*MIGRATIONS)`
 (no destructive fallback). Type converters (`Converters.kt`): `Instant` ⇄ epoch-millis `Long`;
-`Set<EditableField>` ⇄ comma-separated names; enums are stored by `name()` (Room default).
+`Set<EditableField>` ⇄ comma-separated names; `Platform` ⇄ its `id` (label and behaviour come back from the registry);
+other enums are stored by `name()` (Room default).
 
 ### Tables (`Entities.kt`)
 
@@ -31,9 +32,10 @@ Mapping between entities and domain objects is in `Mappers.kt` (`ItemEntity.toDo
 | From → to | Change |
 | --- | --- |
 | 1 → 2 | `ALTER TABLE items ADD COLUMN faviconUrl TEXT DEFAULT NULL` (`MIGRATION_1_2`) |
+| 2 → 3 | `items.platform` is a lower-case platform id instead of an enum name (`MIGRATION_2_3`): `INSTAGRAM`→`instagram` etc.; old `WEB` rows are re-read with `PlatformDetector` (platform **and** kind, so a Drive link becomes Google Drive / FILE, an ordinary site its domain); `intent_corrections.key` platform half lower-cased (`INSTAGRAM:REEL`→`instagram:REEL`, `WEB:*`→`web:*`). No `revision` bump. A later registry improvement needs its own migration to reclassify stored rows. |
 
-`MigrationTest` rebuilds a v1 database from `app/schemas/.../1.json`, inserts a row, opens it with the
-shipped migrations (Room validates the schema on open) and asserts data survives.
+`MigrationTest` rebuilds a v1 and a v2 database from `app/schemas/.../{1,2}.json`, inserts rows, opens them with the
+shipped migrations (Room validates the schema on open) and asserts data survives and platforms/keys are rewritten.
 See the recipe in [development.md](development.md#add-a-room-column-or-table).
 
 ### DAOs (`Daos.kt`)
@@ -41,7 +43,7 @@ See the recipe in [development.md](development.md#add-a-room-column-or-table).
 - **`ItemDao`**: `observeLibrary` (status ≠ DELETED, newest first), `observeTrash` (DELETED, by
   `deletedAt` desc), `observe(id)`, `get`, `all`, `active`, `findByNormalizedUrl` (most recent
   non-deleted match), `search(match)` (join `items_fts`, excludes DELETED, newest first),
-  `needingDetails` (LINK, `detailsFetchedAt IS NULL`, platform not INSTAGRAM/FACEBOOK, not DELETED),
+  `needingDetails` (LINK, `detailsFetchedAt IS NULL`, not DELETED; the repository drops `neverContact` platforms, so SQL knows no platform names),
   `upsert`, `delete`, `purgeDeletedBefore(cutoffMillis)`, `reassignIntent(from, to, now)` (bumps
   `revision`), `countForIntent`, `deleteAll`.
 - **`CollectionDao`**: observe/list collections and refs, `findByName` (case-insensitive), `upsert`,
@@ -74,9 +76,9 @@ through here.** Reads are `Flow`s.
 - `saveLink(link, entry, sourceApp, sourceFrom, titleHint, allowDuplicate)` → `SaveOutcome.Saved(item)` or
   `SaveOutcome.Duplicate(existing, link)`. Unless `allowDuplicate`, an existing non-deleted item with the same
   `normalizedUrl` is returned and **nothing is written**. Otherwise: detect platform/kind/handle, guess the
-  intent (using valid intent ids + stored corrections), insert the item (`title = titleHint`, `creator` = handle or
-  host for web) and bump the week's `saved` in **one transaction**, log `SaveCreated`, and schedule details
-  unless the platform is Meta.
+  intent (using valid intent ids + stored corrections), insert the item (`title = titleHint`, `creator` = `Detection.creator`: the handle, or the domain for an
+  ordinary site) and bump the week's `saved` in **one transaction**, log `SaveCreated`, and schedule details
+  unless the platform is `neverContact`.
 - `saveNote(title, body, entry, sourceApp)` → `Item` (type NOTE, intent `keep`, TITLE in `userEdited` if a title
   was given; bumps `saved`).
 

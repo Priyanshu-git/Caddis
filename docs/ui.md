@@ -46,7 +46,7 @@ Adding a route: add a `composable(...)` (use `screen(...)` if it shows a thumbna
 | 3 / 4 / 5 | Save sheet / Duplicate / Add | `ui/capture/CaptureSheets.kt` (`SaveSheet`, `DuplicateSheet`, `AddSheet`) |
 | 7, 8, 21 | Home, all clear, This week | `HomeScreen` (`PickCard`, `WeekCard`, empty state) |
 | 9 / 10 | Bring back later / Change intent (and Edit details) | `ui/sheets/Sheets.kt` (`LaterSheet`, `IntentSheet`, `EditDetailsSheet`) |
-| 11, 13, 17, 18 | Library, filters, search | `LibraryScreen` (+ `FilterSheet`) |
+| 11, 13, 17, 18 | Library, filters, search | `LibraryScreen` (+ `FilterSheet`; its Platform group is built from `LibraryState.platforms`, not a fixed list) |
 | 12 | Collection shelf | `ShelfScreen` |
 | 14 / 19 / 20 | Collections / Tidy-up / Trash | `ui/manage/ManageScreens.kt` |
 | 15 / 16 | Item page / Note editor | `ui/item/ItemScreen.kt`, `NoteScreen.kt` |
@@ -66,7 +66,7 @@ Adding a route: add a `composable(...)` (use `screen(...)` if it shows a thumbna
 
 `ItemActions` (`ui/ItemActions.kt`) is a singleton used by Home, Library, Item and Tidy ViewModels: `done`, `markActive`, `delete`,
 `later`, `open`, `share`, `today()`. It also hosts display helpers: `Item.meta()`, `Item.savedLabel()`, `Item.rightTag(intents)`,
-`intentName(intents, id)`, `Platform.openLabel()`, `LocalDate.dayMonth()`.
+`intentName(intents, id)`, `Platform.openLabel()` ("your browser" for an ordinary site, else the platform label), `LocalDate.dayMonth()`.
 
 `Messenger.show(message, undo?)` emits a `Toast`; `ToastHost` shows one at a time for 5 s with an **Undo** link when `undo` is set.
 

@@ -14,14 +14,14 @@ data class GuessInput(
 )
 
 /**
- * How often the person corrected a guess for a platform + kind, e.g. Instagram Reel → Cook: 3.
+ * How often the person corrected a guess for a platform + kind, e.g. Instagram Reel → Cook: 3. Ordinary sites share one bucket.
  * Kept on the phone; never sent anywhere.
  */
 data class CorrectionStats(val counts: Map<String, Map<String, Int>> = emptyMap()) {
     fun forKey(key: String): Map<String, Int> = counts[key].orEmpty()
 
     companion object {
-        fun key(platform: Platform, kind: ContentKind) = "${platform.name}:${kind.name}"
+        fun key(platform: Platform, kind: ContentKind) = "${platform.learningKey}:${kind.name}"
     }
 }
 
@@ -74,9 +74,10 @@ class IntentGuesser(private val validIntentIds: Set<String> = Intents.defaults.m
     }
 
     private fun defaultFor(platform: Platform, kind: ContentKind): String = when {
-        platform == Platform.NOTE -> Intents.KEEP
+        platform.isNote -> Intents.KEEP
         kind.isVideo -> Intents.WATCH
-        kind == ContentKind.CHANNEL || kind == ContentKind.PROFILE || kind == ContentKind.SUBREDDIT -> Intents.KEEP
+        kind == ContentKind.CHANNEL || kind == ContentKind.PROFILE || kind == ContentKind.SUBREDDIT ||
+            kind == ContentKind.FILE || kind == ContentKind.FOLDER -> Intents.KEEP
         kind == ContentKind.PDF -> Intents.READ
         else -> Intents.READ
     }

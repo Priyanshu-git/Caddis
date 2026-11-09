@@ -2,7 +2,7 @@ package app.caddis.domain.details
 
 import app.caddis.domain.link.Links
 import app.caddis.domain.model.Item
-import app.caddis.domain.model.Platform
+import app.caddis.domain.platform.PlatformRegistry
 
 /**
  * The picture to show when a save has no thumbnail: the site's own icon. Instagram and Facebook
@@ -10,7 +10,7 @@ import app.caddis.domain.model.Platform
  */
 object Favicons {
     fun forItem(item: Item): String? {
-        if (item.isNote || item.platform.isMeta || item.platform == Platform.NOTE) return null
+        if (item.isNote || item.platform.neverContact || item.platform.isNote) return null
         val url = item.url ?: return null
         return item.faviconUrl?.takeUnless { isMetaHost(Links.host(it)) } ?: rootIcon(url)
     }
@@ -21,7 +21,5 @@ object Favicons {
         return "https://$host/favicon.ico"
     }
 
-    private val metaHosts = listOf("instagram.com", "facebook.com", "fb.com", "fb.watch", "fbcdn.net", "cdninstagram.com")
-
-    private fun isMetaHost(host: String): Boolean = metaHosts.any { host == it || host.endsWith(".$it") }
+    private fun isMetaHost(host: String): Boolean = PlatformRegistry.isNeverContactHost(host)
 }

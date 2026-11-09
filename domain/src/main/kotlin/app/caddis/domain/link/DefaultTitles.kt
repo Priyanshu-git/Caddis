@@ -36,7 +36,11 @@ object DefaultTitles {
                 ContentKind.CHANNEL -> handle?.let { "$it on YouTube" } ?: "YouTube channel"
                 else -> "YouTube video"
             }
-            Platform.WEB, Platform.NOTE -> url.removePrefix("https://").removePrefix("http://").ifBlank { "Untitled" }
+            else -> when (kind) {
+                // "Google Drive file", "Google Sheets document": a service that names its own kinds.
+                ContentKind.FILE, ContentKind.FOLDER, ContentKind.DOCUMENT -> "${platform.label} ${kind.label.lowercase()}"
+                else -> url.removePrefix("https://").removePrefix("http://").ifBlank { "Untitled" }
+            }
         }
     }
 

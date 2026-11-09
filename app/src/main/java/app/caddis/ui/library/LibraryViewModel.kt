@@ -11,6 +11,8 @@ import app.caddis.domain.model.Intent
 import app.caddis.domain.model.Item
 import app.caddis.domain.model.ItemStatus
 import app.caddis.domain.model.Platform
+import app.caddis.domain.platform.PlatformFacet
+import app.caddis.domain.platform.PlatformFacets
 import app.caddis.domain.search.SearchQuery
 import app.caddis.domain.search.resultBucket
 import app.caddis.ui.ItemActions
@@ -38,8 +40,14 @@ data class Filters(
     val status: StatusFilter = StatusFilter.ALL,
     val collectionId: String? = null,
 ) {
-    /** The Filter button counts platform and status (intent has its own chip row). */
-    val sheetCount: Int get() = (if (platform != null) 1 else 0) + (if (status != StatusFilter.ALL) 1 else 0)
+    /**
+     * What the Filter button counts: the choices that live inside the sheet. The Library's chip row
+     * shows platforms itself ([platformInRow]), so they are not counted there.
+     */
+    fun sheetCount(platformInRow: Boolean = false): Int =
+        (if (intentId != null) 1 else 0) +
+            (if (platform != null && !platformInRow) 1 else 0) +
+            (if (status != StatusFilter.ALL) 1 else 0)
 
     fun apply(items: List<Item>): List<Item> = items.filter { i ->
         (intentId == null || i.intentId == intentId) &&
@@ -60,6 +68,8 @@ data class LibraryState(
     val hits: List<SearchHit> = emptyList(),
     val intents: List<Intent> = emptyList(),
     val collections: List<Pair<Collection, Int>> = emptyList(),
+    /** Platforms that have at least one save in scope, most saves first (LIB-03). Not a fixed list. */
+    val platforms: List<PlatformFacet> = emptyList(),
     val filters: Filters = Filters(),
     val query: String = "",
     val searching: Boolean = false,
@@ -99,12 +109,19 @@ class LibraryViewModel @Inject constructor(
     ) { items, found, intents, collections, u ->
         val counts = collections.map { c -> c to items.count { c.id in it.collectionIds } }
         val q = u.query.trim()
+        // Platforms come from the saves themselves; a collection shelf lists only its own.
+        val inScope = u.filters.collectionId?.let { cid -> items.filter { cid in it.collectionIds } } ?: items
+        val platforms = PlatformFacets.of(inScope)
+        // The chosen platform's last save may be gone: then there is nothing left to filter by.
+        val filters = u.filters.platform?.takeIf { p -> platforms.none { it.platform == p } }
+            ?.let { u.filters.copy(platform = null) } ?: u.filters
         LibraryState(
-            items = u.filters.apply(items),
-            hits = if (q.isEmpty()) emptyList() else u.filters.apply(found).map { SearchHit(it, SearchQuery.explain(it, q)) },
+            items = filters.apply(items),
+            hits = if (q.isEmpty()) emptyList() else filters.apply(found).map { SearchHit(it, SearchQuery.explain(it, q)) },
             intents = intents,
             collections = counts,
-            filters = u.filters,
+            platforms = platforms,
+            filters = filters,
             query = u.query,
             searching = u.searching,
             showCollections = u.showCollections,

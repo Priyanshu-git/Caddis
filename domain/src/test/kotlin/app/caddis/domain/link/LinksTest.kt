@@ -1,7 +1,6 @@
 package app.caddis.domain.link
 
 import app.caddis.domain.model.ContentKind
-import app.caddis.domain.model.Platform
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import org.junit.jupiter.api.Test
@@ -60,29 +59,91 @@ class PlatformDetectorTest {
 
     @ParameterizedTest
     @CsvSource(
-        "https://www.instagram.com/reel/Cx9bT2/, INSTAGRAM, REEL, ",
-        "https://www.instagram.com/p/Cx9bT2/, INSTAGRAM, POST, ",
-        "https://www.instagram.com/oven.notes/, INSTAGRAM, PROFILE, @oven.notes",
-        "https://www.instagram.com/oven.notes/reel/Cx9/, INSTAGRAM, REEL, @oven.notes",
-        "https://www.facebook.com/reel/123, FACEBOOK, REEL, ",
-        "https://fb.watch/abc, FACEBOOK, VIDEO, ",
-        "https://www.facebook.com/greenhands/posts/1, FACEBOOK, POST, greenhands",
-        "https://www.youtube.com/watch?v=x, YOUTUBE, VIDEO, ",
-        "https://youtu.be/x, YOUTUBE, VIDEO, ",
-        "https://www.youtube.com/shorts/x, YOUTUBE, SHORT, ",
-        "https://www.youtube.com/@LenaCodes, YOUTUBE, CHANNEL, @LenaCodes",
-        "https://www.reddit.com/r/Cooking/comments/1dal25/x, REDDIT, POST, r/Cooking",
-        "https://www.reddit.com/r/Cooking/, REDDIT, SUBREDDIT, r/Cooking",
-        "https://medium.com/@miradas/sleep-debt, MEDIUM, ARTICLE, @miradas",
-        "https://x.com/audiobench/status/1789, X, POST, @audiobench",
-        "https://twitter.com/audiobench, X, PROFILE, @audiobench",
-        "https://example.com/report.pdf, WEB, PDF, ",
-        "https://romeguide.example/day-trips, WEB, WEBPAGE, ",
+        "https://www.instagram.com/reel/Cx9bT2/, instagram, REEL, ",
+        "https://www.instagram.com/p/Cx9bT2/, instagram, POST, ",
+        "https://www.instagram.com/oven.notes/, instagram, PROFILE, @oven.notes",
+        "https://www.instagram.com/oven.notes/reel/Cx9/, instagram, REEL, @oven.notes",
+        "https://www.facebook.com/reel/123, facebook, REEL, ",
+        "https://fb.watch/abc, facebook, VIDEO, ",
+        "https://www.facebook.com/greenhands/posts/1, facebook, POST, greenhands",
+        "https://www.youtube.com/watch?v=x, youtube, VIDEO, ",
+        "https://youtu.be/x, youtube, VIDEO, ",
+        "https://www.youtube.com/shorts/x, youtube, SHORT, ",
+        "https://www.youtube.com/@LenaCodes, youtube, CHANNEL, @LenaCodes",
+        "https://www.reddit.com/r/Cooking/comments/1dal25/x, reddit, POST, r/Cooking",
+        "https://www.reddit.com/r/Cooking/, reddit, SUBREDDIT, r/Cooking",
+        "https://medium.com/@miradas/sleep-debt, medium, ARTICLE, @miradas",
+        "https://x.com/audiobench/status/1789, x, POST, @audiobench",
+        "https://twitter.com/audiobench, x, PROFILE, @audiobench",
+        "https://mobile.twitter.com/audiobench, x, PROFILE, @audiobench",
     )
-    fun `detects platform, kind and handle from the url`(url: String, platform: Platform, kind: ContentKind, handle: String?) {
+    fun `detects recognised services, kind and handle from the url`(url: String, platformId: String, kind: ContentKind, handle: String?) {
         val d = PlatformDetector.detect(url)
-        d.platform shouldBe platform
+        d.platform.id shouldBe platformId
+        d.platform.isKnownService shouldBe true
         d.kind shouldBe kind
         d.handle shouldBe handle
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+        "https://drive.google.com/file/d/1AbC/view?usp=sharing, google-drive, Google Drive, FILE",
+        "https://drive.google.com/drive/folders/1AbC, google-drive, Google Drive, FOLDER",
+        "https://drive.google.com/drive/my-drive, google-drive, Google Drive, FOLDER",
+        "https://docs.google.com/document/d/1AbC/edit, google-docs, Google Docs, DOCUMENT",
+        "https://docs.google.com/spreadsheets/d/1AbC/edit, google-sheets, Google Sheets, DOCUMENT",
+        "https://docs.google.com/presentation/d/1AbC/edit, google-slides, Google Slides, DOCUMENT",
+        "https://docs.google.com/forms/d/1AbC/viewform, google-forms, Google Forms, DOCUMENT",
+        "https://www.google.com/maps/place/Rome, google-maps, Google Maps, WEBPAGE",
+        "https://github.com/JetBrains/kotlin, github, GitHub, WEBPAGE",
+        "https://open.spotify.com/track/abc, spotify, Spotify, WEBPAGE",
+        "https://www.threads.net/@someone, threads, Threads, PROFILE",
+    )
+    fun `recognises services beyond the original few`(url: String, id: String, label: String, kind: ContentKind) {
+        val d = PlatformDetector.detect(url)
+        d.platform.id shouldBe id
+        d.platform.label shouldBe label
+        d.kind shouldBe kind
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+        "https://romeguide.example/day-trips, romeguide.example, WEBPAGE",
+        "https://www.nytimes.com/2025/01/01/world/x.html, nytimes.com, WEBPAGE",
+        "https://blog.example.com/post, example.com, WEBPAGE",
+        "https://m.example.com/post, example.com, WEBPAGE",
+        "https://news.bbc.co.uk/story, bbc.co.uk, WEBPAGE",
+        "https://shop.example.com.au/p, example.com.au, WEBPAGE",
+        "https://example.com/report.pdf, example.com, PDF",
+        "http://192.168.1.5/page, 192.168.1.5, WEBPAGE",
+        "https://docs.google.com/unknown/thing, google.com, WEBPAGE",
+    )
+    fun `every other site is its own platform named by its domain`(url: String, id: String, kind: ContentKind) {
+        val d = PlatformDetector.detect(url)
+        d.platform.id shouldBe id
+        d.platform.label shouldBe id
+        d.platform.isKnownService shouldBe false
+        d.kind shouldBe kind
+        d.handle shouldBe null
+    }
+
+    @Test
+    fun `an unrelated host is not mistaken for a recognised one`() {
+        PlatformDetector.detect("https://notinstagram.com/p/x").platform.id shouldBe "notinstagram.com"
+        PlatformDetector.detect("https://myfacebook.com.au/p").platform.id shouldBe "myfacebook.com.au"
+    }
+
+    @Test
+    fun `creator falls back to the site for ordinary sites only`() {
+        PlatformDetector.detect("https://www.nytimes.com/a").creator shouldBe "nytimes.com"
+        PlatformDetector.detect("https://github.com/a/b").creator shouldBe "github.com"
+        PlatformDetector.detect("https://www.instagram.com/oven.notes/").creator shouldBe "@oven.notes"
+        PlatformDetector.detect("https://www.youtube.com/watch?v=x").creator shouldBe ""
+        PlatformDetector.detect("https://drive.google.com/file/d/1").creator shouldBe ""
+    }
+
+    @Test
+    fun `a link with no usable host still gets a platform`() {
+        PlatformDetector.detect("not a url").platform.id shouldBe "web"
     }
 }

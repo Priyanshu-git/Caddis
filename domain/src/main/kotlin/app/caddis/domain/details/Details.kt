@@ -3,6 +3,7 @@ package app.caddis.domain.details
 import app.caddis.domain.model.EditableField
 import app.caddis.domain.model.Item
 import app.caddis.domain.model.Platform
+import app.caddis.domain.platform.Contact
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
@@ -35,14 +36,14 @@ sealed interface FetchPlan {
 
 object DetailsPlanner {
     fun plan(platform: Platform, url: String): FetchPlan {
-        val enc = java.net.URLEncoder.encode(url, "UTF-8")
-        return when (platform) {
-            Platform.INSTAGRAM, Platform.FACEBOOK, Platform.NOTE -> FetchPlan.Skip
-            Platform.YOUTUBE -> FetchPlan.OEmbed("https://www.youtube.com/oembed?format=json&url=$enc", alsoPage = true)
-            Platform.X -> FetchPlan.OEmbed("https://publish.twitter.com/oembed?omit_script=true&url=$enc", alsoPage = false)
-            // Reddit's public oEmbed needs no key or login; the page adds a thumbnail when it lets us in.
-            Platform.REDDIT -> FetchPlan.OEmbed("https://www.reddit.com/oembed?url=$enc", alsoPage = true)
-            Platform.MEDIUM, Platform.WEB -> FetchPlan.Page
+        if (platform.isNote) return FetchPlan.Skip
+        return when (val contact = platform.spec?.contact) {
+            Contact.Never -> FetchPlan.Skip
+            is Contact.OEmbed -> FetchPlan.OEmbed(
+                contact.endpoint.replace("{url}", java.net.URLEncoder.encode(url, "UTF-8")),
+                contact.alsoPage,
+            )
+            Contact.Page, null -> FetchPlan.Page
         }
     }
 }
@@ -163,7 +164,7 @@ object DetailsParser {
         val t = title?.let(::clean)?.lowercase()?.takeIf { it.isNotEmpty() } ?: return false
         if (t in interstitialExact || interstitialPrefix.containsMatchIn(t) || siteWide.matches(t)) return true
         // The bare site name (what a login wall or blocked page serves) is not a title for a post on that site.
-        return platform != Platform.WEB && platform != Platform.NOTE && t == platform.label.lowercase()
+        return !platform.isNote && t == platform.label.lowercase()
     }
 }
 

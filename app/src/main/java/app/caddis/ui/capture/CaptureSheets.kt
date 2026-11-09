@@ -48,7 +48,6 @@ import app.caddis.domain.model.Collection
 import app.caddis.domain.model.Intent
 import app.caddis.domain.model.IntentSource
 import app.caddis.domain.model.Item
-import app.caddis.domain.model.Platform
 import app.caddis.ui.components.BtnStyle
 import app.caddis.ui.components.CButton
 import app.caddis.ui.components.CCard
@@ -161,7 +160,7 @@ private fun SaveSheet(item: Item, sharedFrom: String, intents: List<Intent>, col
     // null until the person taps "Edit title"; the prefill is remembered so an untouched field saves nothing.
     var titleDraft by remember(item.id) { mutableStateOf<String?>(null) }
     var titlePrefill by remember(item.id) { mutableStateOf("") }
-    val loading = !item.isNote && item.detailsFetchedAt == null && item.title.isBlank() && !item.platform.isMeta
+    val loading = !item.isNote && item.detailsFetchedAt == null && item.title.isBlank() && !item.platform.neverContact
     val close = {
         titleDraft?.let { t -> if (t.trim() != titlePrefill.trim()) vm.setTitle(item.id, t) }
         if (from != item.sourceFrom) vm.setFrom(item.id, from)
@@ -306,7 +305,7 @@ fun Segmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit, lab
 
 /** What the intent guess was based on: "Instagram Reel", "X Post", or just "webpage" for the open web. */
 private fun guessSubject(item: Item): String =
-    if (item.platform == Platform.WEB) item.kind.label.let { if (it == "Webpage") "webpage" else it }
+    if (!item.platform.isKnownService) item.kind.label.let { if (it == "Webpage") "webpage" else it }
     else "${item.platform.label} ${item.kind.label}"
 
 /** "an" before a vowel sound: Instagram, Article, and the letter X ("ex"). */

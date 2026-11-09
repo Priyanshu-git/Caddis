@@ -94,7 +94,7 @@ class ItemViewModel @Inject constructor(
 
     fun refresh() = viewModelScope.launch {
         val it = item.value ?: return@launch
-        if (it.platform.isMeta) {
+        if (it.platform.neverContact) {
             messenger.show("Caddis doesn’t fetch ${it.platform.label} details. Edit them yourself any time.")
         } else {
             repo.refreshDetails(id)

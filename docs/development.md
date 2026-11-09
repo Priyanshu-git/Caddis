@@ -11,6 +11,7 @@
 ./gradlew :domain:test              # pure-Kotlin domain tests (JUnit 5 + Kotest)
 ./gradlew :app:testDebugUnitTest    # app unit + Robolectric tests (Room, repository, ViewModels, fetcher, migration)
 ./gradlew test                      # both
+./gradlew :app:connectedDebugAndroidTest   # instrumented tests on a connected device/emulator (journeys + migrations; not run in CI)
 ./gradlew assembleDebug             # app/build/outputs/apk/debug/app-debug.apk
 ./gradlew :app:lintDebug            # Android lint
 ./gradlew test assembleDebug        # what CI runs (CI also runs :app:lintDebug)
@@ -29,8 +30,8 @@ AGP 8.13.2 · Kotlin 2.2.20 · KSP 2.3.6 · Compose BOM 2025.06.00 · Material 3
 Room 2.8.3 · DataStore 1.1.7 · WorkManager 2.10.5 · Coroutines 1.10.2 · kotlinx-serialization 1.8.1 · OkHttp 4.12.0 · Jsoup 1.18.3 ·
 Coil 3.3.0 · richeditor-compose 1.0.0-rc13 · Lifecycle 2.9.1 · Activity Compose 1.10.1 · splashscreen 1.0.1.
 Test: JUnit 4.13.2 (app), JUnit 5.11.4 + Kotest 5.9.1 (domain), Robolectric 4.14.1, Turbine 1.2.0, MockWebServer 4.12.0,
-work-testing, navigation-testing, room-testing. The catalog also lists `mockk`, Espresso and Compose UI test artifacts that no source set
-currently uses (`app/src/androidTest` does not exist).
+work-testing, navigation-testing, room-testing. Instrumented (`app/src/androidTest`): androidx test runner/core/ext-junit, Compose UI test (`ui-test-junit4`),
+Espresso core + intents, `hilt-android-testing`, room-testing. The catalog also lists `mockk`, which no source set currently uses.
 
 Plugins applied in `:app`: `android.application`, `kotlin.android`, `kotlin.compose`, `ksp`, `hilt`, `room` (schema dir `app/schemas`).
 `:domain`: `kotlin.jvm`, `kotlin.serialization`. Release builds: `isMinifyEnabled`, `isShrinkResources` (see `app/proguard-rules.pro`).
@@ -70,6 +71,34 @@ JUnit 4. Robolectric config in `app/src/test/resources/robolectric.properties` (
 
 Test conventions: backticked sentence names; one behaviour per test; no network; inject the clock.
 
+### `:app` instrumented (`app/src/androidTest/java/…`)
+
+Run on a device or emulator (`./gradlew :app:connectedDebugAndroidTest`; one class: `-Pandroid.testInstrumentationRunnerArguments.class=app.caddis.journeys.HomeJourneyTest`).
+CI does not run them (it has no emulator). The runner is `app.caddis.HiltTestRunner`, which starts `HiltTestApplication`, so `CaddisApp.onCreate`
+(channels, reminders work, seeding) does **not** run; the base test seeds the default intents itself.
+
+- `data/MigrationInstrumentedTest`: the shipped migrations on a real device's SQLite.
+- `TestModule.kt` (`@TestInstallIn` replacing `AppModule` and `BindingsModule`): in-memory Room, a new DataStore file per test, a plain `OkHttpClient`
+  (nothing should reach the network), `RecordingAnalytics`, and:
+  - **`TestClock`**: a movable `Clock`, Wed 4 Nov 2026 11:08 IST, so Home's day and time-of-day rules are the same on every run. Move it with `daysLater(n)`.
+  - **`FakeDetails`** (the `DetailsScheduler`): no WorkManager and no network. By default a fetch "gives up", so a save shows the title built from its link.
+    `serve(url, LinkDetails(…))` makes details arrive, `hold()`/`release()` keep them waiting (to see the skeleton).
+- `journeys/JourneyTest`: base class. `HiltAndroidRule` + `createEmptyComposeRule`, grants `POST_NOTIFICATIONS` up front (no system dialog), and gives
+  `launchApp(route?)`, data helpers (`save`, `saveNote`, `library()`, `item()`, `trash()`), finders (`button`, `tab`, `field(label)`, `described`) and waiters
+  (`awaitText`, `await`, `eventually`). Failures print the on-screen semantics tree.
+- One class per journey (all `@HiltAndroidTest`): `OnboardingJourneyTest`, `AddJourneyTest` (plus button, clipboard, duplicate, note), `ShareSheetJourneyTest`
+  (`ShareActivity`), `HomeJourneyTest`, `LibraryJourneyTest` (search, filters, collections), `ItemJourneyTest` (item page, edit details, note editor),
+  `TrashAndTidyJourneyTest`, `ProfileJourneyTest` (notifications, rules, intents, export, delete all), `NavigationJourneyTest`.
+
+Things to know when writing more:
+- The compose test clock only moves when the test lets it. `await*` and `eventually` do; a bare `Thread.sleep` does not (an activity that finishes from a
+  `LaunchedEffect` will look stuck).
+- `repo.get(id)` returns an item **without** its collection ids; use `library()` to check collection membership.
+- Taps on `CButton`/chips are found by text + `Role.Button` (`button("Done")`); the intent chips in the save sheet and the Done button can share a word.
+  `Eyebrow` text is upper-cased on screen (`"WHY YOU KEPT IT"`).
+- Opening a link or the share chooser must be stubbed with Espresso Intents (`Intents.init()` + `intending(...)`), or a real browser opens.
+- Some labels use the system clock (`Item.rightTag`, `savedLabel`) rather than the injected one, so tests do not assert on dates.
+
 ## Recipes
 
 ### Add or change a product rule
@@ -95,9 +124,12 @@ Add a subclass of `AnalyticsEvent` in `domain/…/analytics/Analytics.kt` with t
 through the injected `AnalyticsSink`; test it. Never add a field that can hold a URL, title, note, reason, creator or collection name.
 
 ### Support a new platform (e.g. TikTok)
-`Platform` enum + label → `PlatformDetector.detect` branch (kind + handle) → `DefaultTitles.of` branch (the `when` is exhaustive) → `DetailsPlanner.plan`
-branch (also exhaustive) → `Platform.filterable` if it should be a filter → `IntentGuesser.defaultFor` if its kinds need a default → tests in `LinksTest`,
-`DefaultTitlesTest`, `DetailsTest`. If the platform must never be contacted, treat it like Meta (`isMeta`, `Favicons`).
+**An ordinary site needs nothing**: it becomes its own platform (named by its domain) the first time a link from it is saved, and appears in the Filter
+sheet while it has saves. To give a service a proper name or behaviour, add one `PlatformSpec` to `PlatformRegistry.specs` (`platform/PlatformRegistry.kt`):
+a brand name is `brand(id, label, hosts…)`; a service with kinds/handles also sets `read`; oEmbed sets `contact = Contact.OEmbed("…{url}", alsoPage)`;
+a service that must never be contacted sets `Contact.Never` (plus `extraNeverContactHosts` for its CDNs) — `DetailsPlanner`, `Favicons`, refresh and
+scheduling follow automatically. Add a `DefaultTitles` branch only if it needs a bespoke title, and a case in `LinksTest` (+ `PlatformTest`). Existing saves
+keep their stored platform until a migration reclassifies them (see `MIGRATION_2_3`); never rename an id.
 
 ### Add a default intent
 `Intents.defaults` + `Intents.defaultRules` + a keyword rule in `IntentGuesser` if useful. Existing installs only seed defaults when **no intents exist**, so

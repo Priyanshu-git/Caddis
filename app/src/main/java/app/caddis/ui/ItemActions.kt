@@ -113,4 +113,4 @@ fun Item.rightTag(intents: List<CaddisIntent>, clock: Clock = Clock.systemDefaul
 
 fun intentName(intents: List<CaddisIntent>, id: String) = intents.firstOrNull { it.id == id }?.name ?: "Just keep"
 
-fun Platform.openLabel() = if (this == Platform.WEB) "your browser" else label
+fun Platform.openLabel() = if (isKnownService) label else "your browser"

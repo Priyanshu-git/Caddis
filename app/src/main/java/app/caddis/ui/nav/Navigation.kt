@@ -71,7 +71,6 @@ private fun CaddisNavGraph(nav: NavHostController, opened: OpenedItem, openItem:
             LibraryScreen(
                 onOpenItem = { openItem(it, "library") },
                 onTrash = { nav.navigate("trash") },
-                onIntents = { nav.navigate("intents") },
                 onCollection = { nav.navigate("shelf/$it") },
                 onManageCollections = { nav.navigate("collections") },
             )

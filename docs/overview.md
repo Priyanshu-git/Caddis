@@ -37,8 +37,8 @@ unless asked.
 | --- | --- | --- |
 | **Item** | One save. `type` is `LINK` or `NOTE`. Everything (library, Home, Trash) is a filtered view of items. | `domain/…/model/Models.kt` |
 | **Link / Note** | A link has `url`; a note has `url = null`, `platform = NOTE`, `kind = NOTE`, and Markdown in `note`. A link may also carry a note (one per item). | `Models.kt` |
-| **Platform** | `INSTAGRAM, FACEBOOK, REDDIT, YOUTUBE, MEDIUM, X, WEB, NOTE`, read from the URL. `isMeta` is true for Instagram/Facebook. | `Models.kt`, `link/Links.kt` |
-| **ContentKind** | `REEL, VIDEO, SHORT, POST, CHANNEL, PROFILE, SUBREDDIT, ARTICLE, WEBPAGE, PDF, NOTE`; `isVideo` for REEL/VIDEO/SHORT. | `Models.kt` |
+| **Platform** | Where a link is from, read from the URL; **not a fixed list**. Recognised services (Instagram, YouTube, Google Drive, GitHub…) get a name and behaviour from a registry; every other site is its own platform named by its domain; `note` for notes. `neverContact` is true for Meta (Instagram, Facebook, Threads). The Filter sheet lists only platforms the library has. | `model/Platform.kt`, `platform/PlatformRegistry.kt`, `link/Links.kt` |
+| **ContentKind** | `REEL, VIDEO, SHORT, POST, CHANNEL, PROFILE, SUBREDDIT, ARTICLE, WEBPAGE, PDF, FILE, FOLDER, DOCUMENT, NOTE`; `isVideo` for REEL/VIDEO/SHORT. | `Models.kt` |
 | **Intent** | Why you kept it. Eight defaults (ids `cook, watch, read, learn, try, buy, go, keep`) plus custom ones (ids `u-xxxxxxxx`). Each has a `doneLabel`. `keep` ("Just keep") is protected and has no return rule. | `model/Intents.kt` |
 | **IntentSource** | `GUESSED` (by rules) or `USER`. Fetched details may still re-guess while `GUESSED`. | `Models.kt` |
 | **IntentRule** | Per intent: days of week, `TimeOfDay`, `maxPerDay` (1..3). Decides when saves of that intent return. | `Models.kt` |
@@ -82,7 +82,7 @@ unless asked.
   details sheet (link, title, by, description); Refresh button.
 - **Home**: ≤3 picks, "Bring it back" later options (tonight / weekend / next week / date),
   Done and Open, This week card, "Time for a tidy-up" card, "Next up" hint when nothing fits.
-- **Library**: all saves and notes newest first; intent chips; Filter sheet (platform, status);
+- **Library**: all saves and notes newest first; platform chips (only platforms the library has); Filter sheet (intent, platform, status);
   collections tab and shelves; offline keyword search (FTS4) with "why it matched" text and
   recent searches (in memory only).
 - **Item page** and **Note editor** (rich text stored as Markdown, autosave).
@@ -106,4 +106,4 @@ unless asked.
 - A published full privacy policy (`FULL_POLICY_URL` in `ui/profile/ProfileScreens.kt` is `null`).
 - Heading and quote buttons in the note editor toolbar (headings/quotes still render if present).
 - Persisted recent searches.
-- `androidTest` instrumentation tests (dependencies are declared but there is no test source set).
+- Instrumented tests in CI (the journey tests in `app/src/androidTest` run locally on a device or emulator only).

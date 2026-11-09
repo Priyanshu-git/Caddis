@@ -17,6 +17,15 @@ class DefaultTitlesTest {
     }
 
     @Test
+    fun `services that name their own kinds get a readable title`() {
+        title("https://drive.google.com/file/d/1AbC/view") shouldBe "Google Drive file"
+        title("https://drive.google.com/drive/folders/1AbC") shouldBe "Google Drive folder"
+        title("https://docs.google.com/spreadsheets/d/1AbC/edit") shouldBe "Google Sheets document"
+        title("https://github.com/JetBrains/kotlin") shouldBe "github.com/JetBrains/kotlin"
+        title("https://www.nytimes.com/a") shouldBe "www.nytimes.com/a"
+    }
+
+    @Test
     fun `instagram and facebook get readable titles from the url alone`() {
         title("https://www.instagram.com/reel/C9abcdEFGhi/") shouldBe "Instagram reel"
         title("https://www.instagram.com/p/C9abcdEFGhi/") shouldBe "Instagram post"
