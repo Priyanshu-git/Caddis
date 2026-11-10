@@ -189,8 +189,7 @@ fun EditDetailsSheet(item: Item, onSave: suspend (String?, DetailEdits) -> Strin
     CSheet(onDone) {
         Text("Edit details", style = CaddisType.sheetTitle, color = C.colors.fg)
         Fine(
-            if (item.platform.neverContact) "Caddis doesn’t fetch ${item.platform.label} details, so what you type here is what you’ll see."
-            else "Your words are kept when details refresh. Leave a field empty to let Caddis fill it in.",
+            "Your words are kept when details refresh. Leave a field empty to let Caddis fill it in.",
             Modifier.padding(top = 2.dp, bottom = 12.dp),
         )
         if (!item.isNote) {

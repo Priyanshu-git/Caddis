@@ -20,11 +20,10 @@ break. Section 3 are **known gaps**.
 8. Done items stay in the library; Done keeps the item but removes it from Home.
 
 ### Privacy and platform
-9. **Never call Meta.** Instagram, Facebook and Threads links are saved with platform + handle from the URL only (`Platform.neverContact`, a registry `Contact.Never`): `DetailsPlanner` returns `Skip`, `DetailsFetcher`
-   gives up, `refreshDetails`/`scheduleMissingDetails`/`needsDetails` exclude them, and `Favicons` never returns a Meta icon (hosts and CDNs such as `fbcdn.net`, `cdninstagram.com` come from the registry).
-   If you add any new request path (images, previews, icons), enforce this there too.
-    **Platforms are dynamic, ids are forever.** Only `Platform.id` is stored; never rename or reuse one without a migration. Analytics report `Platform.analyticsId`
-    (a registry id, `note` or `other`) — **never an ordinary site's domain**. Do not add per-platform `when` lists elsewhere; put behaviour in the registry.
+9. **No per-site tables.** There is no registry of services and no list of hosts. A platform is the host until the page names itself (`og:site_name` →
+   `application-name` → oEmbed `provider_name`); kind comes from `og:type`/response type; oEmbed comes from the endpoint the page advertises. Every link, Instagram
+   and Facebook included, is fetched the same way. (The earlier "never call Meta" rule was withdrawn by the product owner.) Do not add a `when (host)` list anywhere.
+   Analytics report only `link` or `note` for a platform — **never a site name or domain**, because that is what a person browses.
 10. **No language models or AI anywhere.** Intent guessing is rules; search is keyword FTS.
 11. Fetching uses only public, keyless endpoints (oEmbed / Open Graph). No API keys, login, paywall bypass or third-party proxy. Only the link is sent; no cookies.
 12. **Never download or rehost original media.** Only thumbnails/icons are cached by Coil (200 MB cap, clearable).
@@ -49,7 +48,7 @@ break. Section 3 are **known gaps**.
 - `Links.check` **accepts a bare host** and prepends `https://`; the host must contain a `.`. So `notaurl.com` is a link, `hello world` and `localhost` are not.
 - There are **two tracking-param lists**. `Links.normalize` (duplicate key) drops more (`ref`, `ref_src`, `ref_url`, `s`, `t`, `feature`, …); `ShareText.cleanUrl` (what you share) keeps `t`
   and only drops identity params. Don't merge them.
-- The duplicate key ignores scheme, `www.`, `m.`, fragment and param order, and folds `twitter.com` → `x.com` and `youtu.be/<id>` → `youtube.com/watch?v=<id>`. A duplicate check only
+- The duplicate key ignores scheme, `www.`, `m.`, fragment and param order, and folds no host into another (`youtu.be` and `youtube.com` are different keys). A duplicate check only
   matches **non-deleted** items. `saveLink(allowDuplicate = true)` ("Save again") bypasses it.
 - `saveDetails` refuses a new link only if **another** item already has its key; re-saving the item's own link is fine.
 
@@ -57,7 +56,7 @@ break. Section 3 are **known gaps**.
 - `detailsFetchedAt == null` means "still needs details" (drives retries at app start). `markDetailsAttempted` sets it on a permanent failure; an exhausted `Retry` deliberately leaves it null.
 - A save with an empty `title` is normal; always render `Item.displayTitle`, never `title`, in UI. But `ShareText` and the Edit details sheet use the real `title`.
 - `applyDetails` re-guesses the intent **only while `intentSource == GUESSED`**; `setIntent` flips it to `USER` (and `saveDetails` re-guesses on a link move only if still guessed).
-- Intent corrections are recorded only when the person changes a **guessed** intent. A learned guess needs ≥ 2 corrections for that `learningKey:kind` (registry id, or `web` for ordinary sites); keyword matches win over learning.
+- Intent corrections are recorded only when the person changes a **guessed** intent. A learned guess needs ≥ 2 corrections for that `platform id:kind` (the lower-cased site name, so per site); keyword matches win over learning.
 - `IntentGuesser` keyword rules are ordered Cook → Buy → Go → Learn → Try; first match wins. The text includes the **URL**, so slugs matter before details load.
 - Generic/bot-check titles are rejected by `DetailsParser`; a title equal to a bare site name ("Reddit", "Medium"…) is rejected for every platform (a bare domain too).
 - Reddit pages usually refuse non-browsers, so Reddit saves rarely get a thumbnail; Medium may show the slug title when its bot check blocks.
@@ -101,7 +100,8 @@ break. Section 3 are **known gaps**.
 - The full privacy policy link is unset (`FULL_POLICY_URL = null`); the button shows a toast saying it will be published before release.
 - The note editor has no heading or quote buttons (they render if imported).
 - Recent searches are not persisted.
-- X and Reddit details depend on public oEmbed endpoints; if one stops answering, those saves fall back to the URL-derived title/handle.
+- A site's name depends on its own markup: a page with no `og:site_name`/`application-name` (or one behind a bot wall or login wall that hides it) keeps the host as its platform.
+  Instagram and Facebook usually serve such a wall to a non-browser client, so those saves mostly stay `instagram.com`/`facebook.com` with the share-text title.
 - UI composables are not unit-tested; the screens are covered end to end by the instrumented journey tests (`app/src/androidTest/…/journeys`), which need a
   device or emulator and are **not** run by CI. See [development.md](development.md#app-instrumented-appsrcandroidtestjava).
 - After **Delete all data**, the "All your Caddis data on this phone was deleted." toast is replaced at once by "Thumbnail cache cleared." (`ProfileViewModel.deleteAll`

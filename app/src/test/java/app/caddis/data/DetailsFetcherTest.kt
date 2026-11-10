@@ -3,7 +3,7 @@ package app.caddis.data
 import app.caddis.data.details.DetailsFetcher
 import app.caddis.data.details.FetchResult
 import app.caddis.data.details.UserAgentInterceptor
-import app.caddis.domain.model.Platform
+import app.caddis.domain.model.ContentKind
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -29,7 +29,7 @@ class DetailsFetcherTest {
             MockResponse().setHeader("Content-Type", "text/html; charset=utf-8")
                 .setBody("""<html><head><meta property="og:title" content="Rome day trips"><meta property="og:image" content="/t.jpg"></head></html>"""),
         )
-        val r = fetcher.fetch(url(), Platform.site("127.0.0.1"))
+        val r = fetcher.fetch(url())
         assertTrue(r is FetchResult.Ok)
         assertEquals("Rome day trips", (r as FetchResult.Ok).details.title)
         val req = server.takeRequest()
@@ -41,18 +41,55 @@ class DetailsFetcherTest {
     @Test
     fun `server errors retry, client errors and non-html give up`() = runBlocking {
         server.enqueue(MockResponse().setResponseCode(503))
-        assertEquals(FetchResult.Retry, fetcher.fetch(url(), Platform.site("127.0.0.1")))
+        assertEquals(FetchResult.Retry, fetcher.fetch(url()))
         server.enqueue(MockResponse().setResponseCode(404))
-        assertEquals(FetchResult.GiveUp, fetcher.fetch(url(), Platform.site("127.0.0.1")))
+        assertEquals(FetchResult.GiveUp, fetcher.fetch(url()))
         server.enqueue(MockResponse().setHeader("Content-Type", "image/png").setBody("x"))
-        assertEquals(FetchResult.GiveUp, fetcher.fetch(url(), Platform.site("127.0.0.1")))
+        assertEquals(FetchResult.GiveUp, fetcher.fetch(url()))
     }
 
     @Test
-    fun `instagram and facebook are never requested`() = runBlocking {
-        assertEquals(FetchResult.GiveUp, fetcher.fetch(url(), Platform.INSTAGRAM))
-        assertEquals(FetchResult.GiveUp, fetcher.fetch(url(), Platform.FACEBOOK))
-        assertEquals(0, server.requestCount)
+    fun `instagram and facebook are fetched like any other site`() = runBlocking {
+        val meta = DetailsFetcher(redirected())
+        server.enqueue(
+            MockResponse().setHeader("Content-Type", "text/html")
+                .setBody("""<html><head><meta property="og:site_name" content="Instagram"><meta property="og:title" content="Oven Notes on Instagram"></head></html>"""),
+        )
+        val r = meta.fetch("https://www.instagram.com/reel/Cx9/") as FetchResult.Ok
+        assertEquals("Instagram", r.details.siteName)
+        assertEquals("Oven Notes on Instagram", r.details.title)
+        server.enqueue(MockResponse().setResponseCode(403))
+        assertEquals(FetchResult.GiveUp, meta.fetch("https://www.facebook.com/reel/1"))
+        assertEquals(2, server.requestCount)
+    }
+
+    @Test
+    fun `the page names the site`() = runBlocking {
+        server.enqueue(
+            MockResponse().setHeader("Content-Type", "text/html")
+                .setBody("""<html><head><meta property="og:site_name" content="ChatGPT"><meta property="og:title" content="Pasta plan"></head></html>"""),
+        )
+        val d = (fetcher.fetch(url()) as FetchResult.Ok).details
+        assertEquals("ChatGPT", d.siteName)
+        assertEquals("Pasta plan", d.title)
+    }
+
+    @Test
+    fun `a login wall that only says its own name still names the site`() = runBlocking {
+        server.enqueue(
+            MockResponse().setHeader("Content-Type", "text/html")
+                .setBody("""<html><head><title>Instagram</title><meta property="og:site_name" content="Instagram"></head></html>"""),
+        )
+        val d = (fetcher.fetch(url()) as FetchResult.Ok).details
+        assertEquals("Instagram", d.siteName)
+        assertEquals(null, d.title)
+    }
+
+    @Test
+    fun `a pdf is recognised from the response without reading it`() = runBlocking {
+        server.enqueue(MockResponse().setHeader("Content-Type", "application/pdf").setBody("%PDF-1.7"))
+        val d = (fetcher.fetch(url()) as FetchResult.Ok).details
+        assertEquals(ContentKind.PDF, d.kind)
     }
 
     @Test
@@ -61,13 +98,13 @@ class DetailsFetcherTest {
             MockResponse().setHeader("Content-Type", "text/html")
                 .setBody("<html><head><title>Just a moment...</title></head><body>Checking your browser</body></html>"),
         )
-        assertEquals(FetchResult.GiveUp, fetcher.fetch(url(), Platform.MEDIUM))
+        assertEquals(FetchResult.GiveUp, fetcher.fetch(url()))
     }
 
     @Test
     fun `an unreachable host is a retry, never a crash`() = runBlocking {
         // Nothing listens on port 1: the connection is refused, which is "worth retrying later".
-        assertEquals(FetchResult.Retry, fetcher.fetch("http://127.0.0.1:1/post", Platform.site("127.0.0.1")))
+        assertEquals(FetchResult.Retry, fetcher.fetch("http://127.0.0.1:1/post"))
     }
 
     /** Sends every request to the mock server, whatever host the fetcher asked for, and records it. */
@@ -77,48 +114,58 @@ class DetailsFetcherTest {
         chain.proceed(original.newBuilder().url(target).build())
     }.build()
 
-    private val redditUrl = "https://www.reddit.com/r/androiddev/comments/abc123/hello/"
+    private val postUrl = "https://www.example.com/r/androiddev/comments/abc123/hello/"
+    private fun withOEmbed(extraHead: String = "") =
+        """<html><head><link rel="alternate" type="application/json+oembed" href="https://www.example.com/oembed?url=x">$extraHead</head></html>"""
 
     @Test
-    fun `reddit title comes from the public oembed even when the page is blocked`() = runBlocking {
-        val reddit = DetailsFetcher(redirected())
-        server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody("""{"title":"Hello Compose","author_name":"u/redlentil"}"""))
-        server.enqueue(MockResponse().setResponseCode(403))
-        val r = reddit.fetch(redditUrl, Platform.REDDIT)
-        assertTrue(r is FetchResult.Ok)
-        assertEquals("Hello Compose", (r as FetchResult.Ok).details.title)
-        assertEquals("u/redlentil", r.details.creator)
+    fun `an oembed endpoint the page advertises is followed, and its title wins`() = runBlocking {
+        val client = DetailsFetcher(redirected())
+        server.enqueue(
+            MockResponse().setHeader("Content-Type", "text/html").setBody(
+                withOEmbed("""<meta property="og:site_name" content="Example"><meta property="og:title" content="Other"><meta property="og:image" content="https://i.example.com/p.jpg">"""),
+            ),
+        )
+        server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody("""{"title":"Hello Compose","author_name":"u/redlentil","provider_name":"Elsewhere"}"""))
+        val d = (client.fetch(postUrl) as FetchResult.Ok).details
+        assertEquals("Hello Compose", d.title)
+        assertEquals("u/redlentil", d.creator)
+        assertEquals("https://i.example.com/p.jpg", d.thumbnailUrl)
+        assertEquals("Example", d.siteName) // the site's own page names it, not the oEmbed provider
+        assertEquals(null, d.oEmbedUrl)
+        val page = server.takeRequest()
+        assertTrue(page.getHeader("User-Agent")!!.contains("CaddisLinkPreview"))
         val oembed = server.takeRequest()
         assertEquals("/oembed", oembed.requestUrl?.encodedPath)
-        assertTrue(oembed.getHeader("User-Agent")!!.contains("CaddisLinkPreview"))
         assertTrue(oembed.getHeader("Authorization") == null && oembed.getHeader("Cookie") == null)
     }
 
     @Test
-    fun `reddit page adds the thumbnail to the oembed title`() = runBlocking {
-        val reddit = DetailsFetcher(redirected())
-        server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody("""{"title":"Hello Compose"}"""))
-        server.enqueue(
-            MockResponse().setHeader("Content-Type", "text/html")
-                .setBody("""<html><head><title>x</title><meta property="og:title" content="Other"><meta property="og:image" content="https://i.redd.it/p.jpg"></head></html>"""),
-        )
-        val d = (reddit.fetch(redditUrl, Platform.REDDIT) as FetchResult.Ok).details
-        assertEquals("Hello Compose", d.title)
-        assertEquals("https://i.redd.it/p.jpg", d.thumbnailUrl)
+    fun `a page with no oembed link makes only one request`() = runBlocking {
+        server.enqueue(MockResponse().setHeader("Content-Type", "text/html").setBody("""<html><head><title>Plain</title></head></html>"""))
+        fetcher.fetch(url())
+        assertEquals(1, server.requestCount)
     }
 
     @Test
-    fun `reddit blocked on both requests gives up or retries by status`() = runBlocking {
-        val reddit = DetailsFetcher(redirected())
+    fun `the page still counts when the advertised oembed fails`() = runBlocking {
+        val client = DetailsFetcher(redirected())
+        server.enqueue(MockResponse().setHeader("Content-Type", "text/html").setBody(withOEmbed("""<meta property="og:title" content="From the page">""")))
         server.enqueue(MockResponse().setResponseCode(403))
+        assertEquals("From the page", (client.fetch(postUrl) as FetchResult.Ok).details.title)
+    }
+
+    @Test
+    fun `blocked on both requests gives up or retries by status`() = runBlocking {
+        val client = DetailsFetcher(redirected())
         server.enqueue(MockResponse().setResponseCode(403))
-        assertEquals(FetchResult.GiveUp, reddit.fetch(redditUrl, Platform.REDDIT))
+        assertEquals(FetchResult.GiveUp, client.fetch(postUrl))
         server.enqueue(MockResponse().setResponseCode(429))
-        server.enqueue(MockResponse().setResponseCode(403))
-        assertEquals(FetchResult.Retry, reddit.fetch(redditUrl, Platform.REDDIT))
-        server.enqueue(MockResponse().setResponseCode(404))
+        assertEquals(FetchResult.Retry, client.fetch(postUrl))
+        // The page says nothing, and its oembed is only having a bad moment: try again later.
+        server.enqueue(MockResponse().setHeader("Content-Type", "text/html").setBody(withOEmbed()))
         server.enqueue(MockResponse().setResponseCode(503))
-        assertEquals(FetchResult.Retry, reddit.fetch(redditUrl, Platform.REDDIT))
+        assertEquals(FetchResult.Retry, client.fetch(postUrl))
     }
 
     @Test

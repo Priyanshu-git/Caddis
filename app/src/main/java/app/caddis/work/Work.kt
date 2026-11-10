@@ -84,7 +84,7 @@ class DetailsWorker @AssistedInject constructor(
         val id = inputData.getString(KEY_ID) ?: return Result.failure()
         val item = repo.get(id) ?: return Result.success()
         val url = item.url ?: return Result.success()
-        return when (val r = fetcher.fetch(url, item.platform)) {
+        return when (val r = fetcher.fetch(url)) {
             is FetchResult.Ok -> { repo.applyDetails(id, r.details, forUrl = url); Result.success() }
             FetchResult.GiveUp -> { repo.markDetailsAttempted(id, forUrl = url); Result.success() }
             FetchResult.Retry -> if (runAttemptCount < MAX_ATTEMPTS) Result.retry() else {

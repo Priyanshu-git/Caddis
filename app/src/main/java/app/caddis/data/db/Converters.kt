@@ -12,12 +12,12 @@ class Converters {
     @TypeConverter
     fun longToInstant(l: Long?): Instant? = l?.let(Instant::ofEpochMilli)
 
-    /** Only the id is stored; label and behaviour come back from the registry (see `Platform.fromId`). */
+    /** Only the label is stored; it is the site's name, so there is nothing else to rebuild. */
     @TypeConverter
-    fun platformToId(p: Platform): String = p.id
+    fun platformToId(p: Platform): String = p.label
 
     @TypeConverter
-    fun idToPlatform(id: String): Platform = Platform.fromId(id)
+    fun idToPlatform(id: String): Platform = Platform.fromStored(id)
 
     @TypeConverter
     fun fieldsToString(s: Set<EditableField>): String = s.joinToString(",") { it.name }

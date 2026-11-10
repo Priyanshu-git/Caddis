@@ -30,7 +30,7 @@ class ItemActionsShareTest {
 
     private val link = Item(
         id = "i", type = ItemType.LINK, url = "https://youtu.be/abc123?si=tracker", normalizedUrl = "youtu.be/abc123",
-        platform = Platform.YOUTUBE, kind = ContentKind.VIDEO, title = "How rivers carry stones",
+        platform = Platform.named("YouTube"), kind = ContentKind.VIDEO, title = "How rivers carry stones",
         reason = "for my sister", intentId = Intents.KEEP, createdAt = Instant.EPOCH,
     )
 

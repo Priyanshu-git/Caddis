@@ -1,10 +1,8 @@
 package app.caddis.data.details
 
 import app.caddis.domain.details.DetailsParser
-import app.caddis.domain.details.DetailsPlanner
-import app.caddis.domain.details.FetchPlan
 import app.caddis.domain.details.LinkDetails
-import app.caddis.domain.model.Platform
+import app.caddis.domain.model.ContentKind
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -24,9 +22,10 @@ sealed interface FetchResult {
 
 /**
  * MET-01: the phone fetches details directly from each source (tech arch decision 3). Only the link
- * itself is sent. Never called for Instagram or Facebook. Uses public metadata only (public oEmbed
- * endpoints and Open Graph tags): no API keys, no login, no paywall bypass, no third-party proxy
- * (NFR platform rules). Anything that fails falls back to the defaults, see [DetailsParser] and
+ * itself is sent. Every link is treated the same: read the page, and if the page advertises an oEmbed
+ * endpoint, read that too. Uses public metadata only (Open Graph tags and oEmbed): no API keys, no
+ * login, no paywall bypass, no third-party proxy (NFR platform rules). Nothing here knows which
+ * site it is talking to. Anything that fails falls back to the defaults, see [DetailsParser] and
  * `DefaultTitles`.
  */
 @Singleton
@@ -36,9 +35,9 @@ class DetailsFetcher @Inject constructor(private val http: OkHttpClient) {
      * Never throws: any failure (offline, blocked, a page we cannot parse) becomes [FetchResult.Retry]
      * or [FetchResult.GiveUp], and the save keeps its defaults (MET-05).
      */
-    suspend fun fetch(url: String, platform: Platform): FetchResult = withContext(Dispatchers.IO) {
+    suspend fun fetch(url: String): FetchResult = withContext(Dispatchers.IO) {
         try {
-            fetchFor(url, platform)
+            fetchFor(url)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -46,45 +45,40 @@ class DetailsFetcher @Inject constructor(private val http: OkHttpClient) {
         }
     }
 
-    private fun fetchFor(url: String, platform: Platform): FetchResult = when (val plan = DetailsPlanner.plan(platform, url)) {
-        FetchPlan.Skip -> FetchResult.GiveUp
-        FetchPlan.Page -> page(url, platform)
-        is FetchPlan.OEmbed -> {
-            val o = get(plan.endpoint, json = true)
-            val fromOEmbed = (o as? Body.Ok)?.let { DetailsParser.parseOEmbed(it.text, platform) }
-            val pageResult = if (plan.alsoPage) page(url, platform) else null
-            val merged = merge(fromOEmbed, (pageResult as? FetchResult.Ok)?.details)
-            when {
-                merged != null && !merged.isEmpty -> FetchResult.Ok(merged)
-                // Either source may only be having a bad moment; give up only when both say never.
-                o is Body.Retry || pageResult == FetchResult.Retry -> FetchResult.Retry
-                else -> FetchResult.GiveUp
-            }
+    private fun fetchFor(url: String): FetchResult {
+        val body = get(url, json = false)
+        if (body is Body.Pdf) return FetchResult.Ok(LinkDetails(kind = ContentKind.PDF))
+        val page = (body as? Body.Ok)?.let { DetailsParser.parsePage(it.text, it.finalUrl) }
+        val oEmbed = page?.oEmbedUrl?.let { get(it, json = true) }
+        val fromOEmbed = (oEmbed as? Body.Ok)?.let { DetailsParser.parseOEmbed(it.text) }
+        val merged = merge(fromOEmbed, page)
+        return when {
+            merged != null && !merged.isEmpty -> FetchResult.Ok(merged)
+            // Either source may only be having a bad moment; give up only when both say never.
+            body is Body.Retry || oEmbed is Body.Retry -> FetchResult.Retry
+            else -> FetchResult.GiveUp
         }
     }
 
-    private fun page(url: String, platform: Platform): FetchResult = when (val b = get(url, json = false)) {
-        is Body.Ok -> DetailsParser.parsePage(b.text, b.finalUrl, platform).let { if (it.isEmpty) FetchResult.GiveUp else FetchResult.Ok(it) }
-        Body.Retry -> FetchResult.Retry
-        Body.GiveUp -> FetchResult.GiveUp
-    }
-
-    /** oEmbed wins for title/creator/thumbnail; the page fills in length and description. */
-    private fun merge(a: LinkDetails?, b: LinkDetails?): LinkDetails? {
-        if (a == null) return b
-        if (b == null) return a
+    /** oEmbed wins for title/creator/thumbnail; the page names the site and fills in the rest. */
+    private fun merge(oEmbed: LinkDetails?, page: LinkDetails?): LinkDetails? {
+        if (oEmbed == null) return page?.copy(oEmbedUrl = null)
+        if (page == null) return oEmbed
         return LinkDetails(
-            title = a.title ?: b.title,
-            description = a.description ?: b.description,
-            creator = a.creator ?: b.creator,
-            thumbnailUrl = a.thumbnailUrl ?: b.thumbnailUrl,
-            lengthSeconds = a.lengthSeconds ?: b.lengthSeconds,
-            faviconUrl = a.faviconUrl ?: b.faviconUrl,
+            title = oEmbed.title ?: page.title,
+            description = oEmbed.description ?: page.description,
+            creator = oEmbed.creator ?: page.creator,
+            thumbnailUrl = oEmbed.thumbnailUrl ?: page.thumbnailUrl,
+            lengthSeconds = oEmbed.lengthSeconds ?: page.lengthSeconds,
+            faviconUrl = page.faviconUrl,
+            siteName = page.siteName ?: oEmbed.siteName,
+            kind = page.kind ?: oEmbed.kind,
         )
     }
 
     private sealed interface Body {
         data class Ok(val text: String, val finalUrl: String) : Body
+        data object Pdf : Body
         data object Retry : Body
         data object GiveUp : Body
     }
@@ -101,6 +95,7 @@ class DetailsFetcher @Inject constructor(private val http: OkHttpClient) {
                 when {
                     r.isSuccessful -> {
                         val type = r.header("Content-Type").orEmpty()
+                        if (!json && type.contains("pdf", ignoreCase = true)) return Body.Pdf
                         if (!json && !type.contains("html")) return Body.GiveUp
                         // Metadata lives in <head>; cap the read so slow 3G and huge pages stay cheap.
                         val src = r.body?.source() ?: return Body.GiveUp

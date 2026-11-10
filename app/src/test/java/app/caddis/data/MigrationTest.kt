@@ -25,15 +25,15 @@ import java.io.File
 class MigrationTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
 
-    private fun insertItem(db: SQLiteDatabase, id: String, url: String?, platform: String, kind: String, type: String = "LINK") {
+    private fun insertItem(db: SQLiteDatabase, id: String, url: String?, platform: String, kind: String, type: String = "LINK", fetchedAt: Long? = null, title: String = "Kept") {
         db.execSQL(
             """INSERT INTO items (id, type, url, normalizedUrl, platform, kind, title, description, creator, thumbnailUrl,
                lengthSeconds, note, intentId, intentSource, reason, sourceApp, sourceFrom, status, createdAt, updatedAt,
                doneAt, deletedAt, returnRule, returnAt, lastSurfacedAt, surfacedCount, lastOpenedAt, lastReviewedAt,
                detailsFetchedAt, userEdited, revision)
-               VALUES (?, ?, ?, ?, ?, ?, 'Kept', '', '', NULL, NULL, '', 'read',
-               'GUESSED', '', '', '', 'ACTIVE', 1, 1, NULL, NULL, 'DEFAULT', NULL, NULL, 0, NULL, NULL, NULL, '', 1)""",
-            arrayOf<Any?>(id, type, url, url?.removePrefix("https://"), platform, kind),
+               VALUES (?, ?, ?, ?, ?, ?, ?, '', '', NULL, NULL, '', 'read',
+               'GUESSED', '', '', '', 'ACTIVE', 1, 1, NULL, NULL, 'DEFAULT', NULL, NULL, 0, NULL, NULL, ?, '', 1)""",
+            arrayOf<Any?>(id, type, url, url?.removePrefix("https://"), platform, kind, title, fetchedAt),
         )
     }
 
@@ -77,10 +77,9 @@ class MigrationTest {
     }
 
     @Test
-    fun `version 2 platforms become ids, and plain web saves are read again from their link`() = runBlocking {
+    fun `version 2 saves end up named by their host, ready to be read again`() = runBlocking {
         createVersion(2, "migrate3.db") { db ->
-            insertItem(db, "ig", "https://www.instagram.com/reel/Cx9/", "INSTAGRAM", "REEL")
-            insertItem(db, "yt", "https://www.youtube.com/watch?v=x", "YOUTUBE", "VIDEO")
+            insertItem(db, "ig", "https://www.instagram.com/reel/Cx9/", "INSTAGRAM", "REEL", fetchedAt = 5)
             insertItem(db, "drive", "https://drive.google.com/file/d/1AbC/view", "WEB", "WEBPAGE")
             insertItem(db, "site", "https://www.nytimes.com/2025/story.html", "WEB", "WEBPAGE")
             insertItem(db, "pdf", "https://example.com/report.pdf", "WEB", "PDF")
@@ -89,18 +88,43 @@ class MigrationTest {
         }
         val db = open("migrate3.db")
         try {
-            suspend fun platform(id: String) = db.items().observe(id).first()!!.platform.id
-            assertEquals("instagram", platform("ig"))
-            assertEquals("youtube", platform("yt"))
-            assertEquals("google-drive", platform("drive"))
-            assertEquals(ContentKind.FILE, db.items().observe("drive").first()!!.kind)
-            assertEquals("nytimes.com", platform("site"))
-            assertEquals("example.com", platform("pdf"))
-            assertEquals(ContentKind.PDF, db.items().observe("pdf").first()!!.kind)
-            assertEquals("note", platform("note"))
-            assertEquals("Kept", db.items().observe("ig").first()!!.title)
+            suspend fun item(id: String) = db.items().observe(id).first()!!
+            assertEquals("instagram.com", item("ig").platform.label)
+            assertEquals("drive.google.com", item("drive").platform.label)
+            assertEquals("nytimes.com", item("site").platform.label)
+            assertEquals("example.com", item("pdf").platform.label)
+            assertEquals(ContentKind.PDF, item("pdf").kind)
+            assertEquals(ContentKind.REEL, item("ig").kind) // old kinds are kept
+            assertEquals("note", item("note").platform.id)
+            assertEquals("Kept", item("ig").title)
+            assertNull(item("ig").detailsFetchedAt)
             assertEquals(setOf("instagram:REEL", "web:WEBPAGE"), db.intents().corrections().map { it.key }.toSet())
             assertEquals(3, db.intents().correction("instagram:REEL", "cook")!!.count)
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun `version 3 saves are named by their host and marked to be read again, notes and titles untouched`() = runBlocking {
+        createVersion(3, "migrate4.db") { db ->
+            insertItem(db, "chat", "https://chatgpt.com/share/6af2-1abc", "chatgpt.com", "WEBPAGE", fetchedAt = 7, title = "My plan")
+            insertItem(db, "drive", "https://drive.google.com/file/d/1AbC/view", "google-drive", "FILE", fetchedAt = 7)
+            insertItem(db, "m", "https://m.example.com/a", "example.com", "WEBPAGE", fetchedAt = 7)
+            insertItem(db, "note", null, "note", "NOTE", type = "NOTE", fetchedAt = 7)
+        }
+        val db = open("migrate4.db")
+        try {
+            suspend fun item(id: String) = db.items().observe(id).first()!!
+            assertEquals("chatgpt.com", item("chat").platform.label)
+            assertNull(item("chat").detailsFetchedAt)
+            assertEquals("My plan", item("chat").title)
+            assertEquals("drive.google.com", item("drive").platform.label)
+            assertEquals(ContentKind.FILE, item("drive").kind)
+            assertEquals("example.com", item("m").platform.label)
+            assertEquals("note", item("note").platform.id)
+            assertEquals(7L, item("note").detailsFetchedAt?.toEpochMilli())
+            assertEquals(listOf("chat", "drive", "m"), db.items().needingDetails().map { it.id }.sorted())
         } finally {
             db.close()
         }

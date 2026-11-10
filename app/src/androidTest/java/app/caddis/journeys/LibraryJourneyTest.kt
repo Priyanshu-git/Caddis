@@ -23,6 +23,8 @@ class LibraryJourneyTest : JourneyTest() {
         sourdoughId = save("https://example.com/sourdough-basics", "Sourdough basics", Intents.COOK).id
         testClock.advance(java.time.Duration.ofMinutes(1))
         rustId = save("https://www.youtube.com/watch?v=abc123", "Rust ownership explained", Intents.LEARN).id
+        // A save is named by its host until its page is read; the page says it is YouTube.
+        runBlocking { repo.applyDetails(rustId, app.caddis.domain.details.LinkDetails(siteName = "YouTube")) }
         testClock.advance(java.time.Duration.ofMinutes(1))
         saveNote("Gift ideas", "scarf, mug, a good pen")
     }

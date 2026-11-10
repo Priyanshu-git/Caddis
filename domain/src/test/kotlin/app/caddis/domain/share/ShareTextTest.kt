@@ -13,7 +13,7 @@ import java.time.Instant
 class ShareTextTest {
     private val link = Item(
         id = "i", type = ItemType.LINK, url = "https://youtu.be/abc123", normalizedUrl = "youtu.be/abc123",
-        platform = Platform.YOUTUBE, kind = ContentKind.VIDEO, title = "How rivers carry stones",
+        platform = Platform.named("YouTube"), kind = ContentKind.VIDEO, title = "How rivers carry stones",
         intentId = Intents.KEEP, createdAt = Instant.EPOCH,
     )
 

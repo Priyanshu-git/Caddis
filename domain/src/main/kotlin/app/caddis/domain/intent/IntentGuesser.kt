@@ -14,14 +14,14 @@ data class GuessInput(
 )
 
 /**
- * How often the person corrected a guess for a platform + kind, e.g. Instagram Reel → Cook: 3. Ordinary sites share one bucket.
+ * How often the person corrected a guess for a site + kind, e.g. instagram Reel → Cook: 3.
  * Kept on the phone; never sent anywhere.
  */
 data class CorrectionStats(val counts: Map<String, Map<String, Int>> = emptyMap()) {
     fun forKey(key: String): Map<String, Int> = counts[key].orEmpty()
 
     companion object {
-        fun key(platform: Platform, kind: ContentKind) = "${platform.learningKey}:${kind.name}"
+        fun key(platform: Platform, kind: ContentKind) = "${platform.id}:${kind.name}"
     }
 }
 

@@ -25,7 +25,7 @@ Start with [../AGENTS.md](../AGENTS.md) for the working rules, then pick the doc
 - **Change what a screen shows**: `ui.md` → the screen file → its ViewModel → `data.md` if it needs new data.
 - **Add a field to a save**: `development.md` recipe "Add a field to Item" (it lists every file that must change).
 - **Change a background behaviour** (details fetch, reminders): `flows.md` → `architecture.md` (work section) → `invariants.md`.
-- **Anything touching privacy, analytics, Meta links or AI**: `invariants.md` first.
+- **Anything touching privacy, analytics, fetching or AI**: `invariants.md` first.
 
 ## Conventions used in these docs
 

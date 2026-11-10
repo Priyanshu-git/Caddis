@@ -66,7 +66,7 @@ Adding a route: add a `composable(...)` (use `screen(...)` if it shows a thumbna
 
 `ItemActions` (`ui/ItemActions.kt`) is a singleton used by Home, Library, Item and Tidy ViewModels: `done`, `markActive`, `delete`,
 `later`, `open`, `share`, `today()`. It also hosts display helpers: `Item.meta()`, `Item.savedLabel()`, `Item.rightTag(intents)`,
-`intentName(intents, id)`, `Platform.openLabel()` ("your browser" for an ordinary site, else the platform label), `LocalDate.dayMonth()`.
+`intentName(intents, id)`, `LocalDate.dayMonth()`.
 
 `Messenger.show(message, undo?)` emits a `Toast`; `ToastHost` shows one at a time for 5 s with an **Undo** link when `undo` is set.
 

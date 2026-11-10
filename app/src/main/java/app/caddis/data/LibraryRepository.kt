@@ -172,7 +172,7 @@ class LibraryRepository @Inject constructor(
             bumpWeek(t, saved = 1)
         }
         analytics.log(AnalyticsEvent.SaveCreated(d.platform, entry, intentGuessed = true))
-        if (!d.platform.neverContact) details.schedule(item.id)
+        details.schedule(item.id)
         return SaveOutcome.Saved(item)
     }
 
@@ -226,12 +226,12 @@ class LibraryRepository @Inject constructor(
 
     suspend fun refreshDetails(id: String) {
         val it = items.get(id) ?: return
-        if (it.platform.neverContact || it.type != ItemType.LINK) return
+        if (it.type != ItemType.LINK) return
         details.schedule(id)
     }
 
     suspend fun scheduleMissingDetails() {
-        items.needingDetails().filter { !it.platform.neverContact }.forEach { details.schedule(it.id) }
+        items.needingDetails().forEach { details.schedule(it.id) }
     }
 
     // ---------- edits ----------

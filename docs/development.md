@@ -50,7 +50,7 @@ JUnit 5 (`org.junit.jupiter.api.Test`) with Kotest matchers (`shouldBe`). Pure f
 | `intent/IntentGuesserTest` | keyword order, defaults, corrections threshold, deleted intents |
 | `schedule/SchedulingTest` | `ReturnScheduler`, `HomePicker`, `TidyUp`, `Trash`, `Weeks`, rule labels |
 | `schedule/RemindersTest` | opt-in, one a day, quiet hours, weekly on Sunday evening |
-| `details/DetailsTest` | planner (Meta never fetched), page/oEmbed parsing, generic titles, `mergeDetails`, `formatLength` |
+| `details/DetailsTest` | site name, kind and oEmbed discovery from a page, oEmbed parsing, generic titles, `mergeDetails`, `formatLength` |
 | `details/EditsAndIconsTest` | `withEdits`, `withLink`, favicon parsing/fallbacks/merge, `couldBeNote` |
 | `share/ShareTextTest` | share text, tracking-param stripping, private words never shared |
 | `MiscTest` | search query, Markdown, JSON/HTML export, analytics buckets |
@@ -64,9 +64,9 @@ JUnit 4. Robolectric config in `app/src/test/resources/robolectric.properties` (
   (`allowMainThreadQueries`) and a real `LibraryRepository` wired with the fakes. Use `Fixture` for any repository/ViewModel test; call `close()`.
 - `data/LibraryRepositoryTest`: seeding, saves, duplicates, search, done/undo counters, trash/restore/purge, intent corrections, details merging,
   intent deletion, collections, bring-back/surfacing, export/delete-all, edit-details and link-change behaviour.
-- `data/DetailsFetcherTest`: `MockWebServer` (no real network). Page parsing, retry vs give-up, Meta never requested, bot-check pages, Reddit oEmbed + page,
+- `data/DetailsFetcherTest`: `MockWebServer` (no real network). Page parsing and site names, retry vs give-up, Instagram/Facebook fetched like any site, bot-check pages, advertised oEmbed + page,
   User-Agent behaviour.
-- `data/MigrationTest`: builds a v1 database from `app/schemas/.../1.json` (schemas are added as test assets via `sourceSets.test.assets`) and opens it with the migrations.
+- `data/MigrationTest`: builds v1, v2 and v3 databases from `app/schemas/.../{1,2,3}.json` (schemas are added as test assets via `sourceSets.test.assets`) and opens them with the migrations.
 - `ui/CaptureViewModelTest`, `ui/ItemActionsShareTest`, `TabNavigationTest` (uses `navigation-testing`), `MotionTest`.
 
 Test conventions: backticked sentence names; one behaviour per test; no network; inject the clock.
@@ -124,12 +124,11 @@ Add a subclass of `AnalyticsEvent` in `domain/…/analytics/Analytics.kt` with t
 through the injected `AnalyticsSink`; test it. Never add a field that can hold a URL, title, note, reason, creator or collection name.
 
 ### Support a new platform (e.g. TikTok)
-**An ordinary site needs nothing**: it becomes its own platform (named by its domain) the first time a link from it is saved, and appears in the Filter
-sheet while it has saves. To give a service a proper name or behaviour, add one `PlatformSpec` to `PlatformRegistry.specs` (`platform/PlatformRegistry.kt`):
-a brand name is `brand(id, label, hosts…)`; a service with kinds/handles also sets `read`; oEmbed sets `contact = Contact.OEmbed("…{url}", alsoPage)`;
-a service that must never be contacted sets `Contact.Never` (plus `extraNeverContactHosts` for its CDNs) — `DetailsPlanner`, `Favicons`, refresh and
-scheduling follow automatically. Add a `DefaultTitles` branch only if it needs a bespoke title, and a case in `LinksTest` (+ `PlatformTest`). Existing saves
-keep their stored platform until a migration reclassifies them (see `MIGRATION_2_3`); never rename an id.
+**Nothing to do.** A platform is the site's own name, read from its page, so a new site works the first time a link from it is saved: it shows as its host
+(`tiktok.com`) until the page is read, then as the name it gives itself (`og:site_name`), and appears in the Filter sheet while it has saves. There is
+deliberately no registry to add it to. If a site shows the wrong name, the fix is in how pages are read (`DetailsParser.parsePage`, `Platform.cleanSiteName`),
+tested with that site's markup in `DetailsTest`, never a host or brand entry. A change to how names are read that should reach existing saves needs a
+migration shaped like `MIGRATION_3_4` (mark links as not fetched so they are read again).
 
 ### Add a default intent
 `Intents.defaults` + `Intents.defaultRules` + a keyword rule in `IntentGuesser` if useful. Existing installs only seed defaults when **no intents exist**, so

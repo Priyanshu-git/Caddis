@@ -51,7 +51,7 @@ fun Item.withEdits(e: DetailEdits, now: Instant): Item {
 fun Item.withLink(link: LinkCheck.Valid, now: Instant): Item {
     if (isNote || link.url == url) return this
     val d = PlatformDetector.detect(link.url)
-    if (link.normalized == normalizedUrl && d.platform == platform) {
+    if (link.normalized == normalizedUrl) {
         return copy(url = link.url, updatedAt = now, revision = revision + 1)
     }
     fun <T> keep(field: EditableField, current: T, fresh: T): T = if (field in userEdited) current else fresh
@@ -72,5 +72,5 @@ fun Item.withLink(link: LinkCheck.Valid, now: Instant): Item {
     )
 }
 
-/** Whether a link change means fetching details again (never for Instagram or Facebook). */
-fun Item.needsDetails(): Boolean = !isNote && url != null && !platform.neverContact && detailsFetchedAt == null
+/** Whether this save still needs its page read. */
+fun Item.needsDetails(): Boolean = !isNote && url != null && detailsFetchedAt == null

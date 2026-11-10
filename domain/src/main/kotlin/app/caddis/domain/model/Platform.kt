@@ -1,73 +1,62 @@
 package app.caddis.domain.model
 
-import app.caddis.domain.platform.Contact
-import app.caddis.domain.platform.PlatformRegistry
-import app.caddis.domain.platform.PlatformSpec
+import java.net.URI
 
 /**
- * Where a save came from. Not a closed list: a platform exists because a saved link has it. Recognised
- * services (see [PlatformRegistry]) get a proper name and behaviour; every other site is its own
- * platform named after its domain, e.g. `nytimes.com`.
+ * Where a save came from: the site, named the way the site names itself. There is no list of
+ * services anywhere. Until a page has been read, a link's platform is its host (`chatgpt.com`);
+ * once the page says what it calls itself (`og:site_name`: `ChatGPT`), that name replaces it.
  *
- * Only [id] is stored and compared. [fromId] rebuilds everything else, so ids must never be renamed
- * without a migration.
+ * Stored as [label]. Two platforms are the same when their labels match ignoring case.
  */
-class Platform internal constructor(
-    /** Stable, lower-case: `instagram`, `google-drive`, `nytimes.com`, `note`. */
-    val id: String,
-    /** What a person sees: "Instagram", "Google Drive", or the domain for an unrecognised site. */
-    val label: String,
-    internal val spec: PlatformSpec?,
-) {
-    /** MET-01: the app never calls Meta for these (no details fetch, no site icon). */
-    val neverContact: Boolean get() = spec?.contact is Contact.Never
+class Platform private constructor(val label: String) {
+    /** Lower-case key for comparing, grouping and learning. */
+    val id: String = label.lowercase()
 
     val isNote: Boolean get() = id == NOTE_ID
 
-    /** True for a service the registry names; false for an ordinary site known only by its domain. */
-    val isKnownService: Boolean get() = spec != null
-
-    /** True when the registry also reads the kind and handle from the link (not just a nicer name). */
-    val readsLinks: Boolean get() = spec?.isRich == true
-
-    /**
-     * What analytics may say about this platform. Unrecognised domains are never reported, because a
-     * domain a person browses is theirs (tech arch 1.3).
-     */
-    val analyticsId: String get() = if (isNote || spec != null) id else OTHER
-
-    /** Key for learning from intent corrections: recognised ids, or one shared bucket for the open web. */
-    val learningKey: String get() = if (isNote || spec != null) id else WEB_KEY
-
     override fun equals(other: Any?): Boolean = other is Platform && other.id == id
     override fun hashCode(): Int = id.hashCode()
-    override fun toString(): String = "Platform($id)"
+    override fun toString(): String = "Platform($label)"
 
     companion object {
         const val NOTE_ID = "note"
-        private const val OTHER = "other"
-        private const val WEB_KEY = "web"
+        private const val UNKNOWN = "web"
+        private const val MAX_SITE_NAME = 40
+        private val hostPrefixes = listOf("www.", "m.", "mobile.", "amp.")
 
-        val NOTE: Platform = Platform(NOTE_ID, "Note", null)
+        val NOTE: Platform = Platform("Note")
 
-        val INSTAGRAM: Platform get() = fromId("instagram")
-        val FACEBOOK: Platform get() = fromId("facebook")
-        val REDDIT: Platform get() = fromId("reddit")
-        val YOUTUBE: Platform get() = fromId("youtube")
-        val MEDIUM: Platform get() = fromId("medium")
-        val X: Platform get() = fromId("x")
+        /** A link before its page is read: the host, without `www.`/`m.`/`mobile.`/`amp.`. A link with no host is `web`. */
+        fun fromUrl(url: String): Platform = Platform(hostOf(url).ifBlank { UNKNOWN })
 
-        fun of(spec: PlatformSpec): Platform = Platform(spec.id, spec.label, spec)
+        /** A platform whose name came from a page; [siteName] is already checked by [cleanSiteName]. */
+        fun named(siteName: String): Platform = Platform(siteName)
 
-        /** A site the registry does not know, named by its domain. */
-        fun site(domain: String): Platform = Platform(domain, domain, null)
+        /** Rebuilds a stored platform. Anything that was stored loads; nothing is validated again. */
+        fun fromStored(text: String): Platform = when {
+            text.equals(NOTE_ID, ignoreCase = true) -> NOTE
+            text.isBlank() -> Platform(UNKNOWN)
+            else -> Platform(text)
+        }
 
-        /** Rebuilds a stored platform. Unknown ids are ordinary sites; they never fail to load. */
-        fun fromId(id: String): Platform {
-            if (id == NOTE_ID) return NOTE
-            PlatformRegistry.byId(id)?.let { return of(it) }
-            val label = if (id.contains('.')) id else id.replaceFirstChar { it.uppercase() }
-            return Platform(id, label, null)
+        /**
+         * A name a page gave for its site, or null if it is not usable: blank, a web address, or too long
+         * to be a name (a sentence of marketing copy).
+         */
+        fun cleanSiteName(raw: String?): String? {
+            val s = raw?.replace(Regex("\\s+"), " ")?.trim().orEmpty()
+            if (s.isEmpty() || s.length > MAX_SITE_NAME) return null
+            if (s.contains("://") || s.contains('/') || s.none { it.isLetterOrDigit() }) return null
+            return s
+        }
+
+        private fun hostOf(url: String): String {
+            var host = runCatching { URI(url).host }.getOrNull()?.lowercase().orEmpty()
+            for (p in hostPrefixes) {
+                if (host.startsWith(p) && host.removePrefix(p).contains('.')) host = host.removePrefix(p)
+            }
+            return host
         }
     }
 }

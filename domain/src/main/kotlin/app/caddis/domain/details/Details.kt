@@ -1,9 +1,9 @@
 package app.caddis.domain.details
 
+import app.caddis.domain.model.ContentKind
 import app.caddis.domain.model.EditableField
 import app.caddis.domain.model.Item
 import app.caddis.domain.model.Platform
-import app.caddis.domain.platform.Contact
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
@@ -22,60 +22,65 @@ data class LinkDetails(
     val lengthSeconds: Int? = null,
     /** Not counted by [isEmpty]: an icon alone says nothing about the link. */
     val faviconUrl: String? = null,
+    /** What the site calls itself (`og:site_name`), already checked by [Platform.cleanSiteName]. It becomes the save's platform. */
+    val siteName: String? = null,
+    /** What the page says it is (`og:type`, a PDF response). Only ever refines a plain webpage. */
+    val kind: ContentKind? = null,
+    /** The oEmbed endpoint the page advertises, if any (https only). Used to fetch more, never stored. */
+    val oEmbedUrl: String? = null,
 ) {
-    val isEmpty: Boolean get() = listOf(title, description, creator, thumbnailUrl).all { it.isNullOrBlank() } && lengthSeconds == null
-}
-
-/** Where to fetch details from. Instagram and Facebook are never fetched (tech arch 1.2). */
-sealed interface FetchPlan {
-    data object Skip : FetchPlan
-    /** A public oEmbed JSON endpoint, then optionally the page itself for length. */
-    data class OEmbed(val endpoint: String, val alsoPage: Boolean) : FetchPlan
-    data object Page : FetchPlan
-}
-
-object DetailsPlanner {
-    fun plan(platform: Platform, url: String): FetchPlan {
-        if (platform.isNote) return FetchPlan.Skip
-        return when (val contact = platform.spec?.contact) {
-            Contact.Never -> FetchPlan.Skip
-            is Contact.OEmbed -> FetchPlan.OEmbed(
-                contact.endpoint.replace("{url}", java.net.URLEncoder.encode(url, "UTF-8")),
-                contact.alsoPage,
-            )
-            Contact.Page, null -> FetchPlan.Page
-        }
-    }
+    val isEmpty: Boolean
+        get() = listOf(title, description, creator, thumbnailUrl, siteName).all { it.isNullOrBlank() } &&
+            lengthSeconds == null && kind == null
 }
 
 object DetailsParser {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
     private const val WORDS_PER_MINUTE = 230
 
-    /** Parse an HTML page's Open Graph / Twitter / structured data. */
-    fun parsePage(html: String, baseUrl: String, platform: Platform): LinkDetails {
+    /** Parse an HTML page's Open Graph / Twitter / structured data. Nothing here depends on which site it is. */
+    fun parsePage(html: String, baseUrl: String): LinkDetails {
         val doc = Jsoup.parse(html, baseUrl)
+        val siteName = Platform.cleanSiteName(meta(doc, "og:site_name") ?: meta(doc, "application-name"))
         val title = meta(doc, "og:title") ?: meta(doc, "twitter:title") ?: doc.title().takeIf { it.isNotBlank() }
         // A challenge page or a site-wide title says nothing about this link: no details beats wrong ones.
-        if (isGenericTitle(title, platform)) return LinkDetails()
+        // A page that only says its own name (a login wall) still tells us what the site is called.
+        if (isGenericTitle(title, siteName)) {
+            val bareName = siteName != null && title?.let(::clean)?.equals(siteName, ignoreCase = true) == true
+            return LinkDetails(siteName = siteName.takeIf { bareName })
+        }
         val description = meta(doc, "og:description") ?: meta(doc, "twitter:description") ?: meta(doc, "description")
         val image = meta(doc, "og:image:secure_url") ?: meta(doc, "og:image") ?: meta(doc, "twitter:image")
         val creator = meta(doc, "author") ?: meta(doc, "article:author")?.takeUnless { it.startsWith("http") }
             ?: doc.selectFirst("link[itemprop=name]")?.attr("content")?.takeIf { it.isNotBlank() }
-            ?: meta(doc, "twitter:creator") ?: meta(doc, "og:site_name")
-        val length = when (platform) {
-            Platform.YOUTUBE -> youtubeLength(doc, html)
-            else -> readingTime(doc)
-        }
+            ?: meta(doc, "twitter:creator")
         return LinkDetails(
             title = title?.let(::clean),
             description = description?.let(::clean),
             creator = creator?.let(::clean),
             thumbnailUrl = image?.let { doc.selectFirst("meta[property=og:image]")?.absUrl("content")?.ifBlank { null } ?: it },
-            lengthSeconds = length,
+            lengthSeconds = videoLength(doc) ?: readingTime(doc),
             faviconUrl = favicon(doc),
+            siteName = siteName,
+            kind = kindOf(doc),
+            oEmbedUrl = oEmbedLink(doc),
         )
     }
+
+    /** What the page says it is. Null when it says nothing useful, so the link keeps its plain-webpage kind. */
+    private fun kindOf(doc: Document): ContentKind? {
+        val type = meta(doc, "og:type")?.lowercase().orEmpty()
+        return when {
+            type.startsWith("video") || meta(doc, "twitter:card") == "player" -> ContentKind.VIDEO
+            type == "article" -> ContentKind.ARTICLE
+            type == "profile" -> ContentKind.PROFILE
+            else -> null
+        }
+    }
+
+    /** The oEmbed JSON endpoint a page advertises in its head. Only https is followed. */
+    private fun oEmbedLink(doc: Document): String? =
+        doc.selectFirst("link[rel=alternate][type\$=json+oembed][href]")?.absUrl("href")?.takeIf { it.startsWith("https://") }
 
     /**
      * The page's declared icon. The touch icon is larger, so it reads better as a thumbnail. SVG is
@@ -91,29 +96,22 @@ object DetailsParser {
         return find { "apple-touch-icon" in it || "apple-touch-icon-precomposed" in it } ?: find { "icon" in it }
     }
 
-    /** Parse a public oEmbed response (YouTube, X). */
-    fun parseOEmbed(body: String, platform: Platform): LinkDetails {
+    /** Parse a public oEmbed response, whichever site it came from. */
+    fun parseOEmbed(body: String): LinkDetails {
         val obj = runCatching { json.parseToJsonElement(body) as? JsonObject }.getOrNull() ?: return LinkDetails()
         fun s(k: String) = obj[k]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
-        return when (platform) {
-            Platform.X -> {
-                val text = s("html")?.let { Jsoup.parse(it).selectFirst("p")?.text() }
-                val author = s("author_name")
-                LinkDetails(
-                    title = text?.let { if (it.length > 90) it.take(89).trimEnd() + "…" else it }
-                        ?: author?.let { "Post by $it" },
-                    description = text,
-                    creator = s("author_url")?.substringAfterLast('/')?.let { "@$it" } ?: author,
-                    lengthSeconds = text?.let { readingSecondsForWords(it.split(Regex("\\s+")).size) },
-                )
-            }
-            else -> LinkDetails(
-                title = s("title"),
-                creator = s("author_name"),
-                thumbnailUrl = s("thumbnail_url"),
-                lengthSeconds = obj["duration"]?.jsonPrimitive?.intOrNull,
-            )
-        }
+        // Text posts have no title, only an HTML snippet: use its first paragraph.
+        val text = if (s("title") == null) s("html")?.let { Jsoup.parse(it).selectFirst("p")?.text() }?.takeIf { it.isNotBlank() } else null
+        val author = s("author_name")
+        return LinkDetails(
+            title = s("title") ?: text?.let { if (it.length > 90) it.take(89).trimEnd() + "…" else it } ?: author?.let { "Post by $it" },
+            description = text,
+            creator = author,
+            thumbnailUrl = s("thumbnail_url"),
+            lengthSeconds = obj["duration"]?.jsonPrimitive?.intOrNull
+                ?: text?.let { readingSecondsForWords(it.split(Regex("\\s+")).size) },
+            siteName = Platform.cleanSiteName(s("provider_name")),
+        )
     }
 
     /** ISO-8601 duration such as PT1H2M3S → seconds. */
@@ -124,9 +122,10 @@ object DetailsParser {
         return total.takeIf { it > 0 }
     }
 
-    private fun youtubeLength(doc: Document, html: String): Int? {
+    /** A video's length as the page declares it: schema.org `duration` (ISO-8601) or Open Graph seconds. */
+    private fun videoLength(doc: Document): Int? {
         doc.selectFirst("meta[itemprop=duration]")?.attr("content")?.let(::isoDurationSeconds)?.let { return it }
-        return Regex("\"lengthSeconds\"\\s*:\\s*\"(\\d+)\"").find(html)?.groupValues?.get(1)?.toIntOrNull()
+        return (meta(doc, "og:video:duration") ?: meta(doc, "video:duration"))?.toIntOrNull()?.takeIf { it > 0 }
     }
 
     private fun readingTime(doc: Document): Int? {
@@ -158,13 +157,11 @@ object DetailsParser {
         "page not found", "not found", "too many requests", "please wait",
     )
 
-    private val siteWide = Regex("^(reddit|medium)\\s*[-–—|:]\\s*(dive into anything|the heart of the internet|where good ideas find you).*", RegexOption.IGNORE_CASE)
-
-    private fun isGenericTitle(title: String?, platform: Platform): Boolean {
+    private fun isGenericTitle(title: String?, siteName: String?): Boolean {
         val t = title?.let(::clean)?.lowercase()?.takeIf { it.isNotEmpty() } ?: return false
-        if (t in interstitialExact || interstitialPrefix.containsMatchIn(t) || siteWide.matches(t)) return true
+        if (t in interstitialExact || interstitialPrefix.containsMatchIn(t)) return true
         // The bare site name (what a login wall or blocked page serves) is not a title for a post on that site.
-        return !platform.isNote && t == platform.label.lowercase()
+        return siteName != null && t == siteName.lowercase()
     }
 }
 
@@ -176,6 +173,10 @@ fun Item.mergeDetails(d: LinkDetails, now: Instant): Item {
     fun pick(field: EditableField, current: String, fetched: String?): String =
         if (field in userEdited || fetched.isNullOrBlank()) current else fetched
     return copy(
+        // The site names itself; a person cannot edit the platform, so the page's name always wins.
+        platform = if (isNote || d.siteName == null) platform else Platform.named(d.siteName),
+        // A page only ever refines a plain webpage (video, article, PDF); a kind we already have is kept.
+        kind = if (kind == ContentKind.WEBPAGE && d.kind != null) d.kind else kind,
         title = pick(EditableField.TITLE, title, d.title),
         description = pick(EditableField.DESCRIPTION, description, d.description),
         creator = pick(EditableField.CREATOR, creator, d.creator),

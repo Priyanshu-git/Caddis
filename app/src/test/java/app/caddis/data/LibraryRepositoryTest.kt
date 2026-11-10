@@ -52,8 +52,9 @@ class LibraryRepositoryTest {
     @Test
     fun `a share is saved instantly with a guess, then details are scheduled`() = runBlocking {
         val item = save("https://www.youtube.com/watch?v=Lm0&si=x", entry = SaveEntry.SHARE_SHEET)
-        assertEquals(Platform.YOUTUBE, item.platform)
-        assertEquals(Intents.WATCH, item.intentId)
+        // Nothing is known about the site until its page is read: the host is the platform.
+        assertEquals("youtube.com", item.platform.label)
+        assertEquals(Intents.READ, item.intentId)
         assertEquals(listOf(item.id), f.scheduler.scheduled)
         assertEquals(1, week().savedCount)
         val ev = f.analytics.events.single() as AnalyticsEvent.SaveCreated
@@ -61,10 +62,10 @@ class LibraryRepositoryTest {
     }
 
     @Test
-    fun `meta links are never sent for details and keep the handle from the url`() = runBlocking {
+    fun `every link is sent for details, and starts with the site address as its creator`() = runBlocking {
         val item = save("https://www.instagram.com/oven.notes/reel/Cx9/")
-        assertTrue(f.scheduler.scheduled.isEmpty())
-        assertEquals("@oven.notes", item.creator)
+        assertEquals(listOf(item.id), f.scheduler.scheduled)
+        assertEquals("instagram.com", item.creator)
     }
 
     @Test
@@ -234,9 +235,9 @@ class LibraryRepositoryTest {
         val r = repo.saveDetails(item.id, "youtu.be/abc", edits(now.title, now.description, now.creator))
         assertEquals(LibraryRepository.DetailsResult.Saved(refetching = true), r)
         val moved = repo.get(item.id)!!
-        assertEquals(Platform.YOUTUBE, moved.platform)
-        assertEquals("youtube.com/watch?v=abc", moved.normalizedUrl)
-        assertEquals(Intents.WATCH, moved.intentId)
+        assertEquals(Platform.named("youtu.be"), moved.platform)
+        assertEquals("youtu.be/abc", moved.normalizedUrl)
+        assertEquals(Intents.READ, moved.intentId)
         assertEquals("", moved.title)
         assertNull(moved.detailsFetchedAt)
         assertEquals(listOf(item.id), f.scheduler.scheduled)
@@ -268,37 +269,64 @@ class LibraryRepositoryTest {
     }
 
     @Test
-    fun `a link changed to instagram is not fetched`() = runBlocking {
+    fun `a link changed to instagram is fetched like any other`() = runBlocking {
         val item = save("https://example.com/a")
         f.scheduler.scheduled.clear()
         val r = repo.saveDetails(item.id, "https://instagram.com/oven.notes/reel/xyz", edits(creator = "example.com"))
-        assertEquals(LibraryRepository.DetailsResult.Saved(refetching = false), r)
-        assertEquals(Platform.INSTAGRAM, repo.get(item.id)!!.platform)
-        assertTrue(f.scheduler.scheduled.isEmpty())
+        assertEquals(LibraryRepository.DetailsResult.Saved(refetching = true), r)
+        assertEquals(Platform.named("instagram.com"), repo.get(item.id)!!.platform)
+        assertEquals(listOf(item.id), f.scheduler.scheduled)
+    }
+
+    @Test
+    fun `the page names the platform and a video page changes the guess`() = runBlocking {
+        val item = save("https://chatgpt.com/share/6af24282-1abc-83ec-9b32-ee08b94575da")
+        assertEquals("chatgpt.com", item.platform.label)
+        repo.applyDetails(item.id, LinkDetails(title = "Pasta plan", siteName = "ChatGPT"), forUrl = item.url)
+        val named = repo.get(item.id)!!
+        assertEquals("ChatGPT", named.platform.label)
+        assertEquals("Pasta plan", named.title)
+        assertEquals("ChatGPT", repo.observeItem(item.id).first()!!.platform.label) // stored and read back from the database
+
+        val video = save("https://www.youtube.com/watch?v=Lm0")
+        assertEquals(Intents.READ, video.intentId)
+        repo.applyDetails(video.id, LinkDetails(title = "Lemon orzo", siteName = "YouTube", kind = ContentKind.VIDEO))
+        val watched = repo.get(video.id)!!
+        assertEquals("YouTube", watched.platform.label)
+        assertEquals(ContentKind.VIDEO, watched.kind)
+        assertEquals(Intents.COOK, watched.intentId) // "orzo" is a cooking word, which beats the default
+    }
+
+    @Test
+    fun `an intent the person chose is not re-guessed when the page arrives`() = runBlocking {
+        val item = save("https://www.youtube.com/watch?v=Lm0")
+        repo.setIntent(item.id, Intents.TRY)
+        repo.applyDetails(item.id, LinkDetails(title = "A video", siteName = "YouTube", kind = ContentKind.VIDEO))
+        assertEquals(Intents.TRY, repo.get(item.id)!!.intentId)
+        assertEquals("YouTube", repo.get(item.id)!!.platform.label)
     }
 
     @Test
     fun `any site is its own platform and survives a round trip through the database`() = runBlocking {
         val drive = save("https://drive.google.com/file/d/1AbC/view")
         val site = save("https://www.nytimes.com/2025/01/01/world/story.html")
-        val storedDrive = repo.get(drive.id)!!
-        assertEquals("google-drive", storedDrive.platform.id)
+        repo.applyDetails(drive.id, LinkDetails(siteName = "Google Drive", title = "Plan.pdf"))
+        val storedDrive = repo.observeItem(drive.id).first()!!
         assertEquals("Google Drive", storedDrive.platform.label)
-        assertEquals(ContentKind.FILE, storedDrive.kind)
         val storedSite = repo.get(site.id)!!
-        assertEquals("nytimes.com", storedSite.platform.id)
+        assertEquals("nytimes.com", storedSite.platform.label)
         assertEquals("nytimes.com", storedSite.creator)
         assertEquals(listOf("SaveCreated"), f.analytics.events.take(1).map { it::class.simpleName })
-        assertEquals("other", (f.analytics.events.last() as AnalyticsEvent.SaveCreated).params()["platform"])
+        assertEquals("link", (f.analytics.events.last() as AnalyticsEvent.SaveCreated).params()["platform"])
     }
 
     @Test
-    fun `missing details are only scheduled for platforms that may be contacted`() = runBlocking {
-        save("https://www.instagram.com/oven.notes/reel/Cx9/")
-        save("https://www.threads.net/@someone")
+    fun `missing details are scheduled for every link, whatever the site`() = runBlocking {
+        val ig = save("https://www.instagram.com/oven.notes/reel/Cx9/")
+        val threads = save("https://www.threads.net/@someone")
         val site = save("https://example.com/a")
         f.scheduler.scheduled.clear()
         repo.scheduleMissingDetails()
-        assertEquals(listOf(site.id), f.scheduler.scheduled)
+        assertEquals(setOf(ig.id, threads.id, site.id), f.scheduler.scheduled.toSet())
     }
 }

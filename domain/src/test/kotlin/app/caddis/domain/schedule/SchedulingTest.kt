@@ -38,7 +38,7 @@ private fun item(
     type: ItemType = ItemType.LINK,
     lastOpened: Instant? = null,
 ) = Item(
-    id = id, type = type, url = "https://e.com/$id", normalizedUrl = "e.com/$id", platform = Platform.site("example.com"),
+    id = id, type = type, url = "https://e.com/$id", normalizedUrl = "e.com/$id", platform = Platform.named("example.com"),
     kind = ContentKind.WEBPAGE, intentId = intent, status = status,
     createdAt = now.toInstant().minus(Duration.ofDays(daysOld)), returnAt = returnAt,
     returnRule = if (returnAt != null) ReturnRule.DATE else ReturnRule.DEFAULT,

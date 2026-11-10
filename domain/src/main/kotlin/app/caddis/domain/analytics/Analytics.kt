@@ -17,7 +17,7 @@ sealed class AnalyticsEvent(val name: String) {
     enum class DeleteSource { ITEM_PAGE, TIDY_UP }
 
     data class SaveCreated(val platform: Platform, val entry: SaveEntry, val intentGuessed: Boolean) : AnalyticsEvent("save_created") {
-        override fun params() = mapOf("platform" to platform.analyticsId, "entry" to entry.name.lowercase(), "intent_guessed" to yes(intentGuessed))
+        override fun params() = mapOf("platform" to kindOf(platform), "entry" to entry.name.lowercase(), "intent_guessed" to yes(intentGuessed))
     }
 
     data class IntentChanged(val fromIntent: String, val toIntent: String) : AnalyticsEvent("intent_changed") {
@@ -25,7 +25,7 @@ sealed class AnalyticsEvent(val name: String) {
     }
 
     data class ItemOpened(val platform: Platform, val entry: OpenEntry) : AnalyticsEvent("item_opened") {
-        override fun params() = mapOf("platform" to platform.analyticsId, "entry" to entry.name.lowercase())
+        override fun params() = mapOf("platform" to kindOf(platform), "entry" to entry.name.lowercase())
     }
 
     data class ItemDone(val intent: String, val ageBucket: String) : AnalyticsEvent("item_done") {
@@ -57,6 +57,9 @@ sealed class AnalyticsEvent(val name: String) {
     }
 
     protected fun yes(b: Boolean) = if (b) "yes" else "no"
+
+    /** A site name is what a person browses, so analytics only ever learn "link" or "note". */
+    protected fun kindOf(platform: Platform) = if (platform.isNote) "note" else "link"
 }
 
 /** Port: the client-only build logs locally; Firebase Analytics plugs in here later. */

@@ -42,11 +42,11 @@ SettingsRepository (DataStore) ◄── ViewModels, workers
 | --- | --- |
 | `model` | `Item`, `Intent`, `IntentRule`, `Collection`, `WeeklySummary`, `Platform` (value type, see `platform`), enums (`ContentKind`, `ItemType`, `ItemStatus`, `IntentSource`, `ReturnRule`, `TimeOfDay`, `EditableField`); `Intents` (defaults, default rules, `ruleForNewIntent`, `analyticsId`); `IntentRule?.label()` |
 | `link` | `Links` (check, normalize, extractFirst, couldBeNote, noteTitleFrom, host), `LinkCheck`, `PlatformDetector`/`Detection`, `DefaultTitles` |
-| `platform` | `PlatformRegistry`/`PlatformSpec`/`Contact`/`UrlParts`/`Reading` (recognised services), `Sites.registrableDomain`, `PlatformFacets`/`PlatformFacet` (dynamic filter list) |
+| `platform` | `PlatformFacets`/`PlatformFacet` (dynamic filter list). There is no registry of sites. |
 | `intent` | `IntentGuesser`, `GuessInput`, `CorrectionStats` |
 | `schedule` | `ReturnScheduler`, `HomePicker`/`Pick`, `TidyUp`, `Trash`, `Weeks`, `doneLabel()` (Scheduling.kt); `Reminders`, `ReminderState`, `ReminderDecision`, `QuietHours` (Reminders.kt) |
 | `search` | `SearchQuery` (FTS match string, "matched in…" text), `resultBucket()` |
-| `details` | `LinkDetails`, `FetchPlan`, `DetailsPlanner`, `DetailsParser`, `Item.mergeDetails`, `formatLength` (Details.kt); `DetailEdits`, `EditLimits`, `Item.withEdits`, `Item.withLink`, `Item.needsDetails` (Edits.kt); `Favicons` |
+| `details` | `LinkDetails`, `DetailsParser`, `Item.mergeDetails`, `formatLength` (Details.kt); `DetailEdits`, `EditLimits`, `Item.withEdits`, `Item.withLink`, `Item.needsDetails` (Edits.kt); `Favicons` |
 | `notes` | `Markdown.toPlainText`, `Markdown.preview` |
 | `share` | `ShareText` |
 | `export` | `Exporter` (JSON + Netscape HTML bookmarks) |
@@ -111,7 +111,7 @@ counters, done/delete + counters, intent deletion + reassignment, delete-all).
 1. `CaddisApp.onCreate`: `notifier.createChannels()`, `work.scheduleReminders()` (unique periodic
    hourly work, `KEEP`), then on the app scope: `repo.seedDefaultsIfNeeded()` (only if there are no
    intents), `repo.purgeExpiredTrash()`, `repo.scheduleMissingDetails()` (retry links that never
-   got details; skips Instagram/Facebook).
+   got details).
 2. WorkManager auto-init is **disabled** in the manifest (`androidx.work.WorkManagerInitializer`
    removed); `CaddisApp` implements `Configuration.Provider` with `HiltWorkerFactory`.
 3. `MainActivity.onCreate`: `installSplashScreen()`, `enableEdgeToEdge()`, keeps the splash until

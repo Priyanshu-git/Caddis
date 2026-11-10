@@ -44,7 +44,8 @@ On Windows use `gradlew.bat` or `./gradlew` from Git Bash. JDK 17+ is required (
   your words win (never overwrite user-edited fields); never lose a save; calm, no streaks;
   private by default.
 - **No language models or AI anywhere.** Intent guesses are rules; search is keyword FTS.
-- **Never call Meta.** Instagram and Facebook links are saved with platform + handle from the URL only.
+- **No per-site tables.** Platform names, kinds and details come from the page itself (`og:site_name`, `og:type`, advertised oEmbed), never from a
+  list of hosts or services. Every site, Instagram and Facebook included, is treated alike.
 - Never download or rehost original media. Thumbnails are cached by Coil with a 200 MB cap.
 - Analytics events must be one of `AnalyticsEvent` in `:domain` and never carry URLs, titles,
   notes, reasons, creators or collection names.

@@ -28,8 +28,7 @@ unless asked.
 - Your words win: automation never overwrites a field the person edited (`userEdited`).
 - Never lose a save: the Room write happens before anything else (details, sheet, network).
 - Calm: no streaks, no guilt, no catch-up notification bursts, counts only.
-- Private by default: no AI, no ads, no remote analytics, nothing about Instagram/Facebook is ever
-  fetched from Meta, shares never include the person's own reason/note/intent/collections.
+- Private by default: no AI, no ads, no remote analytics, analytics never carry a site, URL or title, shares never include the person's own reason/note/intent/collections.
 
 ## Vocabulary
 
@@ -37,8 +36,8 @@ unless asked.
 | --- | --- | --- |
 | **Item** | One save. `type` is `LINK` or `NOTE`. Everything (library, Home, Trash) is a filtered view of items. | `domain/…/model/Models.kt` |
 | **Link / Note** | A link has `url`; a note has `url = null`, `platform = NOTE`, `kind = NOTE`, and Markdown in `note`. A link may also carry a note (one per item). | `Models.kt` |
-| **Platform** | Where a link is from, read from the URL; **not a fixed list**. Recognised services (Instagram, YouTube, Google Drive, GitHub…) get a name and behaviour from a registry; every other site is its own platform named by its domain; `note` for notes. `neverContact` is true for Meta (Instagram, Facebook, Threads). The Filter sheet lists only platforms the library has. | `model/Platform.kt`, `platform/PlatformRegistry.kt`, `link/Links.kt` |
-| **ContentKind** | `REEL, VIDEO, SHORT, POST, CHANNEL, PROFILE, SUBREDDIT, ARTICLE, WEBPAGE, PDF, FILE, FOLDER, DOCUMENT, NOTE`; `isVideo` for REEL/VIDEO/SHORT. | `Models.kt` |
+| **Platform** | The site a link is from, **named by the site itself**: the host until the page is read, then its `og:site_name` (`chatgpt.com` → `ChatGPT`). No list of services anywhere; `note` for notes. The Filter sheet lists only platforms the library has. | `model/Platform.kt`, `details/Details.kt` |
+| **ContentKind** | `REEL, VIDEO, SHORT, POST, CHANNEL, PROFILE, SUBREDDIT, ARTICLE, WEBPAGE, PDF, FILE, FOLDER, DOCUMENT, NOTE`; `isVideo` for REEL/VIDEO/SHORT. A page only makes a link VIDEO, ARTICLE, PROFILE or PDF. | `Models.kt` |
 | **Intent** | Why you kept it. Eight defaults (ids `cook, watch, read, learn, try, buy, go, keep`) plus custom ones (ids `u-xxxxxxxx`). Each has a `doneLabel`. `keep` ("Just keep") is protected and has no return rule. | `model/Intents.kt` |
 | **IntentSource** | `GUESSED` (by rules) or `USER`. Fetched details may still re-guess while `GUESSED`. | `Models.kt` |
 | **IntentRule** | Per intent: days of week, `TimeOfDay`, `maxPerDay` (1..3). Decides when saves of that intent return. | `Models.kt` |
@@ -77,8 +76,7 @@ unless asked.
   app name from the share referrer.
 - **Intents**: eight defaults, create/rename/delete custom intents, custom Done label, per-intent
   return rules editor, rule-based guessing with local learning from corrections.
-- **Details**: background fetch of title/description/creator/thumbnail/length/site icon via public
-  oEmbed (YouTube, X, Reddit) or Open Graph tags (Medium, web); readable fallback titles; Edit
+- **Details**: background fetch of title/description/creator/thumbnail/length/site icon from the page's Open Graph tags and the oEmbed endpoint it advertises, for every site alike; readable fallback titles; Edit
   details sheet (link, title, by, description); Refresh button.
 - **Home**: ≤3 picks, "Bring it back" later options (tonight / weekend / next week / date),
   Done and Open, This week card, "Time for a tidy-up" card, "Next up" hint when nothing fits.

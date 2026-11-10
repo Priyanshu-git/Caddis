@@ -13,9 +13,9 @@ End-to-end traces. File names are under `app/src/main/java/app/caddis/` unless p
    - **Link** → title hint = `subject` or the shared text with the link removed (≤ 200 chars) → `save(...)`.
    - **No link** → saved as a **note** (`repo.saveNote`, title = subject or first line ≤ 80 chars, body = text).
 4. `repo.saveLink`: duplicate check → insert row + week `saved + 1` (one transaction) → log → schedule details
-   (not for Instagram/Facebook). **This is before any UI is drawn**, so the save survives the sheet being swiped away.
+   **This is before any UI is drawn**, so the save survives the sheet being swiped away.
 5. The sheet state becomes `CaptureSheet.Saved(itemId, entry, sharedFrom)` (or `Duplicate`). `SaveSheet` observes the row
-   (`savedItem`) so it fills in as details arrive (skeleton lines while `detailsFetchedAt == null`, no title, non-Meta).
+   (`savedItem`) so it fills in as details arrive (skeleton lines while `detailsFetchedAt == null`, no title).
 6. The sheet asks one question: intent chips (guess shown as "Guessed from a/an <subject>. Tap to change."), an optional
    reason (≤ 140, saved debounced 400 ms and flushed on close), optional "Edit title" and "Who sent it", and collection
    picker. Dismissing keeps the save (`dismiss` only flushes the reason/title/from on the app scope).
@@ -48,11 +48,11 @@ if it holds a valid link it is offered as "From your clipboard → Use". `AddShe
 4. `applyDetails` merges without touching `userEdited` fields or blanking known fields, re-guesses the intent only while
    `intentSource == GUESSED`, and ignores results whose `forUrl` no longer matches (the link was edited meanwhile).
 
-When nothing could be fetched (offline, blocked, bot-check, Meta) the item keeps an empty `title` and the UI shows
+When nothing could be fetched (offline, blocked, bot-check) the item keeps an empty `title` and the UI shows
 `displayTitle` (a readable default from the URL). The real title replaces it as soon as one arrives.
 
 Thumbnails: `Thumb` shows `thumbnailUrl`; if absent or failing, the site icon (`Favicons.forItem`); then a glyph
-(note / play / document). Instagram and Facebook always get the glyph.
+(note / play / document).
 
 ## 4. Edit details (item page pencil)
 
@@ -64,8 +64,7 @@ Thumbnails: `Thumb` shows `thumbnailUrl`; if absent or failing, the site icon (`
   details are fetched again and a toast says "Link changed. Fetching its details."
 - Clearing a field hands it back to Caddis; a changed field becomes the person's own and is never overwritten.
 
-"Refresh" on the item page: `neverContact` (Meta) items get a toast ("Caddis doesn’t fetch <Platform> details. Edit them yourself any
-time."); others schedule a fetch ("Refreshing details. Your edits are kept.").
+"Refresh" on the item page schedules a fetch for any link ("Refreshing details. Your edits are kept.").
 
 ## 5. Home
 

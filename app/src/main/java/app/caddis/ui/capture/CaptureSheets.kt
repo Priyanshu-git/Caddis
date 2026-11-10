@@ -45,6 +45,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.caddis.domain.details.EditLimits
 import app.caddis.domain.model.Collection
+import app.caddis.domain.model.ContentKind
 import app.caddis.domain.model.Intent
 import app.caddis.domain.model.IntentSource
 import app.caddis.domain.model.Item
@@ -160,7 +161,7 @@ private fun SaveSheet(item: Item, sharedFrom: String, intents: List<Intent>, col
     // null until the person taps "Edit title"; the prefill is remembered so an untouched field saves nothing.
     var titleDraft by remember(item.id) { mutableStateOf<String?>(null) }
     var titlePrefill by remember(item.id) { mutableStateOf("") }
-    val loading = !item.isNote && item.detailsFetchedAt == null && item.title.isBlank() && !item.platform.neverContact
+    val loading = !item.isNote && item.detailsFetchedAt == null && item.title.isBlank()
     val close = {
         titleDraft?.let { t -> if (t.trim() != titlePrefill.trim()) vm.setTitle(item.id, t) }
         if (from != item.sourceFrom) vm.setFrom(item.id, from)
@@ -305,8 +306,7 @@ fun Segmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit, lab
 
 /** What the intent guess was based on: "Instagram Reel", "X Post", or just "webpage" for the open web. */
 private fun guessSubject(item: Item): String =
-    if (!item.platform.isKnownService) item.kind.label.let { if (it == "Webpage") "webpage" else it }
-    else "${item.platform.label} ${item.kind.label}"
+    if (item.kind == ContentKind.WEBPAGE) "webpage" else "${item.platform.label} ${item.kind.label}"
 
 /** "an" before a vowel sound: Instagram, Article, and the letter X ("ex"). */
 private fun article(word: String) = if (word.firstOrNull()?.uppercaseChar() in setOf('A', 'E', 'I', 'O', 'U', 'X')) "an" else "a"

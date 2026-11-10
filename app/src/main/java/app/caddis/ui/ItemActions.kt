@@ -11,7 +11,6 @@ import app.caddis.domain.details.formatLength
 import app.caddis.domain.model.Intent as CaddisIntent
 import app.caddis.domain.model.Item
 import app.caddis.domain.model.ItemStatus
-import app.caddis.domain.model.Platform
 import app.caddis.domain.model.ReturnRule
 import app.caddis.domain.schedule.ReturnScheduler
 import app.caddis.domain.schedule.doneLabel
@@ -113,4 +112,3 @@ fun Item.rightTag(intents: List<CaddisIntent>, clock: Clock = Clock.systemDefaul
 
 fun intentName(intents: List<CaddisIntent>, id: String) = intents.firstOrNull { it.id == id }?.name ?: "Just keep"
 
-fun Platform.openLabel() = if (isKnownService) label else "your browser"

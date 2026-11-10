@@ -4,10 +4,10 @@ Room is the single store; DataStore holds settings. Source: `app/src/main/java/a
 
 ## Database
 
-`CaddisDatabase` — name `caddis.db`, **version 3**, `exportSchema = true`, schemas committed in
-`app/schemas/app.caddis.data.db.CaddisDatabase/{1,2,3}.json`. Opened with `addMigrations(*MIGRATIONS)`
+`CaddisDatabase` — name `caddis.db`, **version 4**, `exportSchema = true`, schemas committed in
+`app/schemas/app.caddis.data.db.CaddisDatabase/{1,2,3,4}.json`. Opened with `addMigrations(*MIGRATIONS)`
 (no destructive fallback). Type converters (`Converters.kt`): `Instant` ⇄ epoch-millis `Long`;
-`Set<EditableField>` ⇄ comma-separated names; `Platform` ⇄ its `id` (label and behaviour come back from the registry);
+`Set<EditableField>` ⇄ comma-separated names; `Platform` ⇄ its `label` (the site's name; `Platform.fromStored`);
 other enums are stored by `name()` (Room default).
 
 ### Tables (`Entities.kt`)
@@ -32,9 +32,10 @@ Mapping between entities and domain objects is in `Mappers.kt` (`ItemEntity.toDo
 | From → to | Change |
 | --- | --- |
 | 1 → 2 | `ALTER TABLE items ADD COLUMN faviconUrl TEXT DEFAULT NULL` (`MIGRATION_1_2`) |
-| 2 → 3 | `items.platform` is a lower-case platform id instead of an enum name (`MIGRATION_2_3`): `INSTAGRAM`→`instagram` etc.; old `WEB` rows are re-read with `PlatformDetector` (platform **and** kind, so a Drive link becomes Google Drive / FILE, an ordinary site its domain); `intent_corrections.key` platform half lower-cased (`INSTAGRAM:REEL`→`instagram:REEL`, `WEB:*`→`web:*`). No `revision` bump. A later registry improvement needs its own migration to reclassify stored rows. |
+| 2 → 3 | `items.platform` is lower case instead of an enum name (`MIGRATION_2_3`): `INSTAGRAM`→`instagram`; `intent_corrections.key` platform half lower-cased (`INSTAGRAM:REEL`→`instagram:REEL`, `WEB:*`→`web:*`). No `revision` bump. |
+| 3 → 4 | No table change (`MIGRATION_3_4`): a platform is now the site's own name. Every LINK row gets `platform = Platform.fromUrl(url).label` (its host) and `detailsFetchedAt = NULL`, so `scheduleMissingDetails` reads each page again and replaces the host with the name the page gives (`chatgpt.com` → `ChatGPT`). `mergeDetails` never touches edited fields; kinds and notes are untouched. |
 
-`MigrationTest` rebuilds a v1 and a v2 database from `app/schemas/.../{1,2}.json`, inserts rows, opens them with the
+`MigrationTest` rebuilds a v1, v2 and v3 database from `app/schemas/.../{1,2,3}.json`, inserts rows, opens them with the
 shipped migrations (Room validates the schema on open) and asserts data survives and platforms/keys are rewritten.
 See the recipe in [development.md](development.md#add-a-room-column-or-table).
 
@@ -43,7 +44,7 @@ See the recipe in [development.md](development.md#add-a-room-column-or-table).
 - **`ItemDao`**: `observeLibrary` (status ≠ DELETED, newest first), `observeTrash` (DELETED, by
   `deletedAt` desc), `observe(id)`, `get`, `all`, `active`, `findByNormalizedUrl` (most recent
   non-deleted match), `search(match)` (join `items_fts`, excludes DELETED, newest first),
-  `needingDetails` (LINK, `detailsFetchedAt IS NULL`, not DELETED; the repository drops `neverContact` platforms, so SQL knows no platform names),
+  `needingDetails` (LINK, `detailsFetchedAt IS NULL`, not DELETED; SQL knows no platform names),
   `upsert`, `delete`, `purgeDeletedBefore(cutoffMillis)`, `reassignIntent(from, to, now)` (bumps
   `revision`), `countForIntent`, `deleteAll`.
 - **`CollectionDao`**: observe/list collections and refs, `findByName` (case-insensitive), `upsert`,
@@ -75,20 +76,19 @@ through here.** Reads are `Flow`s.
 - `seedDefaultsIfNeeded()`: if there are zero intents, insert the eight defaults and their rules in one transaction.
 - `saveLink(link, entry, sourceApp, sourceFrom, titleHint, allowDuplicate)` → `SaveOutcome.Saved(item)` or
   `SaveOutcome.Duplicate(existing, link)`. Unless `allowDuplicate`, an existing non-deleted item with the same
-  `normalizedUrl` is returned and **nothing is written**. Otherwise: detect platform/kind/handle, guess the
-  intent (using valid intent ids + stored corrections), insert the item (`title = titleHint`, `creator` = `Detection.creator`: the handle, or the domain for an
-  ordinary site) and bump the week's `saved` in **one transaction**, log `SaveCreated`, and schedule details
-  unless the platform is `neverContact`.
+  `normalizedUrl` is returned and **nothing is written**. Otherwise: detect platform/kind, guess the
+  intent (using valid intent ids + stored corrections), insert the item (`title = titleHint`, `platform` = the host, `creator` = the host) and bump the week's `saved` in **one transaction**, log `SaveCreated`, and schedule details
+  for every link.
 - `saveNote(title, body, entry, sourceApp)` → `Item` (type NOTE, intent `keep`, TITLE in `userEdited` if a title
   was given; bumps `saved`).
 
 ### Details
 
 - `applyDetails(id, LinkDetails, forUrl?)`: in a transaction, **drops the result if `forUrl` no longer equals the
-  item's URL**; merges with `mergeDetails`; if `intentSource == GUESSED`, re-guesses the intent from the richer
+  item's URL**; merges with `mergeDetails` (which also renames the platform to the fetched site name and refines the kind); if `intentSource == GUESSED`, re-guesses the intent from the richer
   text. 
 - `markDetailsAttempted(id, forUrl?)`: sets `detailsFetchedAt` so a hopeless fetch stops retrying.
-- `refreshDetails(id)`: schedule a fetch (no-op for Meta or notes). `scheduleMissingDetails()`: schedule every
+- `refreshDetails(id)`: schedule a fetch (no-op for notes). `scheduleMissingDetails()`: schedule every
   item returned by `needingDetails()`.
 
 ### Edits
@@ -179,13 +179,13 @@ image cache.
 
 ## `DetailsFetcher` (`data/details/DetailsFetcher.kt`)
 
-`suspend fun fetch(url, platform): FetchResult` on `Dispatchers.IO`, **never throws** (cancellation is rethrown):
+`suspend fun fetch(url): FetchResult` on `Dispatchers.IO`, **never throws** (cancellation is rethrown):
 `Ok(LinkDetails)`, `Retry` (IO errors, HTTP 429, 5xx), `GiveUp` (other 4xx, non-HTML for pages, parse failures,
-Skip plan, any other exception).
+any other exception). A `application/pdf` response is `Ok(kind = PDF)`.
 
-- Executes `DetailsPlanner.plan`. For oEmbed plans it merges oEmbed (wins for title/creator/thumbnail) with the page
-  (fills description/length/favicon); if the merged result is empty it returns `Retry` when either request said
-  retry, else `GiveUp`.
+- Every link is treated alike: fetch the page, parse it, and if it advertises an oEmbed endpoint (https) fetch that too and merge it
+  (oEmbed wins for title/creator/thumbnail/length; the page's site name wins). If the merged result is empty it returns `Retry` when either
+  request said retry, else `GiveUp`.
 - Request headers: `User-Agent: Mozilla/5.0 (Linux; Android 14) CaddisLinkPreview/0.1`, `Accept` (JSON or HTML),
   `Accept-Language: en`. No cookies, no body; only the link is sent.
 - Reads at most `MAX_BYTES = 512 KB` of the response; HTML responses must have an `html` content type.

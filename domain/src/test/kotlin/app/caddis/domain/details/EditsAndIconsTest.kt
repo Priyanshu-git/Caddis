@@ -14,7 +14,7 @@ import java.time.Instant
 class EditsAndIconsTest {
     private val now = Instant.parse("2026-11-08T05:00:00Z")
 
-    private fun link(url: String, platform: Platform = Platform.site("example.com"), favicon: String? = null) = Item(
+    private fun link(url: String, platform: Platform = Platform.named("example.com"), favicon: String? = null) = Item(
         id = "i", type = ItemType.LINK, url = url, normalizedUrl = url, platform = platform,
         kind = ContentKind.WEBPAGE, intentId = Intents.READ, createdAt = now, faviconUrl = favicon,
         title = "Fetched title", description = "Fetched description", creator = "Site",
@@ -26,24 +26,22 @@ class EditsAndIconsTest {
             <link rel="shortcut icon" href="/favicon-32.png">
             <link rel="apple-touch-icon" sizes="180x180" href="/apple.png">
             </head></html>"""
-        DetailsParser.parsePage(html, "https://blog.example.com/post", Platform.site("example.com")).faviconUrl shouldBe "https://blog.example.com/apple.png"
+        DetailsParser.parsePage(html, "https://blog.example.com/post").faviconUrl shouldBe "https://blog.example.com/apple.png"
         val plain = """<html><head><title>T</title><link rel="icon" type="image/svg+xml" href="/i.svg"><link rel="Shortcut Icon" href="https://cdn.example.com/f.ico"></head></html>"""
-        DetailsParser.parsePage(plain, "https://example.com/", Platform.site("example.com")).faviconUrl shouldBe "https://cdn.example.com/f.ico"
+        DetailsParser.parsePage(plain, "https://example.com/").faviconUrl shouldBe "https://cdn.example.com/f.ico"
     }
 
     @Test
     fun `an icon alone is not details`() {
         val html = """<html><head><link rel="icon" href="/f.png"></head></html>"""
-        DetailsParser.parsePage(html, "https://example.com/", Platform.site("example.com")).isEmpty shouldBe true
+        DetailsParser.parsePage(html, "https://example.com/").isEmpty shouldBe true
     }
 
     @Test
-    fun `favicon falls back to the site root and never points at meta`() {
+    fun `favicon falls back to the site root, for every site alike`() {
         Favicons.forItem(link("https://www.example.com/a/b")) shouldBe "https://example.com/favicon.ico"
         Favicons.forItem(link("https://example.com/a", favicon = "https://example.com/i.png")) shouldBe "https://example.com/i.png"
-        Favicons.forItem(link("https://instagram.com/reel/x", Platform.INSTAGRAM)) shouldBe null
-        Favicons.forItem(link("https://facebook.com/x", Platform.FACEBOOK)) shouldBe null
-        Favicons.forItem(link("https://example.com/a", favicon = "https://static.xx.fbcdn.net/i.png")) shouldBe "https://example.com/favicon.ico"
+        Favicons.forItem(link("https://instagram.com/reel/x")) shouldBe "https://instagram.com/favicon.ico"
         Favicons.forItem(link("https://example.com").copy(type = ItemType.NOTE, url = null, platform = Platform.NOTE)) shouldBe null
     }
 
@@ -100,10 +98,10 @@ class EditsAndIconsTest {
         val old = link("https://example.com/a", favicon = "https://example.com/i.png")
             .copy(thumbnailUrl = "https://example.com/t.jpg", lengthSeconds = 300, detailsFetchedAt = now)
         val moved = old.withLink(valid("youtu.be/abc"), now)
-        moved.platform shouldBe Platform.YOUTUBE
-        moved.kind shouldBe ContentKind.VIDEO
+        moved.platform shouldBe Platform.named("youtu.be")
+        moved.kind shouldBe ContentKind.WEBPAGE
         moved.url shouldBe "https://youtu.be/abc"
-        moved.normalizedUrl shouldBe "youtube.com/watch?v=abc"
+        moved.normalizedUrl shouldBe "youtu.be/abc"
         moved.title shouldBe ""
         moved.description shouldBe ""
         moved.thumbnailUrl shouldBe null
@@ -120,14 +118,24 @@ class EditsAndIconsTest {
         val moved = mine.withLink(valid("https://other.org/b"), now)
         moved.title shouldBe "My title"
         moved.creator shouldBe "other.org"
-        moved.platform shouldBe Platform.site("other.org")
+        moved.platform shouldBe Platform.named("other.org")
     }
 
     @Test
-    fun `instagram links read the handle and are never refetched`() {
+    fun `every link is fetched again after a change, notes never are`() {
         val moved = link("https://example.com/a").withLink(valid("https://www.instagram.com/oven.notes/reel/xyz/"), now)
-        moved.platform shouldBe Platform.INSTAGRAM
-        moved.needsDetails() shouldBe false
+        moved.platform shouldBe Platform.named("instagram.com")
+        moved.needsDetails() shouldBe true
+        moved.copy(type = ItemType.NOTE, url = null).needsDetails() shouldBe false
+    }
+
+    @Test
+    fun `a link whose page already named the site keeps that name through a cosmetic change`() {
+        val named = link("https://chatgpt.com/share/1?utm_source=x", Platform.named("ChatGPT"))
+            .copy(normalizedUrl = "chatgpt.com/share/1", detailsFetchedAt = now)
+        val tidy = named.withLink(valid("https://chatgpt.com/share/1"), now)
+        tidy.platform.label shouldBe "ChatGPT"
+        tidy.detailsFetchedAt shouldBe now
     }
 
     @Test

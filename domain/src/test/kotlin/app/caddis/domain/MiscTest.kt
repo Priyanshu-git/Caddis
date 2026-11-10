@@ -26,7 +26,7 @@ import java.time.Instant
 private val NOW = Instant.parse("2026-11-04T05:38:00Z")
 
 private fun link(id: String, title: String, coll: Set<String> = emptySet(), status: ItemStatus = ItemStatus.ACTIVE) = Item(
-    id = id, type = ItemType.LINK, url = "https://e.com/$id", normalizedUrl = "e.com/$id", platform = Platform.site("example.com"),
+    id = id, type = ItemType.LINK, url = "https://e.com/$id", normalizedUrl = "e.com/$id", platform = Platform.named("example.com"),
     kind = ContentKind.WEBPAGE, title = title, intentId = Intents.COOK, reason = "for <Saturday>", createdAt = NOW,
     collectionIds = coll, status = status, note = "**Brown** the butter",
 )

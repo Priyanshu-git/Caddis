@@ -50,7 +50,7 @@ class CaptureViewModelTest {
         assertTrue(vm.fromShare("Brown butter cookies https://www.instagram.com/reel/Cx9bT2/?igsh=x", null, "WhatsApp"))
         val s = awaitSheet() as CaptureSheet.Saved
         val item = f.repo.get(s.itemId)!!
-        assertEquals(Platform.INSTAGRAM, item.platform)
+        assertEquals(Platform.named("instagram.com"), item.platform)
         assertEquals("Brown butter cookies", item.title)
         assertEquals("WhatsApp", item.sourceApp)
         assertEquals("cook", item.intentId)
@@ -83,7 +83,7 @@ class CaptureViewModelTest {
         assertTrue(vm.sheet.value is CaptureSheet.Saved)
 
         vm.openAdd(null)
-        vm.submitLink("https://www.youtube.com/watch?v=abc").join()
+        vm.submitLink("https://youtu.be/abc?si=zz").join()
         assertTrue(vm.sheet.value is CaptureSheet.Duplicate)
     }
 

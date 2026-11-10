@@ -86,7 +86,7 @@ data class Item(
 
     /** Display title: what we know, falling back to a readable default built from the link (MET-05). */
     val displayTitle: String
-        get() = title.ifBlank { url?.let { DefaultTitles.of(platform, kind, it) } ?: "Untitled note" }
+        get() = title.ifBlank { url?.let { DefaultTitles.of(it) } ?: "Untitled note" }
 
     /** Most recent moment the person touched this item; drives tidy-up (FIN-03). */
     val lastTouchedAt: Instant

@@ -37,8 +37,14 @@ class MigrationInstrumentedTest {
             c.getString(0) to c.getString(1)
         }
 
+    private fun SupportSQLiteDatabase.fetchedAt(id: String): Long? =
+        query("SELECT detailsFetchedAt FROM items WHERE id = ?", arrayOf(id)).use { c ->
+            c.moveToFirst()
+            if (c.isNull(0)) null else c.getLong(0)
+        }
+
     @Test
-    fun platformsBecomeIdsAndWebSavesAreReadAgain() {
+    fun version2SavesEndUpNamedByTheirHost() {
         helper.createDatabase(NAME, 2).use { db ->
             insertItem(db, "ig", "https://www.instagram.com/reel/Cx9/", "INSTAGRAM", "REEL")
             insertItem(db, "drive", "https://drive.google.com/file/d/1AbC/view", "WEB", "WEBPAGE")
@@ -47,9 +53,9 @@ class MigrationInstrumentedTest {
             db.execSQL("INSERT INTO intent_corrections (`key`, intentId, count) VALUES ('INSTAGRAM:REEL', 'cook', 3), ('WEB:WEBPAGE', 'read', 2)")
         }
 
-        helper.runMigrationsAndValidate(NAME, 3, true, *CaddisDatabase.MIGRATIONS).use { db ->
-            assertEquals("instagram" to "REEL", db.platformAndKind("ig"))
-            assertEquals("google-drive" to "FILE", db.platformAndKind("drive"))
+        helper.runMigrationsAndValidate(NAME, 4, true, *CaddisDatabase.MIGRATIONS).use { db ->
+            assertEquals("instagram.com" to "REEL", db.platformAndKind("ig"))
+            assertEquals("drive.google.com" to "WEBPAGE", db.platformAndKind("drive"))
             assertEquals("nytimes.com" to "WEBPAGE", db.platformAndKind("site"))
             assertEquals("note" to "NOTE", db.platformAndKind("note"))
             val keys = db.query("SELECT `key` FROM intent_corrections").use { c ->
@@ -60,9 +66,23 @@ class MigrationInstrumentedTest {
     }
 
     @Test
+    fun version3SavesAreRenamedToTheirHostAndMarkedToBeReadAgain() {
+        helper.createDatabase(NAME, 3).use { db ->
+            insertItem(db, "chat", "https://chatgpt.com/share/6af2-1abc", "chatgpt.com", "WEBPAGE")
+            insertItem(db, "note", null, "note", "NOTE", type = "NOTE")
+            db.execSQL("UPDATE items SET detailsFetchedAt = 7")
+        }
+        helper.runMigrationsAndValidate(NAME, 4, true, *CaddisDatabase.MIGRATIONS).use { db ->
+            assertEquals("chatgpt.com" to "WEBPAGE", db.platformAndKind("chat"))
+            assertEquals(null, db.fetchedAt("chat"))
+            assertEquals(7L, db.fetchedAt("note"))
+        }
+    }
+
+    @Test
     fun everyVersionMigratesToTheCurrentSchema() {
         helper.createDatabase(NAME, 1).use { db -> insertItem(db, "a", "https://e.com", "WEB", "WEBPAGE") }
-        helper.runMigrationsAndValidate(NAME, 3, true, *CaddisDatabase.MIGRATIONS).use { db ->
+        helper.runMigrationsAndValidate(NAME, 4, true, *CaddisDatabase.MIGRATIONS).use { db ->
             assertEquals("e.com" to "WEBPAGE", db.platformAndKind("a"))
         }
     }
