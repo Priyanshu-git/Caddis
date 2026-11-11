@@ -17,8 +17,8 @@ Package/application id: `com.nexxlabs.caddis`. Version `0.1.0` (code 1).
 
 ## Phase: client only
 
-Room on the phone is the only store. There is **no** sign-in, sync, Firebase, remote analytics,
-push service or server. Every record already carries `revision` and `updatedAt`, and the fields a
+Room on the phone is the only store. There is **no** sign-in, sync, remote analytics,
+push service or server. The only Firebase SDK is Crashlytics (release builds only, crash reports only). Every record already carries `revision` and `updatedAt`, and the fields a
 person edits are tracked in `userEdited`, so sync can be added later. Do not add network sync code
 unless asked.
 
@@ -28,7 +28,7 @@ unless asked.
 - Your words win: automation never overwrites a field the person edited (`userEdited`).
 - Never lose a save: the Room write happens before anything else (details, sheet, network).
 - Calm: no streaks, no guilt, no catch-up notification bursts, counts only.
-- Private by default: no AI, no ads, no remote analytics, analytics never carry a site, URL or title, shares never include the person's own reason/note/intent/collections.
+- Private by default: no AI, no ads, no remote analytics (crash reports aside), analytics never carry a site, URL or title, shares never include the person's own reason/note/intent/collections.
 
 ## Vocabulary
 
@@ -97,7 +97,7 @@ unless asked.
 
 ## Not built (do not assume it exists)
 
-- Sign-in, accounts, sync across devices, any server or Firebase.
+- Sign-in, accounts, sync across devices, any server or any Firebase product other than Crashlytics.
 - Remote analytics: `AnalyticsSink` only logs to Logcat in debug builds.
 - Any language model or AI feature (explicitly forbidden).
 - Home-screen widget, location-based return, import from files/bookmarks.

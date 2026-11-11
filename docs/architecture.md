@@ -58,7 +58,7 @@ Details of every rule: [domain.md](domain.md).
 
 | Package / file | Responsibility |
 | --- | --- |
-| `CaddisApp.kt` | `@HiltAndroidApp` Application. Startup work, WorkManager config (Hilt worker factory), Coil `ImageLoader` factory. |
+| `CaddisApp.kt` | `@HiltAndroidApp` Application. Startup work, WorkManager config (Hilt worker factory), Coil `ImageLoader` factory, Crashlytics collection switch (on in release only, skipped when Firebase is not initialised). |
 | `MainActivity.kt`, `MainViewModel.kt` | Launcher activity (`singleTask`). Splash, edge-to-edge, hands a route extra to the shell; `MainViewModel` exposes `onboarded` (null until DataStore answers), `pendingRoute`, and the toast `Messenger`. |
 | `share/ShareActivity.kt` | Translucent share-sheet target. Saves in `onCreate`, shows the capture sheet, then finishes. |
 | `data/LibraryRepository.kt` | The only writer of library data; all queries as `Flow`. Also `DetailsScheduler` interface, `SaveOutcome`, `DetailsResult`, `NameResult`. |
@@ -128,7 +128,7 @@ counters, done/delete + counters, intent deletion + reassignment, delete-all).
 | `MainActivity` | Launcher. `launchMode=singleTask`, theme `Theme.Caddis.Splash`, `adjustResize`. `onNewIntent` accepts a `route` extra. |
 | `ShareActivity` | Exported; `ACTION_SEND` + `text/plain` only. `launchMode=standard`, `taskAffinity=""`, `excludeFromRecents`, theme `Theme.Caddis.Share` (translucent). |
 | Route extras | `MainActivity.EXTRA_ROUTE = "route"`; `ROUTE_ITEM_PREFIX = "item/"`; `ROUTE_WEEK = "home?week=true"`. Notifications and `ShareActivity` hand routes this way. Notes use `note/<id>`. |
-| Permissions | `INTERNET`, `ACCESS_NETWORK_STATE`, `POST_NOTIFICATIONS` (requested at runtime on API 33+ only when a reminder is turned on). |
+| Permissions | `INTERNET`, `ACCESS_NETWORK_STATE`, `POST_NOTIFICATIONS` (requested at runtime on API 33+ only when a reminder is turned on), `com.google.android.gms.permission.AD_ID` (declared only; the app reads no advertising ID and has no ads or analytics backend). |
 | `<queries>` | `VIEW https` (to open links in the original app) and `MAIN/LAUNCHER` (to resolve the sharing app's label). |
 | `FileProvider` | `${applicationId}.files`, path `cache-path exports/` — used to hand export files to the share sheet. |
 | Backup | `allowBackup=true`; rules include database `caddis.db` and the `sharedpref` domain. |

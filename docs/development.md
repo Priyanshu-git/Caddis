@@ -33,7 +33,8 @@ Test: JUnit 4.13.2 (app), JUnit 5.11.4 + Kotest 5.9.1 (domain), Robolectric 4.14
 work-testing, navigation-testing, room-testing. Instrumented (`app/src/androidTest`): androidx test runner/core/ext-junit, Compose UI test (`ui-test-junit4`),
 Espresso core + intents, `hilt-android-testing`, room-testing. The catalog also lists `mockk`, which no source set currently uses.
 
-Plugins applied in `:app`: `android.application`, `kotlin.android`, `kotlin.compose`, `ksp`, `hilt`, `room` (schema dir `app/schemas`).
+Plugins applied in `:app`: `android.application`, `kotlin.android`, `kotlin.compose`, `ksp`, `hilt`, `room` (schema dir `app/schemas`), plus `google-services` and `firebase-crashlytics` **only when `app/google-services.json` exists**
+(download it from the Firebase console for `com.nexxlabs.caddis`; it is gitignored, so CI builds without Crashlytics).
 `:domain`: `kotlin.jvm`, `kotlin.serialization`. Release builds: `isMinifyEnabled`, `isShrinkResources` (see `app/proguard-rules.pro`).
 
 ## Tests

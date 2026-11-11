@@ -7,8 +7,14 @@ plugins {
     alias(libs.plugins.room)
 }
 
-room {
-    schemaDirectory("$projectDir/schemas")
+// Crashlytics needs the project's google-services.json (gitignored). Without it (CI, fresh clones) the
+// plugins are skipped and the app builds and runs with crash reporting off.
+if (file("google-services.json").exists()) {
+    pluginManager.apply(libs.plugins.google.services.get().pluginId)
+    pluginManager.apply(libs.plugins.firebase.crashlytics.get().pluginId)
+}
+
+room {    schemaDirectory("$projectDir/schemas")
 }
 
 android {
@@ -20,7 +26,7 @@ android {
         minSdk = 28
         targetSdk = 36
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "0.0.1"
         // Starts HiltTestApplication so journey tests can swap the database, clock and network for fakes.
         testInstrumentationRunner = "com.nexxlabs.caddis.HiltTestRunner"
     }
@@ -93,6 +99,10 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
     implementation(libs.rich.editor)
+
+    // Crash reports only. No Firebase Analytics.
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.crashlytics)
 
     testImplementation(libs.junit4)
     testImplementation(libs.kotlinx.coroutines.test)

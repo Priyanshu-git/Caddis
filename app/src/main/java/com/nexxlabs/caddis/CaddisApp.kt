@@ -6,6 +6,8 @@ import androidx.work.Configuration
 import com.nexxlabs.caddis.data.LibraryRepository
 import com.nexxlabs.caddis.notify.Notifier
 import com.nexxlabs.caddis.work.WorkScheduler
+import com.google.firebase.FirebaseApp
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
@@ -35,6 +37,7 @@ class CaddisApp : Application(), Configuration.Provider, SingletonImageLoader.Fa
 
     override fun onCreate() {
         super.onCreate()
+        configureCrashReporting()
         notifier.createChannels()
         work.scheduleReminders()
         appScope.launch {
@@ -43,6 +46,15 @@ class CaddisApp : Application(), Configuration.Provider, SingletonImageLoader.Fa
             // Fallback when Android delayed background work: retry missing details on open.
             repo.scheduleMissingDetails()
         }
+    }
+
+    /**
+     * Crash reports go out from release builds only, and only when the project has a
+     * google-services.json (otherwise Firebase never initialises and there is nothing to configure).
+     */
+    private fun configureCrashReporting() {
+        if (FirebaseApp.getApps(this).isEmpty()) return
+        FirebaseCrashlytics.getInstance().isCrashlyticsCollectionEnabled = !BuildConfig.DEBUG
     }
 
     /** MET-04: thumbnails only, cached small and capped at 200 MB; clearable from Your data. */

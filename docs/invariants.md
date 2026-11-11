@@ -31,7 +31,7 @@ break. Section 3 are **known gaps**.
     The search event carries only a result-count bucket.
 14. **Share-out never includes** the reason, note, intent or collections (`ShareText`); the title is only a real title, never a guessed default.
 15. The clipboard is read only after the person taps Add (never in the background).
-16. **Client only**: no sync, Firebase, sign-in or analytics backend code until asked.
+16. **Client only**: no sync, sign-in or analytics backend code until asked. The one Firebase piece is **Crashlytics** (crash reports). Do not add Firebase Analytics, Performance or any other Firebase SDK, and never attach URLs, titles, notes, reasons, creators or collection names to crash reports (no custom keys, logs or user ids).
 
 ### Engineering
 17. All library writes go through `LibraryRepository`. Multi-row changes (save + weekly counter, done/delete + counter, intent delete + reassign, delete-all) use one `withTransaction`.
@@ -97,6 +97,7 @@ break. Section 3 are **known gaps**.
 
 - No sign-in or sync. Account screen shows "On this phone · Sync Off · Sign-in None"; its only action is **Delete all data**.
 - `AnalyticsSink` logs only in debug builds; release builds emit nothing.
+- Crashlytics uploads only from release builds that were built with `app/google-services.json` (gitignored). Without the file (CI, fresh clones) the Firebase plugins are skipped and crash reporting is off. Crash reports still include a stack trace and an installation id, so the privacy policy must say so.
 - The full privacy policy link is unset (`FULL_POLICY_URL = null`); the button shows a toast saying it will be published before release. The text lives in `PRIVACY_POLICY.md` at the repo root and must be updated with any change to data collection, permissions or network use.
 - The note editor has no heading or quote buttons (they render if imported).
 - Recent searches are not persisted.
