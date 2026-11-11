@@ -13,7 +13,7 @@ into what you use. The loop:
 4. Every save **ends**: marked done (with an intent-specific label such as "Watched") or deleted
    (30-day Trash).
 
-Package/application id: `app.caddis`. Version `0.1.0` (code 1).
+Package/application id: `com.nexxlabs.caddis`. Version `0.1.0` (code 1).
 
 ## Phase: client only
 
@@ -101,7 +101,7 @@ unless asked.
 - Remote analytics: `AnalyticsSink` only logs to Logcat in debug builds.
 - Any language model or AI feature (explicitly forbidden).
 - Home-screen widget, location-based return, import from files/bookmarks.
-- A published full privacy policy (`FULL_POLICY_URL` in `ui/profile/ProfileScreens.kt` is `null`).
+- A *hosted* privacy policy: the text is in `PRIVACY_POLICY.md` (fill the `[…]` placeholders), but `FULL_POLICY_URL` in `ui/profile/ProfileScreens.kt` is still `null` until it is published.
 - Heading and quote buttons in the note editor toolbar (headings/quotes still render if present).
 - Persisted recent searches.
 - Instrumented tests in CI (the journey tests in `app/src/androidTest` run locally on a device or emulator only).

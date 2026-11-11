@@ -1,7 +1,7 @@
 # `:domain` reference
 
-Pure Kotlin/JVM rules. Source: `domain/src/main/kotlin/app/caddis/domain/`. Tests:
-`domain/src/test/kotlin/app/caddis/domain/` (JUnit 5 + Kotest `shouldBe`). Everything takes time as a
+Pure Kotlin/JVM rules. Source: `domain/src/main/kotlin/com/nexxlabs/caddis/domain/`. Tests:
+`domain/src/test/kotlin/com/nexxlabs/caddis/domain/` (JUnit 5 + Kotest `shouldBe`). Everything takes time as a
 parameter (`Instant`, `ZonedDateTime`, `LocalDate`); nothing reads the clock.
 
 ## Models (`model/`)

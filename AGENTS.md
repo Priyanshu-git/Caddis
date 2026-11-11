@@ -23,7 +23,7 @@ user-edited fields tracked), but do not add network sync code until asked.
 ./gradlew assembleDebug                      # debug APK
 ./gradlew :app:lintDebug                     # Android lint
 ./gradlew test assembleDebug                 # what CI runs
-./gradlew :app:connectedDebugAndroidTest     # UI journey + migration tests on a connected device/emulator (not run in CI)
+./gradlew :app:connectedDebugAndroidTest     # UI journey tests on a connected device/emulator (not run in CI)
 ```
 
 On Windows use `gradlew.bat` or `./gradlew` from Git Bash. JDK 17+ is required (toolchain 17).

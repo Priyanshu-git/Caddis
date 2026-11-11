@@ -12,17 +12,17 @@ room {
 }
 
 android {
-    namespace = "app.caddis"
+    namespace = "com.nexxlabs.caddis"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "app.caddis"
+        applicationId = "com.nexxlabs.caddis"
         minSdk = 28
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
         // Starts HiltTestApplication so journey tests can swap the database, clock and network for fakes.
-        testInstrumentationRunner = "app.caddis.HiltTestRunner"
+        testInstrumentationRunner = "com.nexxlabs.caddis.HiltTestRunner"
     }
 
     buildTypes {
@@ -45,9 +45,6 @@ android {
         resources {
             excludes += setOf("/META-INF/{AL2.0,LGPL2.1}", "META-INF/LICENSE.md", "META-INF/LICENSE-notice.md")
         }
-    }
-    sourceSets {
-        getByName("test").assets.srcDirs(files("$projectDir/schemas"))
     }
     testOptions {
         unitTests {

@@ -9,9 +9,9 @@
 
 ```bash
 ./gradlew :domain:test              # pure-Kotlin domain tests (JUnit 5 + Kotest)
-./gradlew :app:testDebugUnitTest    # app unit + Robolectric tests (Room, repository, ViewModels, fetcher, migration)
+./gradlew :app:testDebugUnitTest    # app unit + Robolectric tests (Room, repository, ViewModels, fetcher)
 ./gradlew test                      # both
-./gradlew :app:connectedDebugAndroidTest   # instrumented tests on a connected device/emulator (journeys + migrations; not run in CI)
+./gradlew :app:connectedDebugAndroidTest   # instrumented tests on a connected device/emulator (journeys; not run in CI)
 ./gradlew assembleDebug             # app/build/outputs/apk/debug/app-debug.apk
 ./gradlew :app:lintDebug            # Android lint
 ./gradlew test assembleDebug        # what CI runs (CI also runs :app:lintDebug)
@@ -66,18 +66,16 @@ JUnit 4. Robolectric config in `app/src/test/resources/robolectric.properties` (
   intent deletion, collections, bring-back/surfacing, export/delete-all, edit-details and link-change behaviour.
 - `data/DetailsFetcherTest`: `MockWebServer` (no real network). Page parsing and site names, retry vs give-up, Instagram/Facebook fetched like any site, bot-check pages, advertised oEmbed + page,
   User-Agent behaviour.
-- `data/MigrationTest`: builds v1, v2 and v3 databases from `app/schemas/.../{1,2,3}.json` (schemas are added as test assets via `sourceSets.test.assets`) and opens them with the migrations.
 - `ui/CaptureViewModelTest`, `ui/ItemActionsShareTest`, `TabNavigationTest` (uses `navigation-testing`), `MotionTest`.
 
 Test conventions: backticked sentence names; one behaviour per test; no network; inject the clock.
 
 ### `:app` instrumented (`app/src/androidTest/java/…`)
 
-Run on a device or emulator (`./gradlew :app:connectedDebugAndroidTest`; one class: `-Pandroid.testInstrumentationRunnerArguments.class=app.caddis.journeys.HomeJourneyTest`).
-CI does not run them (it has no emulator). The runner is `app.caddis.HiltTestRunner`, which starts `HiltTestApplication`, so `CaddisApp.onCreate`
+Run on a device or emulator (`./gradlew :app:connectedDebugAndroidTest`; one class: `-Pandroid.testInstrumentationRunnerArguments.class=com.nexxlabs.caddis.journeys.HomeJourneyTest`).
+CI does not run them (it has no emulator). The runner is `com.nexxlabs.caddis.HiltTestRunner`, which starts `HiltTestApplication`, so `CaddisApp.onCreate`
 (channels, reminders work, seeding) does **not** run; the base test seeds the default intents itself.
 
-- `data/MigrationInstrumentedTest`: the shipped migrations on a real device's SQLite.
 - `TestModule.kt` (`@TestInstallIn` replacing `AppModule` and `BindingsModule`): in-memory Room, a new DataStore file per test, a plain `OkHttpClient`
   (nothing should reach the network), `RecordingAnalytics`, and:
   - **`TestClock`**: a movable `Clock`, Wed 4 Nov 2026 11:08 IST, so Home's day and time-of-day rules are the same on every run. Move it with `daysLater(n)`.
@@ -114,9 +112,9 @@ migration (below) → wherever it is written (`LibraryRepository`) → `Exporter
 
 ### Add a Room column or table
 1. Edit the entity; bump `version` in `CaddisDatabase`.
-2. Add a `Migration(n, n+1)` and append it to `CaddisDatabase.MIGRATIONS`. Never use destructive fallback.
-3. Build once so Room writes `app/schemas/app.caddis.data.db.CaddisDatabase/<n+1>.json`; **commit it**.
-4. Extend `MigrationTest` (create the old version from the schema JSON, open with migrations, assert data survives).
+2. Add a `Migration(n, n+1)` and add a `MIGRATIONS` array to `CaddisDatabase` and pass it with `addMigrations` in `AppModule`. Never use destructive fallback.
+3. Build once so Room writes `app/schemas/com.nexxlabs.caddis.data.db.CaddisDatabase/<n+1>.json`; **commit it**.
+4. Add a migration test (create the old version from the schema JSON, open with migrations, assert data survives); `MigrationTest` was removed with the v1 reset, so re-add the test assets source set in `app/build.gradle.kts`.
 5. Update [data.md](data.md).
 
 ### Add an analytics event
@@ -128,7 +126,7 @@ through the injected `AnalyticsSink`; test it. Never add a field that can hold a
 (`tiktok.com`) until the page is read, then as the name it gives itself (`og:site_name`), and appears in the Filter sheet while it has saves. There is
 deliberately no registry to add it to. If a site shows the wrong name, the fix is in how pages are read (`DetailsParser.parsePage`, `Platform.cleanSiteName`),
 tested with that site's markup in `DetailsTest`, never a host or brand entry. A change to how names are read that should reach existing saves needs a
-migration shaped like `MIGRATION_3_4` (mark links as not fetched so they are read again).
+migration that marks links as not fetched so they are read again.
 
 ### Add a default intent
 `Intents.defaults` + `Intents.defaultRules` + a keyword rule in `IntentGuesser` if useful. Existing installs only seed defaults when **no intents exist**, so

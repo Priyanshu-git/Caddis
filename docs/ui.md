@@ -1,6 +1,6 @@
 # UI
 
-Jetpack Compose + Material 3, with project components on top. Source: `app/src/main/java/app/caddis/ui/`
+Jetpack Compose + Material 3, with project components on top. Source: `app/src/main/java/com/nexxlabs/caddis/ui/`
 (plus `MainActivity.kt`, `share/ShareActivity.kt`). Style follows the Caddis prototype: warm paper
 neutrals, one river-teal accent, Bricolage Grotesque for titles, DM Sans for body. Copy is short, plain,
 never guilt-inducing.

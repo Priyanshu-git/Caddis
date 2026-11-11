@@ -37,7 +37,7 @@ break. Section 3 are **known gaps**.
 17. All library writes go through `LibraryRepository`. Multi-row changes (save + weekly counter, done/delete + counter, intent delete + reassign, delete-all) use one `withTransaction`.
 18. Inject `Clock`; never call `Instant.now()`/`LocalDate.now()` inside logic you want tested. (Some UI code still uses `LocalDate.now()`; see traps.)
 19. `:domain` has no Android/Room/OkHttp/Hilt/Compose imports. New behaviour: domain + tests first, then wire.
-20. Room schema change ⇒ bump `version`, add a `Migration`, commit the exported `app/schemas/.../<version>.json`, extend `MigrationTest`. No destructive fallback.
+20. Room schema change ⇒ bump `version`, add a `Migration` (none exist yet; v1 is the first release), commit the exported `app/schemas/.../<version>.json`, add a migration test. No destructive fallback.
 21. Dependency versions live only in `gradle/libs.versions.toml`.
 22. Every record keeps `revision` and `updatedAt` correct (the repository's `edit()` helper and `mergeDetails`/`withEdits`/`withLink` bump them). Sync readiness depends on it.
 23. Add/adjust tests in the same change; update the relevant doc in `docs/`.
@@ -97,7 +97,7 @@ break. Section 3 are **known gaps**.
 
 - No sign-in or sync. Account screen shows "On this phone · Sync Off · Sign-in None"; its only action is **Delete all data**.
 - `AnalyticsSink` logs only in debug builds; release builds emit nothing.
-- The full privacy policy link is unset (`FULL_POLICY_URL = null`); the button shows a toast saying it will be published before release.
+- The full privacy policy link is unset (`FULL_POLICY_URL = null`); the button shows a toast saying it will be published before release. The text lives in `PRIVACY_POLICY.md` at the repo root and must be updated with any change to data collection, permissions or network use.
 - The note editor has no heading or quote buttons (they render if imported).
 - Recent searches are not persisted.
 - A site's name depends on its own markup: a page with no `og:site_name`/`application-name` (or one behind a bot wall or login wall that hides it) keeps the host as its platform.

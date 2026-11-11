@@ -1,12 +1,12 @@
 # Data layer
 
-Room is the single store; DataStore holds settings. Source: `app/src/main/java/app/caddis/data/`.
+Room is the single store; DataStore holds settings. Source: `app/src/main/java/com/nexxlabs/caddis/data/`.
 
 ## Database
 
-`CaddisDatabase` — name `caddis.db`, **version 4**, `exportSchema = true`, schemas committed in
-`app/schemas/app.caddis.data.db.CaddisDatabase/{1,2,3,4}.json`. Opened with `addMigrations(*MIGRATIONS)`
-(no destructive fallback). Type converters (`Converters.kt`): `Instant` ⇄ epoch-millis `Long`;
+`CaddisDatabase` — name `caddis.db`, **version 1**, `exportSchema = true`, schemas committed in
+`app/schemas/com.nexxlabs.caddis.data.db.CaddisDatabase/1.json`. The first release: there are no
+migrations yet. Type converters (`Converters.kt`): `Instant` ⇄ epoch-millis `Long`;
 `Set<EditableField>` ⇄ comma-separated names; `Platform` ⇄ its `label` (the site's name; `Platform.fromStored`);
 other enums are stored by `name()` (Room default).
 
@@ -14,7 +14,7 @@ other enums are stored by `name()` (Room default).
 
 | Table | Key | Columns / notes |
 | --- | --- | --- |
-| `items` | `id` (UUID string) | `type, url?, normalizedUrl?, platform, kind, title, description, creator, thumbnailUrl?, faviconUrl? (added v2, default NULL), lengthSeconds?, note, intentId, intentSource, reason, sourceApp, sourceFrom, status, createdAt, updatedAt, doneAt?, deletedAt?, returnRule, returnAt?, lastSurfacedAt?, surfacedCount, lastOpenedAt?, lastReviewedAt?, detailsFetchedAt?, userEdited, revision`. Indices: `normalizedUrl`, `status`, `createdAt`. **Collection membership is not a column** (see `item_collections`); `Item.collectionIds` is filled by joining. |
+| `items` | `id` (UUID string) | `type, url?, normalizedUrl?, platform, kind, title, description, creator, thumbnailUrl?, faviconUrl?, lengthSeconds?, note, intentId, intentSource, reason, sourceApp, sourceFrom, status, createdAt, updatedAt, doneAt?, deletedAt?, returnRule, returnAt?, lastSurfacedAt?, surfacedCount, lastOpenedAt?, lastReviewedAt?, detailsFetchedAt?, userEdited, revision`. Indices: `normalizedUrl`, `status`, `createdAt`. **Collection membership is not a column** (see `item_collections`); `Item.collectionIds` is filled by joining. |
 | `items_fts` | rowid = `items.rowid` | FTS4 external-content table on `items`, tokenizer `unicode61`; indexed columns: `title, description, creator, url, note, reason, sourceApp, sourceFrom`. Room maintains it with triggers. |
 | `intents` | `id` | `name, doneLabel, isDefault, position, updatedAt, revision`. |
 | `intent_rules` | `intentId` (FK → `intents.id`, CASCADE) | `days` (bitmask, Monday = bit 0), `timeOfDay`, `maxPerDay`. Keep has no row. |
@@ -29,15 +29,9 @@ Mapping between entities and domain objects is in `Mappers.kt` (`ItemEntity.toDo
 
 ### Migrations
 
-| From → to | Change |
-| --- | --- |
-| 1 → 2 | `ALTER TABLE items ADD COLUMN faviconUrl TEXT DEFAULT NULL` (`MIGRATION_1_2`) |
-| 2 → 3 | `items.platform` is lower case instead of an enum name (`MIGRATION_2_3`): `INSTAGRAM`→`instagram`; `intent_corrections.key` platform half lower-cased (`INSTAGRAM:REEL`→`instagram:REEL`, `WEB:*`→`web:*`). No `revision` bump. |
-| 3 → 4 | No table change (`MIGRATION_3_4`): a platform is now the site's own name. Every LINK row gets `platform = Platform.fromUrl(url).label` (its host) and `detailsFetchedAt = NULL`, so `scheduleMissingDetails` reads each page again and replaces the host with the name the page gives (`chatgpt.com` → `ChatGPT`). `mergeDetails` never touches edited fields; kinds and notes are untouched. |
-
-`MigrationTest` rebuilds a v1, v2 and v3 database from `app/schemas/.../{1,2,3}.json`, inserts rows, opens them with the
-shipped migrations (Room validates the schema on open) and asserts data survives and platforms/keys are rewritten.
-See the recipe in [development.md](development.md#add-a-room-column-or-table).
+None yet: version 1 is the first release. On the first schema change, bump `version`, add a `Migration` to
+`CaddisDatabase`, pass it with `addMigrations`, and add a migration test (see
+[development.md](development.md#add-a-room-column-or-table)).
 
 ### DAOs (`Daos.kt`)
 

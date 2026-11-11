@@ -36,7 +36,7 @@ SettingsRepository (DataStore) ◄── ViewModels, workers
 
 ## Package map
 
-### `:domain` (`domain/src/main/kotlin/app/caddis/domain/`)
+### `:domain` (`domain/src/main/kotlin/com/nexxlabs/caddis/domain/`)
 
 | Package | Contents |
 | --- | --- |
@@ -54,7 +54,7 @@ SettingsRepository (DataStore) ◄── ViewModels, workers
 
 Details of every rule: [domain.md](domain.md).
 
-### `:app` (`app/src/main/java/app/caddis/`)
+### `:app` (`app/src/main/java/com/nexxlabs/caddis/`)
 
 | Package / file | Responsibility |
 | --- | --- |
@@ -81,7 +81,7 @@ Details of every rule: [domain.md](domain.md).
 
 | Provides | Notes |
 | --- | --- |
-| `CaddisDatabase` | `Room.databaseBuilder(..., "caddis.db").addMigrations(*MIGRATIONS)`. No destructive fallback. |
+| `CaddisDatabase` | `Room.databaseBuilder(..., "caddis.db")`. Version 1, no migrations yet, no destructive fallback. |
 | `DataStore<Preferences>` | File `settings` (`preferencesDataStoreFile("settings")`). |
 | `Clock` | `Clock.systemDefaultZone()`. **Inject `Clock` everywhere; never call `Instant.now()` in logic** (tests substitute `MutableClock`). |
 | `CoroutineScope` | App-wide `SupervisorJob() + Dispatchers.Default`. Outlives screens. |

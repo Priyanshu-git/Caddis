@@ -30,8 +30,8 @@ Start with [../AGENTS.md](../AGENTS.md) for the working rules, then pick the doc
 ## Conventions used in these docs
 
 - Paths are relative to the repo root. `domain/…` is the `:domain` module, `app/…` the `:app` module.
-- Kotlin package `app.caddis.domain.*` lives under `domain/src/main/kotlin/app/caddis/domain/`;
-  `app.caddis.*` (the app) lives under `app/src/main/java/app/caddis/`.
+- Kotlin package `com.nexxlabs.caddis.domain.*` lives under `domain/src/main/kotlin/com/nexxlabs/caddis/domain/`;
+  `com.nexxlabs.caddis.*` (the app) lives under `app/src/main/java/com/nexxlabs/caddis/`.
 - "The person" means the end user. Product copy is short, plain and guilt-free.
 - Source comments contain short requirement labels such as `CAP-01`, `MET-03`, `BRB-02`,
   `FIN-02`, `INT-04`, `SRC-01`, `WK-01`, `ACC-02`, `NFR`, and "tech arch §…". They point at a

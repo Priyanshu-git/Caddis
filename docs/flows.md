@@ -1,6 +1,6 @@
 # Flows
 
-End-to-end traces. File names are under `app/src/main/java/app/caddis/` unless prefixed `domain/`.
+End-to-end traces. File names are under `app/src/main/java/com/nexxlabs/caddis/` unless prefixed `domain/`.
 
 ## 1. Save from the share sheet
 

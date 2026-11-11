@@ -6,7 +6,7 @@
 -dontwarn org.openjsse.**
 # kotlinx.serialization (export file models in :domain).
 -keepattributes *Annotation*, InnerClasses
--keepclassmembers class app.caddis.domain.export.** {
+-keepclassmembers class com.nexxlabs.caddis.domain.export.** {
     *** Companion;
     kotlinx.serialization.KSerializer serializer(...);
 }
