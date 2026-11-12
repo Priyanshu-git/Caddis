@@ -1,5 +1,6 @@
 package com.nexxlabs.caddis.ui.item
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -30,9 +31,11 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontStyle
@@ -41,6 +44,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.nexxlabs.caddis.domain.notes.NoteMarkdown
 import com.nexxlabs.caddis.ui.components.CChip
 import com.nexxlabs.caddis.ui.components.CField
 import com.nexxlabs.caddis.ui.components.CIcons
@@ -77,12 +81,12 @@ fun NoteScreen(onBack: () -> Unit, onManageIntents: () -> Unit, vm: ItemViewMode
 
     LaunchedEffect(it.id) {
         if (!loaded) {
-            rich.setMarkdown(it.note)
+            rich.setHtml(NoteMarkdown.toHtml(vm.currentNote()))
             loaded = true
         }
     }
     LaunchedEffect(rich, loaded) {
-        if (loaded) snapshotFlow { rich.annotatedString }.drop(1).collect { vm.noteChanged(rich.toMarkdown()) }
+        if (loaded) snapshotFlow { rich.annotatedString }.drop(1).collect { vm.noteChanged(NoteMarkdown.fromHtml(rich.toHtml())) }
     }
     DisposableEffect(Unit) { onDispose { vm.flushNote() } }
 
@@ -100,13 +104,16 @@ fun NoteScreen(onBack: () -> Unit, onManageIntents: () -> Unit, vm: ItemViewMode
                     modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
                 )
             }
+            // Each button lights up when its style applies where the caret is (or to the selection),
+            // including a style just switched on that has no text yet.
+            val style = rich.currentSpanStyle
             Toolbar(
                 listOf(
-                    ToolbarButton("B", "Bold", bold = true) { rich.toggleSpanStyle(SpanStyle(fontWeight = FontWeight.Bold)) },
-                    ToolbarButton("I", "Italic", italic = true) { rich.toggleSpanStyle(SpanStyle(fontStyle = FontStyle.Italic)) },
-                    ToolbarButton("•", "Bulleted list") { rich.toggleUnorderedList() },
-                    ToolbarButton("1.", "Numbered list") { rich.toggleOrderedList() },
-                    ToolbarButton("</>", "Code") { rich.toggleCodeSpan() },
+                    ToolbarButton("B", "Bold", active = style.fontWeight == FontWeight.Bold, bold = true) { rich.toggleSpanStyle(SpanStyle(fontWeight = FontWeight.Bold)) },
+                    ToolbarButton("I", "Italic", active = style.fontStyle == FontStyle.Italic, italic = true) { rich.toggleSpanStyle(SpanStyle(fontStyle = FontStyle.Italic)) },
+                    ToolbarButton("•", "Bulleted list", active = rich.isUnorderedList) { rich.toggleUnorderedList() },
+                    ToolbarButton("1.", "Numbered list", active = rich.isOrderedList) { rich.toggleOrderedList() },
+                    ToolbarButton("</>", "Code", active = rich.isCodeSpan) { rich.toggleCodeSpan() },
                 ),
             )
             Box(Modifier.fillMaxWidth().heightIn(min = 200.dp)) {
@@ -132,7 +139,14 @@ fun NoteScreen(onBack: () -> Unit, onManageIntents: () -> Unit, vm: ItemViewMode
     if (intentSheet) IntentSheet(it, intents, onPick = vm::setIntent, onManage = { intentSheet = false; onManageIntents() }, onDismiss = { intentSheet = false })
 }
 
-private data class ToolbarButton(val text: String, val label: String, val bold: Boolean = false, val italic: Boolean = false, val onClick: () -> Unit)
+private data class ToolbarButton(
+    val text: String,
+    val label: String,
+    val active: Boolean = false,
+    val bold: Boolean = false,
+    val italic: Boolean = false,
+    val onClick: () -> Unit,
+)
 
 @Composable
 private fun Toolbar(buttons: List<ToolbarButton>) {
@@ -152,14 +166,18 @@ private fun Toolbar(buttons: List<ToolbarButton>) {
                     .widthIn(min = 44.dp)
                     .size(height = 40.dp, width = 48.dp)
                     .clip(RoundedCornerShape(10.dp))
+                    .background(if (b.active) c.accentTint else Color.Transparent)
                     .clickable(role = Role.Button, onClick = b.onClick)
-                    .semantics { contentDescription = b.label },
+                    .semantics {
+                        contentDescription = b.label
+                        selected = b.active
+                    },
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     b.text,
                     style = CaddisType.strong.copy(fontWeight = FontWeight.Bold, fontStyle = if (b.italic) FontStyle.Italic else FontStyle.Normal),
-                    color = c.fg, textAlign = TextAlign.Center,
+                    color = if (b.active) c.accent else c.fg, textAlign = TextAlign.Center,
                 )
             }
         }

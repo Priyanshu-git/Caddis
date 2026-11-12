@@ -113,4 +113,9 @@ Calm: short, decelerating, never bouncy. Compose honours the system animator sca
 ## Rich-text notes
 
 `NoteScreen` uses `com.mohamedrejeb.richeditor` (`rememberRichTextState`, `BasicRichTextEditor`), at version `1.0.0-rc13` (`gradle/libs.versions.toml`; check Kotlin compatibility before bumping).
-Content is loaded with `setMarkdown` and saved with `toMarkdown`. Toolbar has bold, italic, bullets, numbers, inline code.
+Content is loaded with `setHtml(NoteMarkdown.toHtml(stored))` and saved as `NoteMarkdown.fromHtml(rich.toHtml())`, never with the library's `setMarkdown`/`toMarkdown`
+(they do not escape or honour escapes; see [domain.md](domain.md#notes-notesmarkdownkt-notesnotemarkdownkt)). Toolbar has bold, italic, bullets, numbers, inline code.
+Each toolbar button **lights up** (`accentTint` background, accent text, `selected` semantics) when its style applies at the caret or to the
+selection: bold/italic from `RichTextState.currentSpanStyle`, lists from `isUnorderedList`/`isOrderedList`, code from `isCodeSpan`. A style just
+switched on with no text yet counts, and it follows the caret as it moves. The editor opens on `ItemViewModel.currentNote()` (typed but unsaved
+words win over the saved note) so a screen turn right after typing keeps the text.

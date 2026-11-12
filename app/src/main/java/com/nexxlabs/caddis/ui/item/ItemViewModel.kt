@@ -48,17 +48,25 @@ class ItemViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             noteDrafts.filterNotNull().debounce(500).collect { md ->
-                repo.setNote(id, md)
+                // Typing something and undoing it within the pause lands back on the saved text: nothing to write.
+                if (md != item.value?.note) repo.setNote(id, md)
                 saving.value = false
             }
         }
     }
 
     fun noteChanged(markdown: String) {
-        if (markdown == item.value?.note) return
-        saving.value = true
+        // Always record the latest text, even when it equals the saved note: that replaces an earlier
+        // draft the person has since undone, so the undone text is never written.
+        saving.value = markdown != item.value?.note
         noteDrafts.value = markdown
     }
+
+    /**
+     * What the editor should open on: words typed but not yet written win over the saved note, so a screen
+     * turn right after typing brings the editor back with the same text instead of the older saved one.
+     */
+    fun currentNote(): String = noteDrafts.value ?: item.value?.note.orEmpty()
 
     /** Called when leaving the editor so a last keystroke is never lost. */
     fun flushNote() {

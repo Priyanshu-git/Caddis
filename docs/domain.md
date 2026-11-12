@@ -199,10 +199,28 @@ from `WEBPAGE`** (to VIDEO/ARTICLE/PROFILE/PDF); sets `detailsFetchedAt`, `updat
   source" for the first field where any term starts with the **first** query term, else "Matched your words".
 - `resultBucket(count)` → `0, 1, 2-5, 6-20, 21+` (analytics).
 
-## Notes (`notes/Markdown.kt`)
+## Notes (`notes/Markdown.kt`, `notes/NoteMarkdown.kt`)
 
-`toPlainText(md)` strips code fences, links (keeps text), headings, quotes, bullets/numbering,
-emphasis markers and HTML, collapses whitespace. `preview(md, max = 110)` truncates with `…`.
+`Markdown.toPlainText(md)` strips code fences, links (keeps text), headings, quotes, bullets/numbering,
+emphasis markers and HTML, collapses whitespace. A backslash-escaped character (`\*`, `\<`, `\#`) is kept as the character itself, and an underscore inside
+a word (`snake_case`) is kept. `preview(md, max = 110)` truncates with `…`.
+
+`NoteMarkdown` converts between what the note editor holds and what is stored on the item; the editor library's own Markdown writer is not used because it does not escape
+what was typed. `fromHtml(html)` (the editor's HTML export, parsed with Jsoup) writes Markdown; `toHtml(md)` reads stored Markdown into the HTML the editor loads.
+- **Dialect**: one line per paragraph, an empty paragraph is an empty line (a line holding only `<br>`, written by earlier versions, reads the same); `- ` bullets and `1. ` numbers,
+  nested by two spaces per level; `**bold**`, `*italic*`, `~~strike~~`, `<u>underline</u>`, `` `code` ``, `[text](url)`. No headings or quotes: an unescaped `#` or `>` is text.
+- **Writing escapes** `\ ` * [ ] < ~` always, `_` unless it sits between letters or digits, `&` when it could start an entity, and at the start of a line `#`, `>`, `-`, `+`,
+  a run of `=` and the `.`/`)` of `1.`. Code spans use a fence longer than any backtick inside. Spaces at the edge of bold, italic or strike text are moved outside the marks.
+  Numbers count up per list and restart after a paragraph or another kind of list.
+- **Marks never touch.** `*` is both bold and italic, so a closing `*` right before an opening `*` (`**a***b*`) cannot be read back; the writer puts an empty HTML comment
+  `<!---->` between them (invisible in any renderer, ignored by the reader). `**`, `*` and `~~` also only work next to a letter, so where a style is closed and reopened around a
+  space, the space loses that style (invisible on a space) and the marks move to the other side of it. A longer-lasting style goes outside a shorter one to keep splits rare.
+  A link's text skips code spans when looking for its closing `]`. A tab counts as a space after a line-start marker.
+- **Reading** honours a backslash before any ASCII punctuation, treats `*`, `**`, `~~` and `<u>` as marks only when they pair up on the line (and are not next to spaces on the
+  wrong side), so `2 * 3 * 4` and `**oops` stay as typed, and writes the editor's HTML with `&`, `<`, `>` as entities and edge/double spaces as `&#32;` (the editor's HTML reader
+  would otherwise collapse them). The editor adds one empty paragraph after the last `<br>`, so the final empty line of a note is left out when loading, and an
+  empty bullet at the very end is left out (it would bring an extra paragraph).
+- Opening a note and leaving does not write it; saving after an edit rewrites the note in this dialect, so a note written by an earlier version changes form (not meaning) at its first edit.
 
 ## Share text (`share/ShareText.kt`)
 

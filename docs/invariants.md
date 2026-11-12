@@ -100,6 +100,16 @@ break. Section 3 are **known gaps**.
 - Crashlytics uploads only from release builds that were built with `app/google-services.json` (gitignored). Without the file (CI, fresh clones) the Firebase plugins are skipped and crash reporting is off. Crash reports still include a stack trace and an installation id, so the privacy policy must say so.
 - The full privacy policy link is unset (`FULL_POLICY_URL = null`); the button shows a toast saying it will be published before release. The text lives in `PRIVACY_POLICY.md` at the repo root and must be updated with any change to data collection, permissions or network use.
 - The note editor has no heading or quote buttons (they render if imported).
+- Notes are never saved or loaded with the editor library's `toMarkdown`/`setMarkdown`: they do not escape what the person typed (`2*3*4` came back as italic "234",
+  `<tag>` vanished) and ignore backslash escapes. Use `NoteMarkdown` ([domain.md](domain.md#notes-notesmarkdownkt-notesnotemarkdownkt)); a new editor feature (a new style) needs
+  a mark in both directions there, with a test. The library's HTML export is the contract: if a library upgrade changes it, `NoteEditorRoundTripTest` fails.
+- A note's final empty line and a final empty bullet are not kept on reopening (the editor adds a paragraph back after a trailing `<br>`), and an empty line made only of
+  spaces becomes an empty line.
+- **Any change to `NoteMarkdown` or to a note style must keep `NoteRoundTripPropertyTest` (domain; every bold/italic sequence up to 4 pieces plus 60,000 seeded random notes) and
+  `NoteEditorRoundTripTest` (the real editor state; every switch-and-type sequence up to 6 steps) green.** They are the proof that what is on screen is what is stored and what comes back;
+  a new style or mark must be added to their generators. A formatting bug report becomes a case in them first.
+- Pressing Return in the note editor with Gboard right after a hardware Ctrl+A shortcut can be ignored (seen in the emulator with injected keys only);
+  the editor itself handles Return after clearing a note fine (covered by tests).
 - Recent searches are not persisted.
 - A site's name depends on its own markup: a page with no `og:site_name`/`application-name` (or one behind a bot wall or login wall that hides it) keeps the host as its platform.
   Instagram and Facebook usually serve such a wall to a non-browser client, so those saves mostly stay `instagram.com`/`facebook.com` with the share-text title.

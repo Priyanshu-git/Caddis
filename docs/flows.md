@@ -111,9 +111,12 @@ via …", description, "Why you kept it" (inline reason edit, ≤ 140), note car
 "Saved <date> · details loaded", Refresh. Top bar: Edit details, Share link (only with a URL), Bring back later. Bottom bar:
 Open (links only), Done/Mark active, Delete.
 
-`NoteScreen` (route `note/{id}`): rich-text editor (`richeditor-compose`) holding Markdown. Standalone notes also have an editable
+`NoteScreen` (route `note/{id}`): rich-text editor (`richeditor-compose`) holding the note as Markdown written by `NoteMarkdown`, so whatever is typed (`*`, `_`, `#`, `<`, `[`,
+a leading `-`) is kept as typed. Standalone notes also have an editable
 title, intent chip and collections. Typing calls `ItemViewModel.noteChanged` → debounced 500 ms → `repo.setNote`; the top bar shows
-"Saving…"/"Saved"; leaving flushes via `flushNote` on the app scope. Toolbar: bold, italic, bullets, numbers, code.
+"Saving…"/"Saved"; leaving flushes via `flushNote` on the app scope. Typing something and undoing it within the pause records the saved text as the
+latest draft, so the undone text is never written. A screen turn reopens the editor on `currentNote()` (pending draft first). Toolbar: bold, italic,
+bullets, numbers, code; each lights up while it applies at the caret.
 
 Share: `ItemActions.share(item)` → chooser with `ShareText.of(item)` (+ subject/title). Open: `ACTION_VIEW` on the saved URL (Android
 picks the original app when installed, else the browser); failure toast "No app on this phone can open that link."

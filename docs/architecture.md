@@ -47,7 +47,7 @@ SettingsRepository (DataStore) ◄── ViewModels, workers
 | `schedule` | `ReturnScheduler`, `HomePicker`/`Pick`, `TidyUp`, `Trash`, `Weeks`, `doneLabel()` (Scheduling.kt); `Reminders`, `ReminderState`, `ReminderDecision`, `QuietHours` (Reminders.kt) |
 | `search` | `SearchQuery` (FTS match string, "matched in…" text), `resultBucket()` |
 | `details` | `LinkDetails`, `DetailsParser`, `Item.mergeDetails`, `formatLength` (Details.kt); `DetailEdits`, `EditLimits`, `Item.withEdits`, `Item.withLink`, `Item.needsDetails` (Edits.kt); `Favicons` |
-| `notes` | `Markdown.toPlainText`, `Markdown.preview` |
+| `notes` | `Markdown.toPlainText`, `Markdown.preview`, `NoteMarkdown` (editor HTML ⇄ stored Markdown, with escaping) |
 | `share` | `ShareText` |
 | `export` | `Exporter` (JSON + Netscape HTML bookmarks) |
 | `analytics` | `AnalyticsEvent` (closed set), `AnalyticsSink`, `ageBucket()` |

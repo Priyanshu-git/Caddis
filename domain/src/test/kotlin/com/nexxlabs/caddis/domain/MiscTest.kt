@@ -56,6 +56,56 @@ class MarkdownTest {
         Markdown.toPlainText("### Brown butter\n\n- 140 g **butter**\n> chill [30 min](https://x)") shouldBe "Brown butter 140 g butter chill 30 min"
         Markdown.preview("a".repeat(200), 10) shouldBe "aaaaaaaaaa…"
     }
+
+    @Test
+    fun `the editor's empty-line marker and blank lines never show`() {
+        Markdown.toPlainText("one\n\n<br>\n\ntwo") shouldBe "one two"
+        Markdown.toPlainText("hello\n\n\nworld\n") shouldBe "hello world"
+        Markdown.preview("  \n<br>\n ") shouldBe ""
+        Markdown.preview("") shouldBe ""
+    }
+
+    @Test
+    fun `list markers go but the items stay`() {
+        Markdown.toPlainText("- one\n- two\n1. three\n2. four") shouldBe "one two three four"
+        Markdown.toPlainText("* star\n+ plus") shouldBe "star plus"
+    }
+
+    @Test
+    fun `emphasis, strikethrough and inline code lose their marks`() {
+        Markdown.toPlainText("**bold** *italic* ***both*** ~~gone~~ `code`") shouldBe "bold italic both gone code"
+    }
+
+    @Test
+    fun `links keep their text and fenced code keeps its body`() {
+        Markdown.toPlainText("see [the docs](https://example.com/a_b) now") shouldBe "see the docs now"
+        Markdown.toPlainText("```kotlin\nval x = 1\n```") shouldBe "val x = 1"
+    }
+
+    @Test
+    fun `escaped characters are shown as the person typed them`() {
+        Markdown.toPlainText("2\\*3\\*4 and \\<tag> and \\# not a heading") shouldBe "2*3*4 and <tag> and # not a heading"
+        Markdown.toPlainText("\\- not a bullet\n1\\. not a number") shouldBe "- not a bullet 1. not a number"
+        Markdown.toPlainText("**bold** \\*star\\* `x`") shouldBe "bold *star* x"
+        Markdown.toPlainText("\\[not a link](x) C:\\\\dir") shouldBe "[not a link](x) C:\\dir"
+    }
+
+    @Test
+    fun `underscores inside a word are kept`() {
+        Markdown.toPlainText("snake_case_name and \\_x\\_") shouldBe "snake_case_name and _x_"
+    }
+
+    @Test
+    fun `a long note is cut at the limit without trailing space`() {
+        Markdown.preview("word ".repeat(40), 12) shouldBe "word word wo…"
+        Markdown.preview("word word word ", 9) shouldBe "word word…"
+    }
+
+    @Test
+    fun `a short note is shown whole`() {
+        Markdown.preview("Passport and charger") shouldBe "Passport and charger"
+        Markdown.preview("line one\nline two") shouldBe "line one line two"
+    }
 }
 
 class ExporterTest {

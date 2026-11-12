@@ -54,7 +54,9 @@ JUnit 5 (`org.junit.jupiter.api.Test`) with Kotest matchers (`shouldBe`). Pure f
 | `details/DetailsTest` | site name, kind and oEmbed discovery from a page, oEmbed parsing, generic titles, `mergeDetails`, `formatLength` |
 | `details/EditsAndIconsTest` | `withEdits`, `withLink`, favicon parsing/fallbacks/merge, `couldBeNote` |
 | `share/ShareTextTest` | share text, tracking-param stripping, private words never shared |
-| `MiscTest` | search query, Markdown, JSON/HTML export, analytics buckets |
+| `notes/NoteMarkdownTest` | editor HTML ⇄ stored Markdown: paragraphs, lists, marks, escaping of every typed character, spaces, old-format notes |
+| `notes/NoteRoundTripPropertyTest` | save-and-reopen keeps every character's styles: all bold/italic sequences of up to 4 pieces (~70,000), 60,000 seeded random notes with every style, special character, list and empty line |
+| `MiscTest` | search query, Markdown (plain text/preview), JSON/HTML export, analytics buckets |
 
 ### `:app` (`app/src/test/java/…`)
 
@@ -68,6 +70,11 @@ JUnit 4. Robolectric config in `app/src/test/resources/robolectric.properties` (
 - `data/DetailsFetcherTest`: `MockWebServer` (no real network). Page parsing and site names, retry vs give-up, Instagram/Facebook fetched like any site, bot-check pages, advertised oEmbed + page,
   User-Agent behaviour.
 - `ui/CaptureViewModelTest`, `ui/ItemActionsShareTest`, `TabNavigationTest` (uses `navigation-testing`), `MotionTest`.
+- `ui/NoteEditorRoundTripTest`: the real editor state (Robolectric) loading stored notes through `NoteMarkdown` and saving them again: typed special characters, bold and
+  italic, lists, empty lines, spaces and notes written by earlier versions all come back unchanged. It also plays every order of switching bold and italic on and off
+  while typing (~55,000 sequences, the real `toggleSpanStyle`/`addTextAfterSelection`) and bold/italic applied to selections afterwards, and compares the style of every character.
+- `ui/ItemViewModelNoteTest`: note autosave (Saving…, one write per pause, bursts collapse, undo within the pause writes nothing, flush on leaving,
+  clearing, `currentNote()` preferring a pending draft). Waits in real time for Room; the ViewModel's scopes are cancelled in `tearDown`.
 
 Test conventions: backticked sentence names; one behaviour per test; no network; inject the clock.
 
@@ -87,7 +94,18 @@ CI does not run them (it has no emulator). The runner is `com.nexxlabs.caddis.Hi
   (`awaitText`, `await`, `eventually`). Failures print the on-screen semantics tree.
 - One class per journey (all `@HiltAndroidTest`): `OnboardingJourneyTest`, `AddJourneyTest` (plus button, clipboard, duplicate, note), `ShareSheetJourneyTest`
   (`ShareActivity`), `HomeJourneyTest`, `LibraryJourneyTest` (search, filters, collections), `ItemJourneyTest` (item page, edit details, note editor),
-  `TrashAndTidyJourneyTest`, `ProfileJourneyTest` (notifications, rules, intents, export, delete all), `NavigationJourneyTest`.
+  `TrashAndTidyJourneyTest`, `ProfileJourneyTest` (notifications, rules, intents, export, delete all), `NavigationJourneyTest`,
+  `NoteEditorJourneyTest` and `NoteLifecycleJourneyTest` (below).
+- `journeys/NoteJourneyBase`: base for the note journeys. It types through the editor's own `InputConnection` one call at a time, like a keyboard
+  (`commit`, `composing`, `enter`, `backspace`, `select`, `deleteSelection`, `typeSlowly`), opens notes (`openNote`, `openEditor`, `start`), leaves
+  them (`leaveEditor` closes the keyboard first, as the first Back only hides it) and reads back `shown()`/`visible()`, `lit("Bold")` (toolbar
+  button selected) and `assertStored(id, markdown)`. Quirks to know: the editor does not keep the keyboard's composing region between calls, and a list
+  button rewrites the text, so the helper reconnects after list toggles. Selection offsets are in the editor's text (line breaks count as one
+  character, list items start with "• ").
+- `NoteEditorJourneyTest`: Return in every flavour (after a word, while composing, as a newline character, with the word, twice, mid-word, in lists,
+  after bold) never repeats a line; formatting kept as Markdown; the toolbar lighting up with the caret; editing saved notes (append, insert, delete,
+  replace, clear, bold text, long text, emoji), typed `* _ # < [ -` and spaces stored escaped and reopened as typed. `NoteLifecycleJourneyTest`: creating from the Add sheet, autosave, leaving and reopening, screen turn
+  right after typing, title, intent, collections, notes on links (item page preview), finding a note in the Library.
 
 Things to know when writing more:
 - The compose test clock only moves when the test lets it. `await*` and `eventually` do; a bare `Thread.sleep` does not (an activity that finishes from a
