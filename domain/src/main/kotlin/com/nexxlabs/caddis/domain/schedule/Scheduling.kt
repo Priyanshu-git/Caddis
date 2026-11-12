@@ -2,6 +2,7 @@ package com.nexxlabs.caddis.domain.schedule
 
 import com.nexxlabs.caddis.domain.model.Intent
 import com.nexxlabs.caddis.domain.model.IntentRule
+import com.nexxlabs.caddis.domain.model.Intents
 import com.nexxlabs.caddis.domain.model.Item
 import com.nexxlabs.caddis.domain.model.ItemStatus
 import com.nexxlabs.caddis.domain.model.ItemType
@@ -108,7 +109,30 @@ class HomePicker(private val maxPicks: Int = 3) {
             perIntent[p.item.intentId] = used + 1
             out += p
         }
+        // A saved-for-later link comes back now and then, but only into a slot the rules left free.
+        if (out.size < maxPicks) keptReminder(items, out, now)?.let { out += it }
         return out
+    }
+
+    /**
+     * Just keep has no return rule, so on its own it would never come back. Once a month, when Home has room,
+     * one of those links is shown: the one that has waited longest. It stays for the rest of that day.
+     * Notes, saves set to never return and saves with a date of their own are left alone.
+     */
+    private fun keptReminder(items: List<Item>, taken: List<Pick>, now: ZonedDateTime): Pick? {
+        val nowI = now.toInstant()
+        val today = now.toLocalDate()
+        val takenIds = taken.mapTo(HashSet()) { it.item.id }
+        return items.asSequence()
+            .filter { it.status == ItemStatus.ACTIVE && it.type == ItemType.LINK && it.intentId == Intents.KEEP }
+            .filter { it.returnRule == ReturnRule.DEFAULT && it.returnAt == null && it.id !in takenIds }
+            .filter { Duration.between(it.lastTouchedAt, nowI) >= KEPT_EVERY }
+            .filter { i ->
+                val shown = i.lastSurfacedAt ?: return@filter true
+                shown.atZone(now.zone).toLocalDate() == today || Duration.between(shown, nowI) >= KEPT_EVERY
+            }
+            .minWithOrNull(compareBy<Item> { it.lastSurfacedAt ?: it.createdAt }.thenBy { stableTieBreak(it.id, today) })
+            ?.let { Pick(it, score = 1) }
     }
 
     /** Short things fit weekday mornings and afternoons; long things fit evenings and weekends. */
@@ -144,15 +168,22 @@ class HomePicker(private val maxPicks: Int = 3) {
 
     companion object {
         val FRESH_GRACE: Duration = Duration.ofHours(12)
+
+        /** How long a Just keep link rests between appearances on Home. */
+        val KEPT_EVERY: Duration = Duration.ofDays(30)
     }
 }
 
-/** FIN-03: saves untouched for 90 days, oldest first. */
+/**
+ * FIN-03: saves untouched for 90 days, oldest first. What the person chose to keep is never offered:
+ * Just keep saves, saves set to never return, and their own notes.
+ */
 object TidyUp {
     val STALE_AFTER: Duration = Duration.ofDays(90)
 
     fun candidates(items: List<Item>, now: Instant): List<Item> = items
         .filter { it.status == ItemStatus.ACTIVE && it.returnAt?.isAfter(now) != true }
+        .filter { it.intentId != Intents.KEEP && it.returnRule != ReturnRule.NEVER && it.type == ItemType.LINK }
         .filter { Duration.between(it.lastTouchedAt, now) >= STALE_AFTER }
         .sortedBy { it.lastTouchedAt }
 }

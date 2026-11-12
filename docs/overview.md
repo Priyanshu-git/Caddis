@@ -38,7 +38,7 @@ unless asked.
 | **Link / Note** | A link has `url`; a note has `url = null`, `platform = NOTE`, `kind = NOTE`, and Markdown in `note`. A link may also carry a note (one per item). | `Models.kt` |
 | **Platform** | The site a link is from, **named by the site itself**: the host until the page is read, then its `og:site_name` (`chatgpt.com` → `ChatGPT`). No list of services anywhere; `note` for notes. The Filter sheet lists only platforms the library has. | `model/Platform.kt`, `details/Details.kt` |
 | **ContentKind** | `REEL, VIDEO, SHORT, POST, CHANNEL, PROFILE, SUBREDDIT, ARTICLE, WEBPAGE, PDF, FILE, FOLDER, DOCUMENT, NOTE`; `isVideo` for REEL/VIDEO/SHORT. A page only makes a link VIDEO, ARTICLE, PROFILE or PDF. | `Models.kt` |
-| **Intent** | Why you kept it. Eight defaults (ids `cook, watch, read, learn, try, buy, go, keep`) plus custom ones (ids `u-xxxxxxxx`). Each has a `doneLabel`. `keep` ("Just keep") is protected and has no return rule. | `model/Intents.kt` |
+| **Intent** | Why you kept it. Eight defaults (ids `cook, watch, read, learn, try, buy, go, keep`) plus custom ones (ids `u-xxxxxxxx`). Each has a `doneLabel`. `keep` ("Just keep") is protected, has no return rule, and means "for when I need it": Tidy-up never asks about it and Home shows one such link at most once a month, into a free slot. | `model/Intents.kt` |
 | **IntentSource** | `GUESSED` (by rules) or `USER`. Fetched details may still re-guess while `GUESSED`. | `Models.kt` |
 | **IntentRule** | Per intent: days of week, `TimeOfDay`, `maxPerDay` (1..3). Decides when saves of that intent return. | `Models.kt` |
 | **ReturnRule / returnAt** | A per-item "bring back later" override: `DEFAULT, TONIGHT, WEEKEND, NEXT_WEEK, DATE, NEVER`. `returnAt` is the moment it is due. | `Models.kt`, `schedule/Scheduling.kt` |
@@ -78,14 +78,14 @@ unless asked.
   return rules editor, rule-based guessing with local learning from corrections.
 - **Details**: background fetch of title/description/creator/thumbnail/length/site icon from the page's Open Graph tags and the oEmbed endpoint it advertises, for every site alike; readable fallback titles; Edit
   details sheet (link, title, by, description); Refresh button.
-- **Home**: ≤3 picks, "Bring it back" later options (tonight / weekend / next week / date),
+- **Home**: ≤3 picks, "Bring it back" later options (tonight / weekend / next week / date / not again),
   Done and Open, This week card, "Time for a tidy-up" card, "Next up" hint when nothing fits.
-- **Library**: all saves and notes newest first; platform chips (only platforms the library has); Filter sheet (intent, platform, status);
+- **Library**: all saves and notes newest first; a Kept chip (Just keep saves) and platform chips (only platforms the library has); Filter sheet (intent, platform, status);
   collections tab and shelves; offline keyword search (FTS4) with "why it matched" text and
   recent searches (in memory only).
 - **Item page** and **Note editor** (rich text stored as Markdown, autosave).
 - **Finish**: Done/Mark active, delete to Trash with Undo, Trash screen (restore / delete forever),
-  Tidy-up (keep or delete saves untouched for 90 days).
+  Tidy-up (keep or delete link saves untouched for 90 days; never Just keep saves, notes or saves set to "Not again").
 - **Notifications** (opt-in): one daily pick and a Sunday-evening weekly summary, quiet hours,
   shared one-a-day budget; local only.
 - **Profile**: return rules, intents, notifications, battery/mobile-data pause for background

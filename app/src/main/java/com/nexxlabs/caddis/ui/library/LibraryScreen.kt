@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexxlabs.caddis.domain.model.Intent
+import com.nexxlabs.caddis.domain.model.Intents
 import com.nexxlabs.caddis.domain.model.Item
 import com.nexxlabs.caddis.domain.platform.PlatformFacets
 import com.nexxlabs.caddis.ui.capture.Segmented
@@ -163,13 +164,17 @@ fun LibraryScreen(
     if (filters) FilterSheet(s, vm, onDismiss = { filters = false })
 }
 
-/** Platforms the library has, as scrolling chips. Intent and status live in the Filter sheet. */
+/** A Kept chip (saves kept for when you need them) and the platforms the library has, as scrolling chips. Other intents and status live in the Filter sheet. */
 @Composable
 private fun PlatformChipRow(s: LibraryState, vm: LibraryViewModel, onFilters: () -> Unit) {
-    val n = s.filters.sheetCount(platformInRow = true)
+    val n = s.filters.sheetCount(platformInRow = true, keptInRow = true)
+    val kept = s.filters.intentId == Intents.KEEP
     LazyRow(contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 4.dp, bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         item { CChip("Filter" + if (n > 0) " · $n" else "", selected = n > 0, onClick = onFilters, leading = CIcons.Filter, contentDescription = "More filters") }
-        item { CChip("All", selected = s.filters.platform == null, onClick = { vm.setPlatform(null) }) }
+        item { CChip("All", selected = s.filters.platform == null && !kept, onClick = { vm.setPlatform(null); if (kept) vm.setIntentFilter(Intents.KEEP) /* toggles Kept off */ }) }
+        if (s.keptCount > 0 || kept) {
+            item { CChip("Kept · ${s.keptCount}", selected = kept, onClick = { vm.setIntentFilter(Intents.KEEP) }, contentDescription = "Saves kept for when you need them") }
+        }
         items(s.platforms, key = { it.platform.id }) { f ->
             val on = s.filters.platform == f.platform
             CChip(f.platform.label, selected = on, onClick = { vm.setPlatform(if (on) null else f.platform) })

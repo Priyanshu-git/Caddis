@@ -45,8 +45,8 @@ Adding a route: add a `composable(...)` (use `screen(...)` if it shows a thumbna
 | 2 | Notifications onboarding | `OnboardingScreen` |
 | 3 / 4 / 5 | Save sheet / Duplicate / Add | `ui/capture/CaptureSheets.kt` (`SaveSheet`, `DuplicateSheet`, `AddSheet`) |
 | 7, 8, 21 | Home, all clear, This week | `HomeScreen` (`PickCard`, `WeekCard`, empty state) |
-| 9 / 10 | Bring back later / Change intent (and Edit details) | `ui/sheets/Sheets.kt` (`LaterSheet`, `IntentSheet`, `EditDetailsSheet`) |
-| 11, 13, 17, 18 | Library, filters, search | `LibraryScreen` (+ `FilterSheet`; its Platform group is built from `LibraryState.platforms`, not a fixed list) |
+| 9 / 10 | Bring back later (Tonight, This weekend, Next week, Pick a date, **Not again**) / Change intent (and Edit details); Just keep reads "For when you need it" | `ui/sheets/Sheets.kt` (`LaterSheet`, `IntentSheet`, `EditDetailsSheet`) |
+| 11, 13, 17, 18 | Library, filters, search | `LibraryScreen` (+ `FilterSheet`; its Platform group is built from `LibraryState.platforms`, not a fixed list; the chip row also has a **Kept · n** chip for Just keep) |
 | 12 | Collection shelf | `ShelfScreen` |
 | 14 / 19 / 20 | Collections / Tidy-up / Trash | `ui/manage/ManageScreens.kt` |
 | 15 / 16 | Item page / Note editor | `ui/item/ItemScreen.kt`, `NoteScreen.kt` |

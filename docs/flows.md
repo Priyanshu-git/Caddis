@@ -75,7 +75,9 @@ no picks but some intent has active saves and a rule.
 
 - When the pick ids change and are non-empty, `repo.markSurfaced(ids)` runs (once per item per day).
 - Actions go through `ItemActions`: **Open** (`markOpened` + `ACTION_VIEW`), **Done** (`markDone` + toast "Marked “<label>”." with
-  Undo), **Later** (`LaterSheet` → `bringBackLater` + toast "Back <when>." with Undo restoring the previous rule/time).
+  Undo), **Later** (`LaterSheet` → `bringBackLater` + toast "Back <when>." with Undo restoring the previous rule/time). The sheet's
+  **Not again** row sets `ReturnRule.NEVER` (toast "Won’t come back. Still in your Library."): the save stays in the Library, off Home and off Tidy-up.
+- A **Just keep link** can be one of the picks: once a month, only when a slot is free (`HomePicker.keptReminder`, see [domain.md](domain.md)).
 - `HomeViewed(picksShown, actedOn)` is logged when the ViewModel is cleared.
 - Opening `home?week=true` (weekly summary notification) scrolls to the This week card and logs `SummaryViewed(fromNotification = true)`.
 - Empty state: "You’re all caught up" + "Browse the library" + optional Next up card.
@@ -95,7 +97,7 @@ All via `ItemActions` (app scope) so leaving a screen never drops them:
 `LibraryViewModel` keeps UI state (`Filters`, query, `searching`, `showCollections`, `recent`) in a private `MutableStateFlow` and
 combines it with the library, search results, intents and collections.
 
-- **Filters**: Library chip row = Filter button + "All" + one chip per platform in the library (`LibraryState.platforms`, scrolls, tap again to clear); Filter sheet (intent, platform, status Active/Done/All; the button counts intent + status on the Library, plus platform in search), applied in memory by `Filters.apply`. The Platform group is **dynamic**: `LibraryState.platforms` comes from
+- **Filters**: Library chip row = Filter button + "All" + **"Kept · n"** (only when the library has Just keep saves, `LibraryState.keptCount`; it is the Just keep intent filter, tap again to clear, and the Filter button does not count it) + one chip per platform in the library (`LibraryState.platforms`, scrolls, tap again to clear); Filter sheet (intent, platform, status Active/Done/All; the button counts intent + status on the Library, plus platform in search), applied in memory by `Filters.apply`. The Platform group is **dynamic**: `LibraryState.platforms` comes from
   `PlatformFacets.of` over the saves in scope (a collection shelf lists only its own), most saves first; first 6 shown, then "More · n"; the
   chosen platform stays visible; the group is hidden when there are no link saves; a filter on a platform whose last save is gone is dropped.
 - **Search**: `openSearch()` resets query and filters. The query is debounced 120 ms into `repo.search(q)` (FTS prefix AND). Hits
@@ -123,7 +125,8 @@ picks the original app when installed, else the browser); failure toast "No app 
 
 ## 9. Tidy-up
 
-`TidyViewModel` snapshots `TidyUp.candidates(library, now)` once (the queue does not shift while reviewing). **Keep** →
+`TidyViewModel` snapshots `TidyUp.candidates(library, now)` once (the queue does not shift while reviewing). Just keep saves, saves set to
+Not again, and notes are never in the queue. **Keep** →
 `repo.keep(id)` (`lastReviewedAt`); **Delete** → `ItemActions.delete(item, TIDY_UP, toast = false)`. Progress bar of segments; when finished,
 logs `TidyUpFinished(kept, deleted)` and shows "All tidy". "Open it first" opens the link.
 

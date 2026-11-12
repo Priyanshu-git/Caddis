@@ -114,6 +114,22 @@ class LibraryJourneyTest : JourneyTest() {
     }
 
     @Test
+    fun theKeptChip_showsWhatYouKeptForLater_andTappingAgainClearsIt() {
+        save("https://example.com/size-chart", "Size chart", Intents.KEEP)
+        openLibrary()
+
+        // The seeded note is Just keep too, so two saves are kept.
+        awaitText("Kept · 2")
+        tapButton("Kept · 2")
+        assertShowing("Size chart", "Gift ideas")
+        assertTrue(!exists(hasText("Sourdough basics")))
+        assertTrue("the Filter button does not count the Kept chip", !exists(hasText("Filter · 1")))
+
+        tapButton("Kept · 2")
+        awaitText("Sourdough basics")
+    }
+
+    @Test
     fun theChipRow_filtersByPlatform_andTappingAgainClearsIt() {
         openLibrary()
 

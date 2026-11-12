@@ -15,7 +15,9 @@ break. Section 3 are **known gaps**.
 4. **Zero taps to organise:** the intent is guessed, not asked for; changing it is optional.
 5. **Calm:** no streaks, no guilt copy, at most one notification a day (daily and weekly share the budget), none in quiet hours, no catch-up bursts.
    Notifications are opt-in (off by default).
-6. **Just keep** (`keep`) cannot be deleted, has no return rule, and receives the saves of any deleted intent.
+6. **Just keep** (`keep`) cannot be deleted, has no return rule, and receives the saves of any deleted intent. It means "for when I need it":
+   Tidy-up never asks about it, and Home brings one such link back at most once a month, only into a free slot (`HomePicker.keptReminder`).
+   Saves set to **Not again** (`ReturnRule.NEVER`) and the person's own notes are likewise never offered for Tidy-up.
 7. **Deleting a collection keeps its items.** **Deleting an item** moves it to Trash for 30 days (restorable); only Trash actions and the 30-day purge delete rows.
 8. Done items stay in the library; Done keeps the item but removes it from Home.
 
@@ -64,9 +66,9 @@ break. Section 3 are **known gaps**.
 **Home and scheduling**
 - `FRESH_GRACE` is **12 hours** (the nearby comment says "a day"): a new save will not be picked until it is 12 h old, unless it has an explicit `returnAt` that has come due.
 - Explicit returns (`returnAt`) bypass the day-of-week rule and `maxPerDay`, and are scored `100 + ageBonus`.
-- `ReturnRule.NEVER` exists in the model and is excluded by `HomePicker`, but **no UI sets it**; the Later sheet offers only Tonight / This weekend / Next week / Pick a date. "Never returns" for an intent comes from a rule with no days.
+- `ReturnRule.NEVER` is set by the Later sheet's **Not again** row (item stays in the Library; Undo restores the old rule). `HomePicker` and `TidyUp` both skip it. "Never returns" for a whole intent still comes from a rule with no days.
 - `markSurfaced` counts once per item per day, and clears an expired `returnAt` after the item has been shown on a later day than it came due.
-- `TidyUp` includes notes (any ACTIVE item untouched 90 days); `HomePicker` excludes them. "Keep" sets `lastReviewedAt`, which resets the 90 days.
+- `TidyUp` offers only ACTIVE **links** untouched 90 days, and skips Just keep, `NEVER` and notes; `HomePicker` also excludes notes. Tidy-up's "Keep" sets `lastReviewedAt`, which resets the 90 days.
 - `HomeScreen` passes `LocalDate.now()` to the Later sheet while `ItemViewModel` uses the injected clock; they agree outside of tests.
 - `TimeOfDay.of(hour)` returns `EVENING` for hours outside 5–23 (late night counts as evening for scoring).
 

@@ -85,9 +85,20 @@ class TrashAndTidyJourneyTest : JourneyTest() {
     // ---------- Tidy-up ----------
 
     private fun twoOldSaves() {
-        save("https://example.com/old-1", "Old one", Intents.KEEP)
-        save("https://example.com/old-2", "Old two", Intents.KEEP)
+        save("https://example.com/old-1", "Old one", Intents.READ)
+        save("https://example.com/old-2", "Old two", Intents.READ)
         daysLater(100)
+    }
+
+    @Test
+    fun savesYouKept_areNeverOfferedForTidyUp() {
+        save("https://example.com/size-chart", "Size chart", Intents.KEEP)
+        saveNote("Plumber's number", "Ask for Dev")
+        daysLater(400)
+        launchApp()
+
+        awaitText("Today")
+        assertTrue(!exists(androidx.compose.ui.test.hasText("Time for a tidy-up")))
     }
 
     @Test
@@ -130,7 +141,7 @@ class TrashAndTidyJourneyTest : JourneyTest() {
 
     @Test
     fun aKeptSave_isNotOfferedAgainForNinetyDays() {
-        val id = save("https://example.com/old-1", "Old one", Intents.KEEP).id
+        val id = save("https://example.com/old-1", "Old one", Intents.READ).id
         daysLater(100)
         runBlocking { repo.keep(id) }
         val first = launchApp()

@@ -118,6 +118,27 @@ class HomeJourneyTest : JourneyTest() {
     }
 
     @Test
+    fun aKeptLink_comesBackAfterAMonth_andNotAgainTakesItOffHome() {
+        val kept = save("https://example.com/size-chart", title = "Size chart", intent = IntentIds.KEEP)
+        daysLater(10)
+        val first = launchApp()
+        awaitText("Today")
+        assertTrue("a young kept link stays off Home", !exists(androidx.compose.ui.test.hasText("Size chart")))
+
+        first.close()
+        daysLater(25)
+        launchApp()
+        awaitText("Size chart")
+        tapButton("Later")
+        tapText("Not again")
+        awaitText("Won’t come back. Still in your Library.")
+
+        eventually("never saved") { item(kept.id).returnRule == ReturnRule.NEVER }
+        assertEquals(ItemStatus.ACTIVE, item(kept.id).status)
+        awaitText("You’re all caught up")
+    }
+
+    @Test
     fun later_canPickADate() {
         val saved = waitingRead()
         launchApp()

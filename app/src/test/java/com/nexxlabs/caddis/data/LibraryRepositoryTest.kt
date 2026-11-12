@@ -197,6 +197,20 @@ class LibraryRepositoryTest {
     }
 
     @Test
+    fun `not again keeps the save but takes it off Home, and undo puts the old rule back`() = runBlocking {
+        val item = save("https://example.com/ref")
+        repo.setIntent(item.id, Intents.KEEP)
+        assertEquals("", repo.bringBackLater(item.id, ReturnRule.NEVER))
+        val never = repo.get(item.id)!!
+        assertEquals(ReturnRule.NEVER, never.returnRule)
+        assertNull(never.returnAt)
+        assertEquals(ItemStatus.ACTIVE, never.status)
+
+        repo.setReturn(item.id, ReturnRule.DEFAULT, null)
+        assertEquals(ReturnRule.DEFAULT, repo.get(item.id)!!.returnRule)
+    }
+
+    @Test
     fun `export and delete all data`() = runBlocking {
         save("https://example.com/e", hint = "Exported")
         assertTrue(repo.exportJson().contains("Exported"))

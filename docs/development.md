@@ -49,7 +49,7 @@ JUnit 5 (`org.junit.jupiter.api.Test`) with Kotest matchers (`shouldBe`). Pure f
 | `link/LinksTest` | check, normalize, extractFirst, platform detection |
 | `link/DefaultTitlesTest` | readable fallback titles, slugs, `displayTitle` |
 | `intent/IntentGuesserTest` | keyword order, defaults, corrections threshold, deleted intents |
-| `schedule/SchedulingTest` | `ReturnScheduler`, `HomePicker`, `TidyUp`, `Trash`, `Weeks`, rule labels |
+| `schedule/SchedulingTest` | `ReturnScheduler`, `HomePicker` (incl. the Just keep reminder), `TidyUp` (what is never offered), `Trash`, `Weeks`, rule labels |
 | `schedule/RemindersTest` | opt-in, one a day, quiet hours, weekly on Sunday evening |
 | `details/DetailsTest` | site name, kind and oEmbed discovery from a page, oEmbed parsing, generic titles, `mergeDetails`, `formatLength` |
 | `details/EditsAndIconsTest` | `withEdits`, `withLink`, favicon parsing/fallbacks/merge, `couldBeNote` |

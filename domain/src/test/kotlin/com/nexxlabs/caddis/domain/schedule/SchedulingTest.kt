@@ -11,8 +11,10 @@ import com.nexxlabs.caddis.domain.model.ReturnRule
 import com.nexxlabs.caddis.domain.model.TimeOfDay
 import com.nexxlabs.caddis.domain.model.label
 import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import java.time.DayOfWeek
@@ -37,12 +39,14 @@ private fun item(
     lengthSeconds: Int? = null,
     type: ItemType = ItemType.LINK,
     lastOpened: Instant? = null,
+    rule: ReturnRule? = null,
+    surfaced: Instant? = null,
 ) = Item(
     id = id, type = type, url = "https://e.com/$id", normalizedUrl = "e.com/$id", platform = Platform.named("example.com"),
     kind = ContentKind.WEBPAGE, intentId = intent, status = status,
     createdAt = now.toInstant().minus(Duration.ofDays(daysOld)), returnAt = returnAt,
-    returnRule = if (returnAt != null) ReturnRule.DATE else ReturnRule.DEFAULT,
-    lengthSeconds = lengthSeconds, lastOpenedAt = lastOpened,
+    returnRule = rule ?: if (returnAt != null) ReturnRule.DATE else ReturnRule.DEFAULT,
+    lengthSeconds = lengthSeconds, lastOpenedAt = lastOpened, lastSurfacedAt = surfaced,
 )
 
 private val rules = Intents.defaultRules.associateBy { it.intentId }
@@ -106,7 +110,7 @@ class HomePickerTest {
     }
 
     @Test
-    fun `done, deleted, notes, just keep and fresh saves stay off Home`() {
+    fun `done, deleted, notes, young just keep saves and fresh saves stay off Home`() {
         val items = listOf(
             item("d", Intents.READ, status = ItemStatus.DONE),
             item("x", Intents.READ, status = ItemStatus.DELETED),
@@ -126,6 +130,66 @@ class HomePickerTest {
     }
 }
 
+/** A Just keep link comes back now and then, only into a free slot, never more than once a month. */
+class KeptReminderTest {
+    private val picker = HomePicker()
+
+    @Test
+    fun `an old just keep link fills an empty Home`() {
+        val picks = picker.pick(listOf(item("k", Intents.KEEP, daysOld = 45)), rules, WED_MORNING)
+        picks.map { it.item.id } shouldContainExactly listOf("k")
+    }
+
+    @Test
+    fun `a just keep link needs a month since it was saved or opened`() {
+        val now = WED_MORNING.toInstant()
+        val young = item("young", Intents.KEEP, daysOld = 29)
+        val opened = item("opened", Intents.KEEP, daysOld = 200, lastOpened = now.minus(Duration.ofDays(10)))
+        picker.pick(listOf(young, opened), rules, WED_MORNING).shouldBeEmpty()
+    }
+
+    @Test
+    fun `it is shown at most once a month, and stays all day once shown`() {
+        val now = WED_MORNING.toInstant()
+        val shownToday = item("today", Intents.KEEP, daysOld = 200, surfaced = now.minus(Duration.ofHours(2)))
+        val shownLastWeek = item("week", Intents.KEEP, daysOld = 200, surfaced = now.minus(Duration.ofDays(7)))
+        val shownLongAgo = item("old", Intents.KEEP, daysOld = 200, surfaced = now.minus(Duration.ofDays(31)))
+        picker.pick(listOf(shownToday), rules, WED_MORNING).map { it.item.id } shouldContainExactly listOf("today")
+        picker.pick(listOf(shownLastWeek), rules, WED_MORNING).shouldBeEmpty()
+        picker.pick(listOf(shownLongAgo), rules, WED_MORNING).map { it.item.id } shouldContainExactly listOf("old")
+    }
+
+    @Test
+    fun `only one just keep link a day, the one waiting longest`() {
+        val waiting = item("a", Intents.KEEP, daysOld = 400)
+        val newer = item("b", Intents.KEEP, daysOld = 60)
+        picker.pick(listOf(newer, waiting), rules, WED_MORNING).map { it.item.id } shouldContainExactly listOf("a")
+    }
+
+    @Test
+    fun `it never takes a slot from a pick the rules chose`() {
+        val roomy = rules + (Intents.WATCH to IntentRule(Intents.WATCH, Intents.ALL_DAYS, TimeOfDay.EVENING, 3))
+        val watch = (1..3).map { item("w$it", Intents.WATCH) }
+        val kept = item("k", Intents.KEEP, daysOld = 90)
+        picker.pick(watch + kept, roomy, WED_MORNING).map { it.item.id }.shouldNotContain("k")
+        // With only two rule picks there is a free slot, so it comes along.
+        picker.pick(watch.take(2) + kept, roomy, WED_MORNING).map { it.item.id } shouldContain "k"
+    }
+
+    @Test
+    fun `never for notes, done saves, saves set to never return or a dated return`() {
+        val items = listOf(
+            item("n", Intents.KEEP, daysOld = 90, type = ItemType.NOTE),
+            item("d", Intents.KEEP, daysOld = 90, status = ItemStatus.DONE),
+            item("x", Intents.KEEP, daysOld = 90, rule = ReturnRule.NEVER),
+        )
+        picker.pick(items, rules, WED_MORNING).shouldBeEmpty()
+        // A dated return is the person's own choice and follows its date, not the monthly one.
+        val dated = item("dated", Intents.KEEP, daysOld = 90, returnAt = WED_MORNING.plusDays(3).toInstant())
+        picker.pick(listOf(dated), rules, WED_MORNING).shouldBeEmpty()
+    }
+}
+
 class TidyTrashWeekTest {
     @Test
     fun `tidy-up offers active saves untouched for 90 days, oldest first`() {
@@ -138,6 +202,18 @@ class TidyTrashWeekTest {
             item("e", Intents.READ, daysOld = 200, status = ItemStatus.DONE),
         )
         TidyUp.candidates(items, now).map { it.id } shouldContainExactly listOf("b", "a")
+    }
+
+    @Test
+    fun `tidy-up never asks about what you chose to keep`() {
+        val now = WED_MORNING.toInstant()
+        val items = listOf(
+            item("keep", Intents.KEEP, daysOld = 300),
+            item("note", Intents.READ, daysOld = 300, type = ItemType.NOTE),
+            item("never", Intents.READ, daysOld = 300, rule = ReturnRule.NEVER),
+            item("stale", Intents.READ, daysOld = 300),
+        )
+        TidyUp.candidates(items, now).map { it.id } shouldContainExactly listOf("stale")
     }
 
     @Test

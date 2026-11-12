@@ -63,7 +63,8 @@ fun LaterSheet(item: Item, today: LocalDate, onPick: (ReturnRule, LocalDate?) ->
         LaterRow("This weekend", "Saturday morning") { onPick(ReturnRule.WEEKEND, null) }
         LaterRow("Next week", "Monday") { onPick(ReturnRule.NEXT_WEEK, null) }
         LaterRow("Pick a date", "Calendar") { picking = true }
-        Fine("It won’t reappear before then.", Modifier.padding(top = 12.dp))
+        LaterRow("Not again", "Stays in your Library") { onPick(ReturnRule.NEVER, null) }
+        Fine("A date or time you pick won’t reappear before then.", Modifier.padding(top = 12.dp))
         CButton("Cancel", onClick = onDismiss, style = BtnStyle.Ghost, modifier = Modifier.fillMaxWidth())
     }
     if (picking) {
@@ -142,7 +143,7 @@ private fun IntentOption(i: Intent, on: Boolean, modifier: Modifier, onClick: ()
         verticalArrangement = Arrangement.Center,
     ) {
         Text(i.name, style = CaddisType.strong, color = c.fg)
-        Fine(if (i.id == Intents.KEEP) "Stays where it is" else "Done: ${i.doneLabel}")
+        Fine(if (i.id == Intents.KEEP) "For when you need it" else "Done: ${i.doneLabel}")
     }
 }
 

@@ -53,7 +53,8 @@ class ItemActions @Inject constructor(
         val prevRule = item.returnRule
         val prevAt = item.returnAt
         val label = repo.bringBackLater(item.id, rule, date)
-        messenger.show("Back $label.") { repo.setReturn(item.id, prevRule, prevAt) }
+        val message = if (rule == ReturnRule.NEVER) "Won’t come back. Still in your Library." else "Back $label."
+        messenger.show(message) { repo.setReturn(item.id, prevRule, prevAt) }
     }
 
     /** LIB-05: the original app when it is installed (Android resolves app links), otherwise the browser. */

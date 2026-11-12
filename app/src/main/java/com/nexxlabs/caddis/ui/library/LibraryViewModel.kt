@@ -8,6 +8,7 @@ import com.nexxlabs.caddis.domain.analytics.AnalyticsEvent
 import com.nexxlabs.caddis.domain.analytics.AnalyticsSink
 import com.nexxlabs.caddis.domain.model.Collection
 import com.nexxlabs.caddis.domain.model.Intent
+import com.nexxlabs.caddis.domain.model.Intents
 import com.nexxlabs.caddis.domain.model.Item
 import com.nexxlabs.caddis.domain.model.ItemStatus
 import com.nexxlabs.caddis.domain.model.Platform
@@ -42,10 +43,10 @@ data class Filters(
 ) {
     /**
      * What the Filter button counts: the choices that live inside the sheet. The Library's chip row
-     * shows platforms itself ([platformInRow]), so they are not counted there.
+     * shows platforms itself ([platformInRow]) and a Kept chip ([keptInRow]), so those are not counted there.
      */
-    fun sheetCount(platformInRow: Boolean = false): Int =
-        (if (intentId != null) 1 else 0) +
+    fun sheetCount(platformInRow: Boolean = false, keptInRow: Boolean = false): Int =
+        (if (intentId != null && !(keptInRow && intentId == Intents.KEEP)) 1 else 0) +
             (if (platform != null && !platformInRow) 1 else 0) +
             (if (status != StatusFilter.ALL) 1 else 0)
 
@@ -70,6 +71,8 @@ data class LibraryState(
     val collections: List<Pair<Collection, Int>> = emptyList(),
     /** Platforms that have at least one save in scope, most saves first (LIB-03). Not a fixed list. */
     val platforms: List<PlatformFacet> = emptyList(),
+    /** Saves in scope that were kept "for when you need it" (Just keep). The Kept chip shows only when there are some. */
+    val keptCount: Int = 0,
     val filters: Filters = Filters(),
     val query: String = "",
     val searching: Boolean = false,
@@ -121,6 +124,7 @@ class LibraryViewModel @Inject constructor(
             intents = intents,
             collections = counts,
             platforms = platforms,
+            keptCount = inScope.count { it.intentId == Intents.KEEP },
             filters = filters,
             query = u.query,
             searching = u.searching,

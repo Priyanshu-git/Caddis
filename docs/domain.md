@@ -111,7 +111,7 @@ try: diy, workout, routine, tips…). Edit them there; tests: `IntentGuesserTest
 - Candidates: `ACTIVE` **links only** (notes never appear), `returnRule != NEVER`.
 - **Explicit return** (`returnAt != null`): not eligible until `returnAt` has passed; once due it scores
   `100 + ageBonus` and is **not** subject to `maxPerDay`.
-- Otherwise the item needs a rule for its intent (none → never, e.g. Just keep), today must be in the
+- Otherwise the item needs a rule for its intent (none → no rule-based return; Just keep only comes back through the kept reminder below), today must be in the
   rule's days, and the item must be at least `FRESH_GRACE` (**12 hours**) old.
 - Score = `10` + `6` if the rule's time of day equals now's slot + `lengthFit` + `ageBonus` −
   `recentlyShownPenalty`.
@@ -122,9 +122,13 @@ try: diy, workout, routine, tips…). Edit them there; tests: `IntentGuesserTest
     < 7 days → 3; else 0; plus `min(surfacedCount, 5)`.
 - Sort by score descending, then a stable per-day hash tie-break (`id + date`).
 - Take up to 3, enforcing each intent's `maxPerDay` (explicit returns are exempt).
+- **Kept reminder** (`keptReminder`): if that leaves a slot free, one **Just keep link** may fill it. Eligible: `ACTIVE`
+  link, intent `keep`, `returnRule == DEFAULT`, no `returnAt`, `lastTouchedAt` ≥ `KEPT_EVERY` (**30 days**), and either
+  never shown, shown **today** (so it stays all day), or last shown ≥ 30 days ago. Only one a day, the one that has
+  waited longest (`lastSurfacedAt ?: createdAt`, then the per-day hash). It never displaces a pick the rules chose.
 
-`TidyUp.candidates(items, now)`: `ACTIVE` items (links **and** notes) not waiting on a future `returnAt`,
-with `lastTouchedAt` ≥ 90 days old (`STALE_AFTER`), oldest first.
+`TidyUp.candidates(items, now)`: `ACTIVE` **links** not waiting on a future `returnAt`, with `lastTouchedAt` ≥ 90 days old
+(`STALE_AFTER`), oldest first. What the person chose to keep is never offered: intent `keep`, `returnRule == NEVER`, and notes.
 
 `Trash`: `RETENTION = 30 days`; `daysLeft(deletedAt, now)` (rounded up to days, min 0); `isExpired`.
 
