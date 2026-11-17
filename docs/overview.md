@@ -92,6 +92,7 @@ unless asked.
 - **Profile**: return rules, intents, notifications, battery/mobile-data pause for background
   fetching, export (JSON and HTML bookmarks), thumbnail cache (200 MB cap) with clear, privacy
   points, account screen (no account; "Delete all data").
+- **App updates**: on installs from Google Play, a flexible in-app update is offered once per version (again after 7 days), downloads in the background, and offers a restart; Profile has a matching row.
 - **Share out**: Share action on the item page (title, clean link, "Shared via Caddis app").
 - **Theme**: light/dark paper palette with one teal accent, Bricolage Grotesque + DM Sans,
   calm motion, shared-element thumbnail transitions, predictive back.

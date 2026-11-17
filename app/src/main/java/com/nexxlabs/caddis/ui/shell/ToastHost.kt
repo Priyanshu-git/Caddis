@@ -75,7 +75,7 @@ internal fun ToastHost(messenger: Messenger, modifier: Modifier) {
             val undo = t.undo
             if (undo != null) {
                 Text(
-                    "Undo",
+                    t.actionLabel,
                     style = CaddisType.strong.copy(fontWeight = FontWeight.Bold),
                     color = c.toastLink,
                     modifier = Modifier.heightIn(min = 32.dp).clickable(role = Role.Button) {

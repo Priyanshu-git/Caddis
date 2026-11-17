@@ -69,6 +69,7 @@ import com.nexxlabs.caddis.ui.components.TopBar
 import com.nexxlabs.caddis.ui.sheets.rememberConfirm
 import com.nexxlabs.caddis.ui.theme.C
 import com.nexxlabs.caddis.ui.theme.CaddisType
+import com.nexxlabs.caddis.update.UpdateState
 import java.time.DayOfWeek
 
 /** Asks for the notification permission (Android 13+) only when the person turns a reminder on. */
@@ -98,6 +99,8 @@ fun ProfileScreen(navigate: (String) -> Unit, vm: ProfileViewModel = hiltViewMod
     val s by vm.settings.collectAsStateWithLifecycle()
     val intents by vm.intents.collectAsStateWithLifecycle()
     val st = s ?: return
+    val update by vm.update.collectAsStateWithLifecycle()
+    val updateDialog = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { }
     Column(Modifier.fillMaxSize()) {
         BigTitle("Profile")
         Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 18.dp).padding(bottom = 100.dp)) {
@@ -112,6 +115,21 @@ fun ProfileScreen(navigate: (String) -> Unit, vm: ProfileViewModel = hiltViewMod
                     }
                     Chevron()
                 }
+            }
+            when (update) {
+                is UpdateState.Available -> {
+                    Eyebrow("Update")
+                    SettingRow("Update Caddis", "A newer version is on Google Play.", onClick = { vm.startUpdate(updateDialog) }) { Chevron() }
+                }
+                UpdateState.Downloading -> {
+                    Eyebrow("Update")
+                    SettingRow("Updating Caddis", "Downloading in the background. Keep using the app.") { }
+                }
+                UpdateState.Ready -> {
+                    Eyebrow("Update")
+                    SettingRow("Restart to update", "The new version is ready.", onClick = vm::restartToUpdate) { Chevron() }
+                }
+                UpdateState.None -> Unit
             }
             Eyebrow("Preferences")
             SettingRow("Return rules", onClick = { navigate("rules") }) { Chevron() }

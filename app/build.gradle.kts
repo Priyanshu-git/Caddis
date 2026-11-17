@@ -104,6 +104,10 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.crashlytics)
 
+    // Google Play in-app updates (flexible). Only talks to the Play Store app on the phone.
+    implementation(libs.play.app.update)
+    implementation(libs.play.app.update.ktx)
+
     testImplementation(libs.junit4)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)

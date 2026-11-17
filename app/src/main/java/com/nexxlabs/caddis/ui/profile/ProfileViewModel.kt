@@ -2,7 +2,11 @@ package com.nexxlabs.caddis.ui.profile
 
 import android.content.Context
 import android.content.Intent as AndroidIntent
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.IntentSenderRequest
 import androidx.core.content.FileProvider
+import com.nexxlabs.caddis.update.AppUpdater
+import com.nexxlabs.caddis.update.UpdateState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexxlabs.caddis.CaddisApp
@@ -41,7 +45,14 @@ class ProfileViewModel @Inject constructor(
     private val messenger: Messenger,
     private val analytics: AnalyticsSink,
     private val clock: Clock,
+    private val updater: AppUpdater,
 ) : ViewModel() {
+
+    /** A newer Caddis on Google Play, for the Profile row. */
+    val update: StateFlow<UpdateState> = updater.state
+
+    fun startUpdate(launcher: ActivityResultLauncher<IntentSenderRequest>) = updater.start(launcher)
+    fun restartToUpdate() = updater.restart()
 
     val settings: StateFlow<Settings?> = settingsRepo.settings.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val rules: StateFlow<Map<String, IntentRule>> = repo.observeRules().stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())

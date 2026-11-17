@@ -90,13 +90,15 @@ CI does not run them (it has no emulator). The runner is `com.nexxlabs.caddis.Hi
   - **`TestClock`**: a movable `Clock`, Wed 4 Nov 2026 11:08 IST, so Home's day and time-of-day rules are the same on every run. Move it with `daysLater(n)`.
   - **`FakeDetails`** (the `DetailsScheduler`): no WorkManager and no network. By default a fetch "gives up", so a save shows the title built from its link.
     `serve(url, LinkDetails(…))` makes details arrive, `hold()`/`release()` keep them waiting (to see the skeleton).
+  - **`FakeUpdater`** (the `AppUpdater`): nothing waits until a test calls `offer(versionCode)`; opening the dialog (`start`) begins the download, `downloaded()` finishes it,
+    `starts` / `restarts` count what the app asked for.
 - `journeys/JourneyTest`: base class. `HiltAndroidRule` + `createEmptyComposeRule`, grants `POST_NOTIFICATIONS` up front (no system dialog), and gives
   `launchApp(route?)`, data helpers (`save`, `saveNote`, `library()`, `item()`, `trash()`), finders (`button`, `tab`, `field(label)`, `described`) and waiters
   (`awaitText`, `await`, `eventually`). Failures print the on-screen semantics tree.
 - One class per journey (all `@HiltAndroidTest`): `OnboardingJourneyTest`, `AddJourneyTest` (plus button, clipboard, duplicate, note), `ShareSheetJourneyTest`
   (`ShareActivity`), `HomeJourneyTest`, `LibraryJourneyTest` (search, filters, collections), `ItemJourneyTest` (item page, edit details, note editor),
   `TrashAndTidyJourneyTest`, `ProfileJourneyTest` (notifications, rules, intents, export, delete all), `NavigationJourneyTest`,
-  `NoteEditorJourneyTest` and `NoteLifecycleJourneyTest` (below).
+  `UpdateJourneyTest` (Google Play update offer, Profile row, restart), `NoteEditorJourneyTest` and `NoteLifecycleJourneyTest` (below).
 - `journeys/NoteJourneyBase`: base for the note journeys. It types through the editor's own `InputConnection` one call at a time, like a keyboard
   (`commit`, `composing`, `enter`, `backspace`, `select`, `deleteSelection`, `typeSlowly`), opens notes (`openNote`, `openEditor`, `start`), leaves
   them (`leaveEditor` closes the keyboard first, as the first Back only hides it) and reads back `shown()`/`visible()`, `lit("Bold")` (toolbar
@@ -170,3 +172,9 @@ unless you also freeze their order.
 - `.gitignore` excludes build output, IDE files, keystores/`google-services.json`, `.env*`, and Claude local settings (`.claude/settings.local.json`,
   `.claude/worktrees/`, `CLAUDE.local.md`).
 - Fonts: Bricolage Grotesque and DM Sans (SIL OFL) are bundled in `app/src/main/res/font`.
+
+## Checking the real Google Play update dialog
+
+The in-app update API only works for an app installed from Google Play, so the unit tests use Play's `FakeAppUpdateManager` and the journeys use `FakeUpdater`.
+To see the real dialog: upload build N to an **internal testing** track and install it from Play on a device, then upload a higher `versionCode` to the same track.
+Open Caddis (after onboarding): Play's dialog should appear once; Profile shows "Update Caddis" until installed. Play can take a while to offer a new release.

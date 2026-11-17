@@ -161,10 +161,12 @@ image cache.
 | `pauseOnMobileData` | `pause_mobile_data` (bool) | false |
 | `lastDailySent` | `last_daily_sent` (ISO date string) | null |
 | `lastWeeklySentWeek` | `last_weekly_week` (ISO date string) | null |
+| `updateAsked` | `update_asked_version` (int) + `update_asked_at` (epoch millis) | null |
 
 `Settings.reminderState()` builds the domain `ReminderState`. `markWeeklySent(date, week)` also sets
 `last_daily_sent` (the one-a-day budget is shared). `reset()` clears everything **except** `onboarded`.
-`current()` = first emission of `settings`.
+`current()` = first emission of `settings`. `markUpdateAsked(versionCode, at)` records the last time Google Play's update dialog was opened on its own
+(see [flows.md](flows.md#15-app-updates)); `reset()` clears it with the rest.
 
 ## `DetailsScheduler` and `SaveOutcome`
 

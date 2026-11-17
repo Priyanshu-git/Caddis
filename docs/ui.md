@@ -86,13 +86,16 @@ Home before the first save: `HomeState.firstRun` (library has no saves at all) s
 | `LibraryViewModel` | `LibraryState` (items, hits, intents, collections+counts, filters, query, searching, showCollections, recent) | Shared by Library and Shelf. |
 | `ItemViewModel` | `item`, `intents`, `collections`, `saving` | Note autosave, item actions, `saveDetails`. |
 | `TidyViewModel`, `TrashViewModel`, `CollectionsViewModel` | see `ManageViewModels.kt` | |
-| `ProfileViewModel` | `settings`, `rules`, `intents` (`IntentRow`), `cacheBytes`, intent errors | Notifications, background-work toggles, intents/rules, export, cache, delete all. |
+| `ProfileViewModel` | `settings`, `rules`, `intents` (`IntentRow`), `cacheBytes`, intent errors, `update` | Notifications, background-work toggles, intents/rules, export, cache, delete all, start/finish an app update. |
 
 `ItemActions` (`ui/ItemActions.kt`) is a singleton used by Home, Library, Item and Tidy ViewModels: `done`, `markActive`, `delete`,
 `later`, `open`, `share`, `today()`. It also hosts display helpers: `Item.meta()`, `Item.savedLabel()`, `Item.rightTag(intents)`,
 `intentName(intents, id)`, `LocalDate.dayMonth()`.
 
-`Messenger.show(message, undo?)` emits a `Toast`; `ToastHost` shows one at a time for 5 s with an **Undo** link when `undo` is set.
+`Messenger.show(message, actionLabel = "Undo", undo?)` emits a `Toast`; `ToastHost` shows one at a time for 5 s with an action link (**Undo**, or `actionLabel`, e.g. **Restart**) when `undo` is set.
+
+**Update row (Profile).** When `ProfileViewModel.update` (`AppUpdater.state`) is not `None`, Profile shows an **Update** section above Preferences: `Available` → "Update Caddis" (opens Play's dialog),
+`Downloading` → "Updating Caddis" (no action), `Ready` → "Restart to update" (installs). `MainActivity` registers the Play dialog launcher and runs `UpdatePrompter` while started.
 
 ## Capture sheets (`CaptureSheet` state machine)
 

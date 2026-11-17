@@ -144,6 +144,13 @@ First launch is five intro cards then the reminders question; pages are counted 
 `primary(page)` → `GET_STARTED` on the first card, `NEXT` on cards 2–4, `CONTINUE` on card 5 and on the reminders question;
 `step(page)` → 1..5 on the intro cards (the "Step n of 5" line), `null` on the reminders question.
 
+## App updates (`update/UpdatePrompts.kt`)
+
+When Caddis opens Google Play's update dialog by itself. `UpdatePrompts.shouldAsk(availableVersion, lastAsked, now, onboarded)`:
+false until onboarding is done; true for a version never asked about (a newer version is asked at once, even right after an older one);
+for the same version, true only once `REPEAT_AFTER` (7 days) has passed since `Asked(versionCode, at)`, and true if the clock was set back
+(`at` is in the future). The Profile row is not governed by this.
+
 ## Reminders (`schedule/Reminders.kt`)
 
 `QuietHours` (`TEN_TO_SEVEN` 22→7, `ELEVEN_TO_SIX` 23→6, `NINE_TO_EIGHT` 21→8; `contains(hour)` handles

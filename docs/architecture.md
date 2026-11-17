@@ -51,6 +51,7 @@ SettingsRepository (DataStore) ◄── ViewModels, workers
 | `share` | `ShareText` |
 | `export` | `Exporter` (JSON + Netscape HTML bookmarks) |
 | `onboarding` | `Onboarding` (page order, skip, main-button label, progress step) |
+| `update` | `UpdatePrompts` (when to open Google Play's update dialog on its own) |
 | `analytics` | `AnalyticsEvent` (closed set), `AnalyticsSink`, `ageBucket()` |
 
 Details of every rule: [domain.md](domain.md).
@@ -66,6 +67,7 @@ Details of every rule: [domain.md](domain.md).
 | `data/SettingsRepository.kt` | DataStore `Preferences` wrapper; `Settings` data class. |
 | `data/db/` | `CaddisDatabase`, entities (`Entities.kt`), DAOs (`Daos.kt`), `Mappers.kt` (entity ↔ domain, weekday bitmask), `Converters.kt`. |
 | `data/details/` | `DetailsFetcher` (OkHttp, never throws), `UserAgentInterceptor`. |
+| `update/AppUpdater.kt`, `update/UpdatePrompter.kt` | Google Play flexible in-app update. `AppUpdater` (`PlayAppUpdater`) wraps Play's `AppUpdateManager` into `state: StateFlow<UpdateState>`; `UpdatePrompter` applies the domain `UpdatePrompts` rule on launch and announces a finished download. |
 | `work/Work.kt` | `WorkScheduler` (implements `DetailsScheduler`, schedules reminders), `DetailsWorker`, `ReminderWorker`. |
 | `notify/Notifier.kt` | Notification channels; daily pick and weekly summary notifications; permission check. |
 | `di/AppModule.kt` | Hilt: DB, DataStore, `Clock`, app `CoroutineScope`, `OkHttpClient`, `AnalyticsSink`; `BindingsModule` binds `DetailsScheduler → WorkScheduler`. Instrumented tests replace both with `androidTest/…/TestModule.kt` (so a binding added here needs a test counterpart there). |
@@ -87,13 +89,16 @@ Details of every rule: [domain.md](domain.md).
 | `Clock` | `Clock.systemDefaultZone()`. **Inject `Clock` everywhere; never call `Instant.now()` in logic** (tests substitute `MutableClock`). |
 | `CoroutineScope` | App-wide `SupervisorJob() + Dispatchers.Default`. Outlives screens. |
 | `OkHttpClient` | connect 10 s, read 15 s, call 30 s, follows redirects, `UserAgentInterceptor`. Shared by `DetailsFetcher` **and Coil** (`CaddisApp.newImageLoader`). |
+| `AppUpdateManager` | `AppUpdateManagerFactory.create(context)` (Google Play in-app updates). |
 | `AnalyticsSink` | Logs `name + params` to Logcat tag `CaddisAnalytics` when `BuildConfig.DEBUG`; no-op in release. |
+
+`BindingsModule` also binds `AppUpdater` to `PlayAppUpdater` (the instrumented `TestModule` provides `FakeUpdater` instead).
 
 `BindingsModule` binds `DetailsScheduler` to `WorkScheduler` so `LibraryRepository` can request
 background fetches without knowing about WorkManager (tests pass a recording fake).
 
 Singletons: `LibraryRepository`, `SettingsRepository`, `DetailsFetcher`, `WorkScheduler`,
-`Notifier`, `ItemActions`, `Messenger`. ViewModels are `@HiltViewModel`; workers are `@HiltWorker`.
+`Notifier`, `ItemActions`, `Messenger`, `PlayAppUpdater`, `UpdatePrompter`. ViewModels are `@HiltViewModel`; workers are `@HiltWorker`.
 
 ## Threads and scopes
 

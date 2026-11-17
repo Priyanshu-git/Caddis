@@ -97,6 +97,7 @@ break. Section 3 are **known gaps**.
 
 ## 3. Known gaps and limits
 
+- App updates come from Google Play's in-app update API: they only appear for installs from Google Play (not debug or sideloaded builds), and Play decides when a release is offered (staged rollout, cache). The unit tests use Play's `FakeAppUpdateManager`; the real dialog has to be checked with an internal-testing track (see [development.md](development.md)).
 - No sign-in or sync. Account screen shows "On this phone · Sync Off · Sign-in None"; its only action is **Delete all data**.
 - `AnalyticsSink` logs only in debug builds; release builds emit nothing.
 - Crashlytics uploads only from release builds that were built with `app/google-services.json` (gitignored). Without the file (CI, fresh clones) the Firebase plugins are skipped and crash reporting is off. Crash reports still include a stack trace and an installation id, so the privacy policy must say so.

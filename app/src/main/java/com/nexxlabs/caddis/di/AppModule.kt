@@ -10,7 +10,11 @@ import androidx.room.Room
 import com.nexxlabs.caddis.BuildConfig
 import com.nexxlabs.caddis.data.DetailsScheduler
 import com.nexxlabs.caddis.data.db.CaddisDatabase
+import com.google.android.play.core.appupdate.AppUpdateManager
+import com.google.android.play.core.appupdate.AppUpdateManagerFactory
 import com.nexxlabs.caddis.domain.analytics.AnalyticsSink
+import com.nexxlabs.caddis.update.AppUpdater
+import com.nexxlabs.caddis.update.PlayAppUpdater
 import com.nexxlabs.caddis.work.WorkScheduler
 import dagger.Binds
 import dagger.Module
@@ -61,6 +65,10 @@ object AppModule {
         .addInterceptor(UserAgentInterceptor())
         .build()
 
+    @Provides
+    @Singleton
+    fun appUpdateManager(@ApplicationContext context: Context): AppUpdateManager = AppUpdateManagerFactory.create(context)
+
     /**
      * Client-only phase: events go to Logcat in debug builds and nowhere in release. Firebase
      * Analytics replaces this later; the event types already enforce the allowed fields.
@@ -77,4 +85,7 @@ object AppModule {
 abstract class BindingsModule {
     @Binds
     abstract fun detailsScheduler(impl: WorkScheduler): DetailsScheduler
+
+    @Binds
+    abstract fun appUpdater(impl: PlayAppUpdater): AppUpdater
 }

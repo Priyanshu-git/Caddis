@@ -5,12 +5,15 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.nexxlabs.caddis.domain.schedule.QuietHours
 import com.nexxlabs.caddis.domain.schedule.ReminderState
+import com.nexxlabs.caddis.domain.update.UpdatePrompts
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import java.time.Instant
 import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -26,6 +29,8 @@ data class Settings(
     val pauseOnMobileData: Boolean = false,
     val lastDailySent: LocalDate? = null,
     val lastWeeklySentWeek: LocalDate? = null,
+    /** The last time Google Play's update dialog was opened on its own (see [UpdatePrompts]). */
+    val updateAsked: UpdatePrompts.Asked? = null,
 ) {
     fun reminderState() = ReminderState(dailyReminder, weeklySummary, quietHours, lastDailySent, lastWeeklySentWeek)
 }
@@ -42,6 +47,8 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
         val metered = booleanPreferencesKey("pause_mobile_data")
         val lastDaily = stringPreferencesKey("last_daily_sent")
         val lastWeekly = stringPreferencesKey("last_weekly_week")
+        val updateVersion = intPreferencesKey("update_asked_version")
+        val updateAt = longPreferencesKey("update_asked_at")
     }
 
     val settings: Flow<Settings> = store.data.map { p ->
@@ -54,6 +61,7 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
             pauseOnMobileData = p[K.metered] ?: false,
             lastDailySent = p[K.lastDaily]?.let(LocalDate::parse),
             lastWeeklySentWeek = p[K.lastWeekly]?.let(LocalDate::parse),
+            updateAsked = p[K.updateVersion]?.let { v -> p[K.updateAt]?.let { UpdatePrompts.Asked(v, Instant.ofEpochMilli(it)) } },
         )
     }
 
@@ -69,6 +77,11 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
     suspend fun markWeeklySent(date: LocalDate, week: LocalDate) = store.edit {
         it[K.lastDaily] = date.toString()
         it[K.lastWeekly] = week.toString()
+    }
+
+    suspend fun markUpdateAsked(versionCode: Int, at: Instant) = store.edit {
+        it[K.updateVersion] = versionCode
+        it[K.updateAt] = at.toEpochMilli()
     }
 
     /** Keeps onboarding done, resets everything else. */

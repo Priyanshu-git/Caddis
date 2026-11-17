@@ -1,6 +1,8 @@
 package com.nexxlabs.caddis
 
 import android.content.Context
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.IntentSenderRequest
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
@@ -13,6 +15,8 @@ import com.nexxlabs.caddis.di.BindingsModule
 import com.nexxlabs.caddis.domain.analytics.AnalyticsEvent
 import com.nexxlabs.caddis.domain.analytics.AnalyticsSink
 import com.nexxlabs.caddis.domain.details.LinkDetails
+import com.nexxlabs.caddis.update.AppUpdater
+import com.nexxlabs.caddis.update.UpdateState
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -21,6 +25,8 @@ import dagger.hilt.testing.TestInstallIn
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import java.io.File
@@ -31,6 +37,7 @@ import java.time.ZoneId
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -90,6 +97,31 @@ class FakeDetails @Inject constructor(
     }
 }
 
+/**
+ * Stands in for Google Play's in-app update. Nothing is waiting until a test calls [offer]; opening the dialog
+ * ([start]) starts the download, and [downloaded] finishes it.
+ */
+@Singleton
+class FakeUpdater @Inject constructor() : AppUpdater {
+    private val current = MutableStateFlow<UpdateState>(UpdateState.None)
+    override val state: StateFlow<UpdateState> = current
+    val starts = AtomicInteger()
+    val restarts = AtomicInteger()
+
+    fun offer(versionCode: Int) { current.value = UpdateState.Available(versionCode) }
+    fun downloaded() { current.value = UpdateState.Ready }
+
+    override suspend fun refresh() {}
+
+    override fun start(launcher: ActivityResultLauncher<IntentSenderRequest>) {
+        if (current.value !is UpdateState.Available) return
+        starts.incrementAndGet()
+        current.value = UpdateState.Downloading
+    }
+
+    override fun restart() { restarts.incrementAndGet() }
+}
+
 /** Swaps the app's real storage, clock, network and background work for in-memory fakes. */
 @Module
 @TestInstallIn(components = [SingletonComponent::class], replaces = [AppModule::class, BindingsModule::class])
@@ -130,4 +162,8 @@ object TestModule {
     @Provides
     @Singleton
     fun detailsScheduler(fake: FakeDetails): DetailsScheduler = fake
+
+    @Provides
+    @Singleton
+    fun appUpdater(fake: FakeUpdater): AppUpdater = fake
 }

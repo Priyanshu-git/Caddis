@@ -167,6 +167,19 @@ logs `TidyUpFinished(kept, deleted)` and shows "All tidy". "Open it first" opens
 5. Home shows the first-run state until the first save. A share made before onboarding ends is still saved first (`ShareActivity` is a separate task); the
    intro is shown again at the next launch because `onboarded` is only set on the way out.
 
+## 15. App updates
+
+Google Play's **flexible** in-app update (`com.google.android.play:app-update`); only for installs from Google Play (debug and sideloaded builds just see "no update").
+
+1. `MainActivity` runs `UpdatePrompter.run` whenever it is started (`repeatOnLifecycle(STARTED)`). The share sheet never prompts. Nothing happens until `onboarded`.
+2. `AppUpdater.refresh()` asks Play. `UpdateState`: `None`, `Available(versionCode)`, `Downloading`, `Ready`.
+3. `Available` and `UpdatePrompts.shouldAsk(...)` → `settings.markUpdateAsked(...)` **first**, then Play's own dialog opens. A new version is asked once at once; the same version
+   again only after 7 days. Declining just leaves the update `Available`.
+4. Accepting downloads in the background while Caddis stays usable. When it is `Ready` a toast says "Update ready." with **Restart** (once per run of the app, however often the
+   app is reopened); Profile keeps a "Restart to update" row. Restart installs and relaunches (`completeUpdate()`).
+5. Profile shows "Update Caddis" whenever an update is `Available`, whatever was asked before; tapping it opens Play's dialog (not limited by the 7-day rule).
+6. No analytics, no extra permission; Google Play does the checking and downloading.
+
 ## 13. Bottom-bar navigation
 
 `navigateToTab(route)` pops to Home with `saveState`, `launchSingleTop`, and `restoreState = !toHome`: leaving a tab saves its stack and

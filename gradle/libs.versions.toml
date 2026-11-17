@@ -23,6 +23,7 @@ richEditor = "1.0.0-rc13"
 firebaseBom = "34.0.0"
 googleServices = "4.4.3"
 crashlyticsPlugin = "3.0.4"
+playAppUpdate = "2.1.0"
 
 junit4 = "4.13.2"
 junit5 = "5.11.4"
@@ -81,6 +82,8 @@ coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref 
 coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics" }
+play-app-update = { group = "com.google.android.play", name = "app-update", version.ref = "playAppUpdate" }
+play-app-update-ktx = { group = "com.google.android.play", name = "app-update-ktx", version.ref = "playAppUpdate" }
 rich-editor = { group = "com.mohamedrejeb.richeditor", name = "richeditor-compose", version.ref = "richEditor" }
 
 junit4 = { group = "junit", name = "junit", version.ref = "junit4" }
