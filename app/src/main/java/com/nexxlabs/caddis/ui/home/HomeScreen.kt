@@ -48,6 +48,8 @@ import com.nexxlabs.caddis.ui.meta
 import com.nexxlabs.caddis.ui.sheets.LaterSheet
 import com.nexxlabs.caddis.ui.theme.C
 import com.nexxlabs.caddis.ui.theme.CaddisType
+import androidx.compose.ui.res.stringResource
+import com.nexxlabs.caddis.R
 import java.time.LocalDate
 
 /** Screens 7, 8, 21: Home — at most 3 picks, then This week, then the tidy-up card. */
@@ -76,6 +78,8 @@ fun HomeScreen(
             item(key = "today") { SectionTitle("Today", Modifier.padding(top = 6.dp, bottom = 12.dp).semantics { heading() }) }
             if (!s.loaded) {
                 item(key = "loading") { Spacer(Modifier.height(120.dp)) }
+            } else if (s.firstRun) {
+                item(key = "first-run") { FirstRun(modifier = calmItem()) }
             } else if (s.picks.isEmpty()) {
                 item(key = "empty") {
                     EmptyState(
@@ -107,7 +111,7 @@ fun HomeScreen(
                 item(key = "hint") { Fine("Everything else waits in the Library.", Modifier.fillMaxWidth().padding(top = 6.dp).then(calmItem()), align = TextAlign.Center) }
             }
             // Shown once data is in, so the week card fades in with the picks instead of popping in empty.
-            if (s.loaded) item(key = "week") { Box(calmItem()) { WeekCard(s.week, s.weekLabel) } }
+            if (s.loaded && !s.firstRun) item(key = "week") { Box(calmItem()) { WeekCard(s.week, s.weekLabel) } }
             if (s.staleCount > 0) {
                 item(key = "tidy") {
                     CCard(Modifier.fillMaxWidth().padding(top = 24.dp).then(calmItem()), feature = true) {
@@ -126,6 +130,27 @@ fun HomeScreen(
 
     laterFor?.let { item ->
         LaterSheet(item, LocalDate.now(), onPick = { rule, date -> vm.later(item, rule, date); laterFor = null }, onDismiss = { laterFor = null })
+    }
+}
+
+/** Before the first save: three ways to make one. The + button is always there for the second and third. */
+@Composable
+private fun FirstRun(modifier: Modifier = Modifier) {
+    Column(modifier) {
+        EmptyState(stringResource(R.string.home_first_title), stringResource(R.string.home_first_body))
+        Column(Modifier.padding(top = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            FirstRunWay(R.string.home_first_share, R.string.home_first_share_hint)
+            FirstRunWay(R.string.home_first_link, R.string.home_first_link_hint)
+            FirstRunWay(R.string.home_first_note, R.string.home_first_note_hint)
+        }
+    }
+}
+
+@Composable
+private fun FirstRunWay(title: Int, hint: Int) {
+    CCard(Modifier.fillMaxWidth()) {
+        Text(stringResource(title), style = CaddisType.strong, color = C.colors.fg)
+        Fine(stringResource(hint), Modifier.padding(top = 2.dp))
     }
 }
 

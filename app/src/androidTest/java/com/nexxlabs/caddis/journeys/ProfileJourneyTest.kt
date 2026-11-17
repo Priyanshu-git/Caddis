@@ -264,7 +264,7 @@ class ProfileJourneyTest : JourneyTest() {
 
         // Home, empty. (Not asserted: which toast shows. Clearing the image cache posts its own, right after the delete one.)
         awaitText("Today")
-        awaitText("You’re all caught up")
+        awaitText("Nothing saved yet")
         eventually("library empty") { library().isEmpty() }
         // Defaults come back, and onboarding is not shown again.
         assertEquals(8, runBlocking { repo.observeIntents().first() }.size)

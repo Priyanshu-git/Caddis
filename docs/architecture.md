@@ -50,6 +50,7 @@ SettingsRepository (DataStore) ◄── ViewModels, workers
 | `notes` | `Markdown.toPlainText`, `Markdown.preview`, `NoteMarkdown` (editor HTML ⇄ stored Markdown, with escaping) |
 | `share` | `ShareText` |
 | `export` | `Exporter` (JSON + Netscape HTML bookmarks) |
+| `onboarding` | `Onboarding` (page order, skip, main-button label, progress step) |
 | `analytics` | `AnalyticsEvent` (closed set), `AnalyticsSink`, `ageBucket()` |
 
 Details of every rule: [domain.md](domain.md).
@@ -117,7 +118,7 @@ counters, done/delete + counters, intent deletion + reassignment, delete-all).
 3. `MainActivity.onCreate`: `installSplashScreen()`, `enableEdgeToEdge()`, keeps the splash until
    `MainViewModel.onboarded` is non-null, fades the splash out over `Motion.Short`, reads the
    `route` string extra into `MainViewModel.pendingRoute`, then `setContent { CaddisRoot(...) }`.
-4. `CaddisRoot` shows `OnboardingScreen` when `onboarded == false`, else `CaddisShell`.
+4. `CaddisRoot` shows `OnboardingScreen` (`ui/onboarding/`) when `onboarded == false`, else `CaddisShell`.
 5. `CaddisShell` navigates to `pendingRoute` once (then clears it) and forwards `CaptureNav`
    events (open note / open earlier save) from `CaptureViewModel`.
 

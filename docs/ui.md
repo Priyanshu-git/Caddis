@@ -42,7 +42,8 @@ Adding a route: add a `composable(...)` (use `screen(...)` if it shows a thumbna
 | # | Screen | Code |
 | --- | --- | --- |
 | 1 | Google sign-in | **not built** (Account says "On this phone") |
-| 2 | Notifications onboarding | `OnboardingScreen` |
+| 2 | Onboarding: five swipeable intro cards, then "Want a nudge now and then?" | `ui/onboarding/OnboardingScreen.kt` (`OnboardingScreen`) |
+| 7a | Home, first run ("Nothing saved yet") | `HomeScreen` (`FirstRun`) |
 | 3 / 4 / 5 | Save sheet / Duplicate / Add | `ui/capture/CaptureSheets.kt` (`SaveSheet`, `DuplicateSheet`, `AddSheet`) |
 | 7, 8, 21 | Home, all clear, This week | `HomeScreen` (`PickCard`, `WeekCard`, empty state) |
 | 9 / 10 | Bring back later (Tonight, This weekend, Next week, Pick a date, **Not again**) / Change intent (and Edit details); Just keep reads "For when you need it" | `ui/sheets/Sheets.kt` (`LaterSheet`, `IntentSheet`, `EditDetailsSheet`) |
@@ -51,6 +52,29 @@ Adding a route: add a `composable(...)` (use `screen(...)` if it shows a thumbna
 | 14 / 19 / 20 | Collections / Tidy-up / Trash | `ui/manage/ManageScreens.kt` |
 | 15 / 16 | Item page / Note editor | `ui/item/ItemScreen.kt`, `NoteScreen.kt` |
 | 22–29 | Notifications, rules, intents, data, account, privacy, profile | `ui/profile/ProfileScreens.kt` |
+
+## Onboarding (`ui/onboarding/OnboardingScreen.kt`)
+
+A `HorizontalPager` of `Onboarding.PAGE_COUNT` (6) pages, test tag `ONBOARDING_PAGER_TAG`. Swiping moves between cards; the main button
+glides to the next one (420 ms, `Motion.Standard`); system back goes one card back and leaves the app from the first. Layout: a Skip link on top
+(fades out, and leaves the accessibility tree, on the last page), the pager, then a slot that shows the progress dots on the intro cards and a
+"Not now" button on the reminders question, then the main button (only its words cross-fade). Pages stay composed one page out (`beyondViewportPageCount = 1`)
+so a swipe never waits for composition.
+
+Movement while swiping: every page fades with its distance from view, and its drawing trails behind its words (`translationX` of 30% of its width, a
+slight scale) so the two move at different speeds. The dots stretch towards the page being dragged to (they read `currentPage + currentPageOffsetFraction`).
+
+Cards: Welcome (`AppMark`, headline, privacy line), then `IntroPage` for Save from any app, Say why you kept it, It comes back when it fits and
+Finish it, or keep it. Their drawings (`ShareArt`, `WhyArt`, `BackArt`, `FinishArt`) are static pictures made from the app's own pieces with made-up
+examples; they are hidden from screen readers and nothing in them is tappable. The reminders page (`NudgesPage`) is the earlier onboarding screen: daily
+reminder, quiet hours and weekly summary, all off by default, using `rememberNotificationToggle` and `SettingRowNoLine` from `ProfileScreens.kt`.
+Copy is in `res/values/strings.xml` (`onboarding_*`), except the reminders page, which keeps its earlier inline text.
+
+Both exits (Continue/Not now, and Skip) call `ProfileViewModel.finishOnboarding(skippedAtStep)`: logs `OnboardingFinished` and sets `onboarded`.
+`CaddisRoot` then fades to the shell.
+
+Home before the first save: `HomeState.firstRun` (library has no saves at all) shows "Nothing saved yet" and three ways to save instead of
+"You’re all caught up", and hides the This week card. It also returns whenever the library is empty, for example after "Delete all data".
 
 ## ViewModels
 

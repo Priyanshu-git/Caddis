@@ -73,44 +73,16 @@ import java.time.DayOfWeek
 
 /** Asks for the notification permission (Android 13+) only when the person turns a reminder on. */
 @Composable
-private fun rememberNotificationToggle(onResult: (Boolean) -> Unit): (Boolean) -> Unit {
+internal fun rememberNotificationToggle(onResult: (Boolean) -> Unit): (Boolean) -> Unit {
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted -> onResult(granted) }
     return { on ->
         if (on && Build.VERSION.SDK_INT >= 33) launcher.launch(Manifest.permission.POST_NOTIFICATIONS) else onResult(on)
     }
 }
 
-/** Screen 2: "Want a nudge now and then?" — opt-in, off by default (BRB-04). */
+/** A settings row without the divider, for rows inside a card. */
 @Composable
-fun OnboardingScreen(onDone: () -> Unit, vm: ProfileViewModel = hiltViewModel()) {
-    val s by vm.settings.collectAsStateWithLifecycle()
-    val st = s ?: return
-    val daily = rememberNotificationToggle { vm.setDaily(it) }
-    val weekly = rememberNotificationToggle { vm.setWeekly(it) }
-    Column(Modifier.fillMaxSize().padding(horizontal = 22.dp).padding(top = 36.dp, bottom = 26.dp)) {
-        AppMark(48.dp)
-        Text("Want a nudge now and then?", style = CaddisType.h1.copy(fontSize = CaddisType.section.fontSize), color = C.colors.fg, modifier = Modifier.padding(top = 18.dp))
-        Sub("One reminder a day at most, and only when something fits. Change it any time.", Modifier.padding(top = 4.dp, bottom = 22.dp))
-        CCard(Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
-            SettingRowNoLine("Daily reminder", if (st.dailyReminder) "At most one a day" else "Off until you turn it on") {
-                Toggle(st.dailyReminder, "Daily reminder") { daily(it) }
-            }
-        }
-        CCard(Modifier.fillMaxWidth().padding(bottom = 10.dp), onClick = vm::cycleQuiet) {
-            SettingRowNoLine("Quiet hours", "No reminders in this window") { Text(st.quietHours.label, style = CaddisType.strong, color = C.colors.fg) }
-        }
-        CCard(Modifier.fillMaxWidth()) {
-            SettingRowNoLine("Weekly summary", "A recap of your week, on Sunday") { Toggle(st.weeklySummary, "Weekly summary") { weekly(it) } }
-        }
-        Spacer(Modifier.weight(1f))
-        CButton("Continue", onClick = { vm.finishOnboarding(); onDone() }, style = BtnStyle.Primary, modifier = Modifier.fillMaxWidth())
-        CButton("Not now", onClick = { vm.finishOnboarding(); onDone() }, style = BtnStyle.Ghost, modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
-        Fine("Private by default. No ads, no selling your data. Everything stays on this phone.", Modifier.fillMaxWidth().padding(top = 10.dp), align = androidx.compose.ui.text.style.TextAlign.Center)
-    }
-}
-
-@Composable
-private fun SettingRowNoLine(title: String, sub: String, trailing: @Composable () -> Unit) {
+internal fun SettingRowNoLine(title: String, sub: String, trailing: @Composable () -> Unit) {
     Row(Modifier.fillMaxWidth().heightIn(min = 54.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(title, style = CaddisType.strong, color = C.colors.fg)

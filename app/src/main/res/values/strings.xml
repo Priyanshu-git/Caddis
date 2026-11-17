@@ -7,4 +7,60 @@
     <string name="channel_reminders_desc">At most one a day, only when something fits.</string>
     <string name="channel_weekly">Weekly summary</string>
     <string name="channel_weekly_desc">A recap of your week, on Sunday.</string>
+
+    <!-- Onboarding: five swipeable intro cards, then the reminders question. -->
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_get_started">Get started</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_continue">Continue</string>
+    <string name="onboarding_not_now">Not now</string>
+    <string name="onboarding_step">Step %1$d of %2$d</string>
+    <string name="onboarding_privacy">Private by default. Everything stays on this phone.</string>
+
+    <string name="onboarding_welcome_title">Save it. Use it.</string>
+    <string name="onboarding_welcome_body">Caddis brings back what you save, when it fits. Then you finish it, let it go, or keep it for when you need it.</string>
+
+    <string name="onboarding_save_title">Save from any app.</string>
+    <string name="onboarding_save_body">Tap Share, then Caddis. That’s the whole job.</string>
+    <string name="onboarding_save_tip">Not in the list? Tap More and pin Caddis.</string>
+
+    <string name="onboarding_why_title">Say why you kept it.</string>
+    <string name="onboarding_why_body">Caddis guesses from the page. Change it with one tap, or leave it.</string>
+    <string name="onboarding_why_guess">Guessed from a recipe. Tap to change.</string>
+    <string name="onboarding_why_foot">Nothing to file. Nothing to name.</string>
+
+    <string name="onboarding_back_title">It comes back when it fits.</string>
+    <string name="onboarding_back_body">Home shows three saves at most, picked for the day.</string>
+    <string name="onboarding_back_foot">Cook saves return on weekend mornings. You can change every rule.</string>
+
+    <string name="onboarding_finish_title">Finish it, or keep it.</string>
+    <string name="onboarding_finish_body">Mark it done, let it go, or keep it for when you need it. No streaks, no guilt.</string>
+    <string name="onboarding_finish_foot">Deleted saves wait 30 days in Trash. Kept saves wait in Library, under Kept.</string>
+
+    <!-- Made-up examples drawn on the intro cards. They are never saved. -->
+    <string name="onboarding_sample_title">Weeknight chickpea curry</string>
+    <string name="onboarding_sample_site">A recipe site</string>
+    <string name="onboarding_sample_meta">Recipe · 25 min</string>
+    <string name="onboarding_sample_title_2">Stretching for desk days</string>
+    <string name="onboarding_sample_meta_2">Video · 12 min</string>
+    <string name="onboarding_sample_title_3">Notes on sourdough</string>
+    <string name="onboarding_sample_meta_3">Article · 8 min</string>
+    <string name="onboarding_share_heading">Share</string>
+    <string name="onboarding_share_messages">Messages</string>
+    <string name="onboarding_share_mail">Mail</string>
+    <string name="onboarding_share_notes">Notes</string>
+    <string name="onboarding_delete">Delete</string>
+    <string name="onboarding_trashed">Moved to Trash</string>
+    <string name="onboarding_undo">Undo</string>
+    <string name="onboarding_kept_hint">For when you need it</string>
+
+    <!-- Home before anything is saved. -->
+    <string name="home_first_title">Nothing saved yet</string>
+    <string name="home_first_body">Three ways to save your first one.</string>
+    <string name="home_first_share">Share from another app</string>
+    <string name="home_first_share_hint">Tap Share, then Caddis.</string>
+    <string name="home_first_link">Paste a link</string>
+    <string name="home_first_link_hint">Tap + and choose Link.</string>
+    <string name="home_first_note">Write a note</string>
+    <string name="home_first_note_hint">Tap + and choose Note.</string>
 </resources>

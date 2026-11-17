@@ -54,7 +54,7 @@ import com.nexxlabs.caddis.ui.capture.CaptureViewModel
 import com.nexxlabs.caddis.ui.components.CIcons
 import com.nexxlabs.caddis.ui.nav.CaddisNavHost
 import com.nexxlabs.caddis.ui.pressScale
-import com.nexxlabs.caddis.ui.profile.OnboardingScreen
+import com.nexxlabs.caddis.ui.onboarding.OnboardingScreen
 import com.nexxlabs.caddis.ui.theme.C
 import com.nexxlabs.caddis.ui.theme.CaddisTheme
 

@@ -39,6 +39,8 @@ data class HomeState(
     val weekLabel: String = "",
     val staleCount: Int = 0,
     val nextUp: String? = null,
+    /** Nothing saved yet (not even done saves): Home explains how to save the first one instead of "all caught up". */
+    val firstRun: Boolean = false,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -81,6 +83,7 @@ class HomeViewModel @Inject constructor(
             weekLabel = Weeks.label(week.weekStart),
             staleCount = TidyUp.candidates(items, now).size,
             nextUp = nextUp,
+            firstRun = items.isEmpty(),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeState())
 

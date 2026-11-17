@@ -52,6 +52,15 @@ sealed class AnalyticsEvent(val name: String) {
         override fun params() = mapOf("setting" to setting, "on" to yes(on))
     }
 
+    /** First launch ended. [skippedAtStep] is the intro card (1..5) Skip was tapped on, or null when the person went through. */
+    data class OnboardingFinished(val skippedAtStep: Int?, val dailyReminder: Boolean, val weeklySummary: Boolean) : AnalyticsEvent("onboarding_finished") {
+        override fun params() = mapOf(
+            "skipped_at" to (skippedAtStep?.toString() ?: "none"),
+            "daily" to yes(dailyReminder),
+            "weekly" to yes(weeklySummary),
+        )
+    }
+
     data class SearchRun(val resultBucket: String) : AnalyticsEvent("search_run") {
         override fun params() = mapOf("results" to resultBucket)
     }

@@ -50,6 +50,7 @@ JUnit 5 (`org.junit.jupiter.api.Test`) with Kotest matchers (`shouldBe`). Pure f
 | `link/DefaultTitlesTest` | readable fallback titles, slugs, `displayTitle` |
 | `intent/IntentGuesserTest` | keyword order, defaults, corrections threshold, deleted intents |
 | `schedule/SchedulingTest` | `ReturnScheduler`, `HomePicker` (incl. the Just keep reminder), `TidyUp` (what is never offered), `Trash`, `Weeks`, rule labels |
+| `onboarding/OnboardingTest` | page order, back/next at the ends, skip, main-button label, progress step, the finished event |
 | `schedule/RemindersTest` | opt-in, one a day, quiet hours, weekly on Sunday evening |
 | `details/DetailsTest` | site name, kind and oEmbed discovery from a page, oEmbed parsing, generic titles, `mergeDetails`, `formatLength` |
 | `details/EditsAndIconsTest` | `withEdits`, `withLink`, favicon parsing/fallbacks/merge, `couldBeNote` |

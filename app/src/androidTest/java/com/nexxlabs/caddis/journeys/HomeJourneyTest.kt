@@ -190,6 +190,8 @@ class HomeJourneyTest : JourneyTest() {
 
     @Test
     fun theWeeklySummaryNotification_opensHomeAtTheWeek() {
+        // A week with something saved; with nothing saved at all Home shows its first-run state and no week card.
+        save("https://example.com/this-week", "This week's read", IntentIds.READ)
         launchApp(route = "home?week=true")
 
         awaitText("This week")
@@ -200,12 +202,22 @@ class HomeJourneyTest : JourneyTest() {
 
     @Test
     fun oldUntouchedSaves_offerATidyUp() {
-        save("https://example.com/old-1", "Old one", IntentIds.KEEP)
-        save("https://example.com/old-2", "Old two", IntentIds.KEEP)
+        save("https://example.com/old-1", "Old one", IntentIds.READ)
+        save("https://example.com/old-2", "Old two", IntentIds.READ)
         daysLater(100)
         launchApp()
 
         assertShowing("Time for a tidy-up", "2 saves untouched for 90 days", "Review")
+    }
+
+    @Test
+    fun oldKeptSaves_areNotOfferedForTidyUp() {
+        save("https://example.com/old-1", "Old one", IntentIds.KEEP)
+        daysLater(100)
+        launchApp()
+
+        awaitText("Today")
+        assertTrue(!exists(androidx.compose.ui.test.hasText("Time for a tidy-up")))
     }
 
     @Test

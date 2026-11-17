@@ -80,7 +80,8 @@ no picks but some intent has active saves and a rule.
 - A **Just keep link** can be one of the picks: once a month, only when a slot is free (`HomePicker.keptReminder`, see [domain.md](domain.md)).
 - `HomeViewed(picksShown, actedOn)` is logged when the ViewModel is cleared.
 - Opening `home?week=true` (weekly summary notification) scrolls to the This week card and logs `SummaryViewed(fromNotification = true)`.
-- Empty state: "You’re all caught up" + "Browse the library" + optional Next up card.
+- Empty state: "You’re all caught up" + "Browse the library" + optional Next up card. With no saves at all (`firstRun`): "Nothing saved yet" and three ways to save
+  (see [First launch](#14-first-launch)); the This week card is hidden.
 - If `staleCount > 0`, a "Time for a tidy-up" card links to Tidy-up.
 
 ## 6. Done, delete, restore
@@ -154,6 +155,17 @@ logs `TidyUpFinished(kept, deleted)` and shows "All tidy". "Open it first" opens
   ("Default, always kept"). New intent card creates one with a weekday-afternoon rule.
 - Return rules screen: per intent, day chips (Mon–Sun), time of day chips, max per day (− / +, 1..3). Changes call `repo.updateRule` immediately.
   An intent with no selected days "Never returns".
+
+## 14. First launch
+
+1. `MainViewModel.onboarded` is `false` (the default on a fresh install) → `CaddisRoot` shows `OnboardingScreen`; the splash is held until settings are known.
+2. Five intro cards in a pager, then the reminders question. The person swipes either way, taps the main button (Get started / Next / Continue), or
+   presses system back to return one card. Nothing is saved or asked on the cards.
+3. **Skip** (cards 1–5) → `finishOnboarding(skippedAtStep = n)`: reminders stay as they are (off), `onboarded = true`, Home.
+4. On the reminders question, turning a toggle on asks for `POST_NOTIFICATIONS` on Android 13+ (denied → the toggle stays off, no follow-up). **Continue** and
+   **Not now** both → `finishOnboarding(null)`, Home.
+5. Home shows the first-run state until the first save. A share made before onboarding ends is still saved first (`ShareActivity` is a separate task); the
+   intro is shown again at the next launch because `onboarded` is only set on the way out.
 
 ## 13. Bottom-bar navigation
 

@@ -71,7 +71,12 @@ class ProfileViewModel @Inject constructor(
         settingsRepo.setQuietHours(q.next())
     }
 
-    fun finishOnboarding() = viewModelScope.launch { settingsRepo.setOnboarded() }
+    /** Ends first launch. [skippedAtStep] is the intro card Skip was tapped on, or null when the person went through. */
+    fun finishOnboarding(skippedAtStep: Int? = null) = viewModelScope.launch {
+        val s = settingsRepo.current()
+        analytics.log(AnalyticsEvent.OnboardingFinished(skippedAtStep, s.dailyReminder, s.weeklySummary))
+        settingsRepo.setOnboarded()
+    }
 
     // ---------- background work ----------
 

@@ -137,6 +137,13 @@ try: diy, workout, routine, tips…). Edit them there; tests: `IntentGuesserTest
 
 `doneLabel(intents, intentId)` → the intent's `doneLabel`, else "Done".
 
+## Onboarding (`onboarding/Onboarding.kt`)
+
+First launch is five intro cards then the reminders question; pages are counted from 0 (`INTRO_PAGES = 5`, `NUDGES_PAGE = 5`, `PAGE_COUNT = 6`).
+`isIntro`, `isLast`, `clamp`, `next`, `previous` (both stop at the ends); `canSkip(page)` is true on the intro cards only;
+`primary(page)` → `GET_STARTED` on the first card, `NEXT` on cards 2–4, `CONTINUE` on card 5 and on the reminders question;
+`step(page)` → 1..5 on the intro cards (the "Step n of 5" line), `null` on the reminders question.
+
 ## Reminders (`schedule/Reminders.kt`)
 
 `QuietHours` (`TEN_TO_SEVEN` 22→7, `ELEVEN_TO_SIX` 23→6, `NINE_TO_EIGHT` 21→8; `contains(hour)` handles
@@ -261,6 +268,7 @@ notes, reasons, creators and collection names cannot be attached:
 | `TidyUpFinished` (`tidy_up_finished`) | kept, deleted |
 | `SummaryViewed` (`summary_viewed`) | from_notification |
 | `NotificationSetting` (`notification_setting`) | setting, on |
+| `OnboardingFinished` (`onboarding_finished`) | intro card Skip was tapped on (1..5, or `none`), daily on/off, weekly on/off |
 | `SearchRun` (`search_run`) | results bucket |
 
 `ageBucket(createdAt, now)` → `0d, 1-6d, 7-13d, 14-30d, 31-90d, 90d+`. `AnalyticsSink` is a

@@ -78,6 +78,7 @@ unless asked.
   return rules editor, rule-based guessing with local learning from corrections.
 - **Details**: background fetch of title/description/creator/thumbnail/length/site icon from the page's Open Graph tags and the oEmbed endpoint it advertises, for every site alike; readable fallback titles; Edit
   details sheet (link, title, by, description); Refresh button.
+- **Onboarding**: five intro cards you swipe through (save from any app, say why, it comes back when it fits, finish it or keep it), then an opt-in reminders question; Skip leaves early; Home explains how to save the first one.
 - **Home**: ≤3 picks, "Bring it back" later options (tonight / weekend / next week / date / not again),
   Done and Open, This week card, "Time for a tidy-up" card, "Next up" hint when nothing fits.
 - **Library**: all saves and notes newest first; a Kept chip (Just keep saves) and platform chips (only platforms the library has); Filter sheet (intent, platform, status);
