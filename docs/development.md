@@ -26,16 +26,21 @@ On push to `main` and on pull requests, `ubuntu-latest`, Temurin 17, `gradle/act
 
 ## Versions (`gradle/libs.versions.toml` is the only place for dependency versions)
 
-AGP 8.13.2 · Kotlin 2.2.20 · KSP 2.3.6 · Compose BOM 2025.06.00 · Material 3 · Navigation 2.9.2 · Hilt 2.57.1 (+ androidx.hilt 1.3.0) ·
+AGP 9.4.1 (Gradle 9.6.0) · Kotlin 2.2.20 · KSP 2.3.6 · Compose BOM 2025.06.00 · Material 3 · Navigation 2.9.2 · Hilt 2.59.2 (+ androidx.hilt 1.3.0) ·
 Room 2.8.3 · DataStore 1.1.7 · WorkManager 2.10.5 · Coroutines 1.10.2 · kotlinx-serialization 1.8.1 · OkHttp 4.12.0 · Jsoup 1.18.3 ·
 Coil 3.3.0 · richeditor-compose 1.0.0-rc13 · Lifecycle 2.9.1 · Activity Compose 1.10.1 · splashscreen 1.0.1.
 Test: JUnit 4.13.2 (app), JUnit 5.11.4 + Kotest 5.9.1 (domain), Robolectric 4.14.1, Turbine 1.2.0, MockWebServer 4.12.0,
 work-testing, navigation-testing, room-testing. Instrumented (`app/src/androidTest`): androidx test runner/core/ext-junit, Compose UI test (`ui-test-junit4`),
 Espresso core + intents, `hilt-android-testing`, room-testing. The catalog also lists `mockk`, which no source set currently uses.
 
-Plugins applied in `:app`: `android.application`, `kotlin.android`, `kotlin.compose`, `ksp`, `hilt`, `room` (schema dir `app/schemas`), plus `google-services` and `firebase-crashlytics` **only when `app/google-services.json` exists**
+Plugins applied in `:app`: `android.application` (Kotlin is built in, no `kotlin.android`), `kotlin.compose`, `ksp`, `hilt`, `room` (schema dir `app/schemas`), plus `google-services` and `firebase-crashlytics` **only when `app/google-services.json` exists**
 (download it from the Firebase console for `com.nexxlabs.caddis`; it is gitignored, so CI builds without Crashlytics).
 `:domain`: `kotlin.jvm`, `kotlin.serialization`. Release builds: `isMinifyEnabled`, `isShrinkResources` (see `app/proguard-rules.pro`).
+
+`gradle.properties` sets parallel builds, the build cache and the configuration cache. It carries no AGP opt-out flags: the project uses
+AGP 9's new DSL and built-in Kotlin. Keep it that way: the Hilt Gradle plugin needs 2.59+ for AGP 9 (older releases fail with "Android BaseExtension
+not found"), and any new plugin must work without `android.newDsl=false` (the opt-out is removed in AGP 10). Unit tests are generated for the debug
+build type only (AGP 9 default).
 
 ## Tests
 

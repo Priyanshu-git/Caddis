@@ -154,6 +154,6 @@ and site icons are cached; original media is never downloaded or re-hosted.
 
 ## Build configuration summary
 
-See [development.md](development.md) for commands. Key facts: AGP 8.13.2, Kotlin 2.2.20, KSP,
+See [development.md](development.md) for commands. Key facts: AGP 9.4.1 on Gradle 9.6.0 (built-in Kotlin), Kotlin 2.2.20, KSP,
 Hilt, Room with `exportSchema` to `app/schemas`, JVM toolchain 17, Compose BOM 2025.06.00,
 release builds minified + resource-shrunk (`app/proguard-rules.pro` keeps the export serializers).
