@@ -25,7 +25,7 @@ never guilt-inducing.
 | `library` | `LibraryScreen` (`library/LibraryScreen.kt`) | `LibraryViewModel` | search, filters, collections tab |
 | `profile` | `ProfileScreen` (`profile/ProfileScreens.kt`) | `ProfileViewModel` | navigates by route string |
 | `item/{id}` | `ItemScreen` (`item/ItemScreen.kt`) | `ItemViewModel` (reads `id` from `SavedStateHandle`) | `screen()` |
-| `note/{id}` | `NoteScreen` (`item/NoteScreen.kt`) | `ItemViewModel` | also used for links' notes |
+| `note/{id}` | `NoteScreen` (`item/NoteScreen.kt`) | `ItemViewModel` | standalone notes only; a link's note is a plain text box on `item/{id}` |
 | `shelf/{collectionId}` | `ShelfScreen` (`library/ShelfScreen.kt`) | `LibraryViewModel` (reads `collectionId`) | `screen()` |
 | `collections` | `CollectionsScreen` (`manage/ManageScreens.kt`) | `CollectionsViewModel` | |
 | `tidy` | `TidyScreen` | `TidyViewModel` | |

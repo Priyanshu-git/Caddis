@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -20,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,12 +30,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexxlabs.caddis.domain.details.formatLength
 import com.nexxlabs.caddis.domain.model.ItemStatus
-import com.nexxlabs.caddis.domain.notes.Markdown
+import com.nexxlabs.caddis.domain.notes.NoteMarkdown
 import com.nexxlabs.caddis.domain.schedule.doneLabel
 import com.nexxlabs.caddis.ui.components.BtnStyle
 import com.nexxlabs.caddis.ui.components.CButton
@@ -58,7 +61,7 @@ import com.nexxlabs.caddis.ui.theme.CaddisType
 
 /** Screen 15: why you kept it, where it came from, your note; Open, Done, Delete (LIB-04). */
 @Composable
-fun ItemScreen(onBack: () -> Unit, onNote: (String) -> Unit, onManageIntents: () -> Unit, vm: ItemViewModel = hiltViewModel()) {
+fun ItemScreen(onBack: () -> Unit, onManageIntents: () -> Unit, vm: ItemViewModel = hiltViewModel()) {
     val item by vm.item.collectAsStateWithLifecycle()
     val intents by vm.intents.collectAsStateWithLifecycle()
     val collections by vm.collections.collectAsStateWithLifecycle()
@@ -69,9 +72,12 @@ fun ItemScreen(onBack: () -> Unit, onNote: (String) -> Unit, onManageIntents: ()
     val opened = LocalOpenedItem.current
     val origin = remember { opened.origin }
     val preview = remember { opened.previewFor(vm.id) }
+    // Leaving the page writes a last keystroke that the autosave pause has not reached yet.
+    DisposableEffect(Unit) { onDispose { vm.flushNote() } }
     val it = item ?: preview ?: return
+    var noteText by rememberSaveable(vm.id) { mutableStateOf(NoteMarkdown.toPlainText(it.note)) }
 
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().imePadding()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             IconBtn(CIcons.Back, "Back", onBack)
             androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
@@ -111,10 +117,16 @@ fun ItemScreen(onBack: () -> Unit, onNote: (String) -> Unit, onManageIntents: ()
                 }
             }
 
-            CCard(Modifier.fillMaxWidth().padding(top = 14.dp), onClick = { onNote(it.id) }) {
+            // The note is a plain text box right here: it grows with what is typed, takes new lines, has no length
+            // limit and saves as you type. It is kept as Markdown (escaped) so the rest of the app reads it unchanged.
+            CCard(Modifier.fillMaxWidth().padding(top = 14.dp)) {
                 Fine("Note")
-                val preview = Markdown.preview(it.note)
-                Text(preview.ifBlank { "Add a note" }, style = CaddisType.body, color = if (preview.isBlank()) c.fg2 else c.fg, modifier = Modifier.padding(top = 4.dp))
+                CField(
+                    noteText, { t -> noteText = t; vm.noteChanged(NoteMarkdown.fromPlainText(t)) }, "Add a note",
+                    label = "Note", boxed = false, textStyle = CaddisType.body,
+                    maxLength = Int.MAX_VALUE, lines = Int.MAX_VALUE, imeAction = ImeAction.Default,
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                )
             }
 
             CollectionsSection(

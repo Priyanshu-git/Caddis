@@ -111,7 +111,8 @@ combines it with the library, search results, intents and collections.
 ## 8. Item page and notes
 
 `ItemScreen` (route `item/{id}`): thumbnail, intent chip (opens `IntentSheet`), platform chip, kind·length, title, "by … · from …
-via …", description, "Why you kept it" (inline reason edit, ≤ 140), note card (opens `note/{id}`), "Collections" (rests as a read-only list of the collections it is in with an Edit button, "Add" when there are none; Edit opens
+via …", description, "Why you kept it" (inline reason edit, ≤ 140), note card (a plain multi-line text box right on the page: new lines
+allowed, no length limit, autosaves as you type, no other screen), "Collections" (rests as a read-only list of the collections it is in with an Edit button, "Add" when there are none; Edit opens
 the collection chips in place and becomes Done, see "Collection chips" below),
 "Saved <date> · details loaded", Refresh. Top bar: Edit details, Share link (only with a URL), Bring back later. Bottom bar:
 Open (links only), Done/Mark active, Delete.
@@ -126,7 +127,10 @@ that already exists files the save in that collection ("“…” already exists
 sheet, so tapping Done or swiping the sheet away with a name typed still creates it; there is no toast there because the sheet's scrim
 would cover it (the chip turning selected is the confirmation). With no collections, only **New** shows, with a line of encouragement.
 
-`NoteScreen` (route `note/{id}`): rich-text editor (`richeditor-compose`) holding the note as Markdown written by `NoteMarkdown`, so whatever is typed (`*`, `_`, `#`, `<`, `[`,
+The item page's note box shows `NoteMarkdown.toPlainText(item.note)` and stores `NoteMarkdown.fromPlainText(text)` through the same
+`ItemViewModel.noteChanged` autosave (500 ms, flushed on leaving), so what is typed is kept as typed and older rich notes open as plain text.
+
+`NoteScreen` (route `note/{id}`, **standalone notes only**: created from the Add sheet or opened from the Library): rich-text editor (`richeditor-compose`) holding the note as Markdown written by `NoteMarkdown`, so whatever is typed (`*`, `_`, `#`, `<`, `[`,
 a leading `-`) is kept as typed. Standalone notes also have an editable
 title, intent chip and collections. Typing calls `ItemViewModel.noteChanged` → debounced 500 ms → `repo.setNote`; the top bar shows
 "Saving…"/"Saved"; leaving flushes via `flushNote` on the app scope. Typing something and undoing it within the pause records the saved text as the

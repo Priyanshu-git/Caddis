@@ -225,17 +225,15 @@ class ItemJourneyTest : JourneyTest() {
     }
 
     @Test
-    fun aNote_isWrittenOnTheItemPage_andShownAsAPreview() {
+    fun aNote_isWrittenRightOnTheItemPage_withoutLeavingIt() {
         openItem()
 
-        tapText("Add a note")
         await(field("Note"))
         type("Note", "Use the wild starter")
-        awaitText("Saved")
-        back()
 
-        awaitText("Use the wild starter")
-        eventually("note kept") { item(id).note.contains("Use the wild starter") }
+        eventually("note kept") { item(id).note == "Use the wild starter" }
+        // Still on the item page, with the text in its box.
+        assertTrue(exists(hasText("WHY YOU KEPT IT")))
     }
 
     @Test
@@ -247,6 +245,8 @@ class ItemJourneyTest : JourneyTest() {
         assertShowing("Standalone notes also take an intent and a collection.", "Just keep", "Not in a collection yet.")
         assertTrue(exists(described("Add to a collection")))
         replaceText("Note title", "Gift list")
+        eventually("title kept") { item(note.id).title == "Gift list" }
+    }
 
     @Test
     fun theItemPage_listsYourCollectionsAsChips_andMovesASaveBetweenThem() {
@@ -288,7 +288,5 @@ class ItemJourneyTest : JourneyTest() {
         eventually("made and then undone") {
             library().first { it.id == id }.collectionIds.isEmpty() && runBlocking { repo.observeCollections().first() }.isEmpty()
         }
-    }
-        eventually("title kept") { item(note.id).title == "Gift list" }
     }
 }

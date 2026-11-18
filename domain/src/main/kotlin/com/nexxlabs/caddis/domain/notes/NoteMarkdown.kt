@@ -26,6 +26,43 @@ object NoteMarkdown {
 
     /** Stored Markdown as the HTML to load into the editor. */
     fun toHtml(markdown: String): String = writeHtml(readMarkdown(markdown))
+
+    /**
+     * Plain text typed into a simple text box, as the Markdown to store: one line per line, every
+     * character that could be read as formatting escaped, so reading it back gives the same text.
+     */
+    fun fromPlainText(text: String): String =
+        writeMarkdown(
+            text.replace("\r\n", "\n").replace('\r', '\n').split('\n')
+                .map { line -> Block(ListKind.NONE, 0, if (line.isEmpty()) emptyList() else listOf(Run(line, Style()))) },
+        )
+
+    /**
+     * Stored Markdown as the plain text a simple text box shows: marks are dropped, list markers
+     * (`- `, `1. `) stay as typed, a link keeps its address in brackets, and every line break is kept.
+     */
+    fun toPlainText(markdown: String): String {
+        val counts = HashMap<Int, Int>()
+        val kinds = HashMap<Int, ListKind>()
+        return readMarkdown(markdown).joinToString("\n") { b ->
+            val text = b.runs.joinToString("") { r ->
+                val link = r.style.link
+                if (link != null && link != r.text) "${r.text} ($link)" else r.text
+            }
+            if (b.kind == ListKind.NONE) {
+                counts.clear(); kinds.clear()
+                return@joinToString text
+            }
+            val depth = maxOf(b.depth, 1)
+            counts.keys.removeAll { it > depth }
+            kinds.keys.removeAll { it > depth }
+            if (kinds[depth] != b.kind) counts[depth] = 0
+            kinds[depth] = b.kind
+            val n = (counts[depth] ?: 0) + 1
+            counts[depth] = n
+            "  ".repeat(depth - 1) + (if (b.kind == ListKind.BULLET) "-" else "$n.") + " " + text
+        }
+    }
 }
 
 // ---------------------------------------------------------------- model

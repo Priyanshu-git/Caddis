@@ -245,47 +245,52 @@ class NoteLifecycleJourneyTest : NoteJourneyBase() {
     // ---------- a note on a saved link ----------
 
     @Test
-    fun aLinksNote_showsOnItsItemPage_afterWriting() {
+    fun aLinksNote_isWrittenRightOnItsItemPage_withNewLines() {
         val link = save("https://example.com/sourdough-basics", "Sourdough basics")
         start(route = "item/${link.id}")
         awaitText("WHY YOU KEPT IT")
-        tapText("Add a note")
-        await(field("Note"))
         focusBody()
         commit("Use the wild starter"); enter(); commit("Bake at 230")
         assertStored(link.id, "Use the wild starter\nBake at 230")
-        leaveEditor()
 
-        awaitText("Use the wild starter Bake at 230")
+        // It stays on the item page: there is no separate note screen.
+        assertEquals("Use the wild starter\nBake at 230", visible())
+        assertTrue(exists(hasText("WHY YOU KEPT IT")))
         assertFalse(exists(hasText("Add a note")))
     }
 
     @Test
-    fun aLinksNoteWithMarksInIt_showsThemAsTyped_andIsFoundByItsWords() {
+    fun aLinksNote_hasNoLengthLimit() {
         val link = save("https://example.com/sourdough-basics", "Sourdough basics")
         start(route = "item/${link.id}")
-        tapText("Add a note")
         focusBody()
-        commit("2*3*4 equals <24>")
-        assertStored(link.id, "2\\*3\\*4 equals \\<24>")
-        leaveEditor()
-        awaitText("2*3*4 equals <24>")
+        val long = (1..120).joinToString("\n") { "Line $it of a long note about sourdough" }
+        commit(long)
+        assertStored(link.id, long)
     }
 
     @Test
-    fun aLinksNote_canBeEditedFromThePreview() {
+    fun aLinksNoteWithMarksInIt_showsThemAsTyped() {
+        val link = save("https://example.com/sourdough-basics", "Sourdough basics")
+        start(route = "item/${link.id}")
+        focusBody()
+        commit("2*3*4 equals <24>")
+        assertStored(link.id, "2\\*3\\*4 equals \\<24>")
+        assertEquals("2*3*4 equals <24>", visible())
+    }
+
+    @Test
+    fun aLinksNote_canBeEditedInPlace() {
         val link = save("https://example.com/sourdough-basics", "Sourdough basics")
         runBlocking { repo.setNote(link.id, "Use the wild starter") }
         start(route = "item/${link.id}")
         awaitText("Use the wild starter")
 
-        tapText("Use the wild starter")
         focusBody()
         caretToEnd()
         commit(" today")
         assertStored(link.id, "Use the wild starter today")
-        leaveEditor()
-        awaitText("Use the wild starter today")
+        assertEquals("Use the wild starter today", visible())
     }
 
     @Test
@@ -293,26 +298,23 @@ class NoteLifecycleJourneyTest : NoteJourneyBase() {
         val link = save("https://example.com/sourdough-basics", "Sourdough basics")
         runBlocking { repo.setNote(link.id, "Use the wild starter") }
         start(route = "item/${link.id}")
-        tapText("Use the wild starter")
+        awaitText("Use the wild starter")
         focusBody()
         select(0, "Use the wild starter".length)
         deleteSelection()
         assertStored(link.id, "")
-        leaveEditor()
 
         awaitText("Add a note")
     }
 
     @Test
-    fun aNoteOfOnlyBlankLines_showsTheHintOnTheItemPage() {
+    fun aNoteOfOnlyBlankLines_isKeptAsTyped() {
         val link = save("https://example.com/sourdough-basics", "Sourdough basics")
         start(route = "item/${link.id}")
-        tapText("Add a note")
+        awaitText("WHY YOU KEPT IT")
         focusBody()
         enter(); enter()
-        leaveEditor()
-
-        awaitText("Add a note")
+        assertStored(link.id, "\n\n")
     }
 
     @Test

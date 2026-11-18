@@ -61,6 +61,7 @@ JUnit 5 (`org.junit.jupiter.api.Test`) with Kotest matchers (`shouldBe`). Pure f
 | `details/EditsAndIconsTest` | `withEdits`, `withLink`, favicon parsing/fallbacks/merge, `couldBeNote` |
 | `share/ShareTextTest` | share text, tracking-param stripping, private words never shared |
 | `notes/NoteMarkdownTest` | editor HTML ⇄ stored Markdown: paragraphs, lists, marks, escaping of every typed character, spaces, old-format notes |
+| `notes/NotePlainTextTest` | the item page's plain text note: new lines, empty lines, escaped formatting characters, list-looking lines, 2,000-line notes, older rich notes shown as plain text, 20,000 random texts round-trip |
 | `notes/NoteRoundTripPropertyTest` | save-and-reopen keeps every character's styles: all bold/italic sequences of up to 4 pieces (~70,000), 60,000 seeded random notes with every style, special character, list and empty line |
 | `MiscTest` | search query, Markdown (plain text/preview), JSON/HTML export, analytics buckets |
 

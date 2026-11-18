@@ -238,6 +238,9 @@ what was typed. `fromHtml(html)` (the editor's HTML export, parsed with Jsoup) w
   wrong side), so `2 * 3 * 4` and `**oops` stay as typed, and writes the editor's HTML with `&`, `<`, `>` as entities and edge/double spaces as `&#32;` (the editor's HTML reader
   would otherwise collapse them). The editor adds one empty paragraph after the last `<br>`, so the final empty line of a note is left out when loading, and an
   empty bullet at the very end is left out (it would bring an extra paragraph).
+- Plain text box (the item page's note): `NoteMarkdown.fromPlainText(text)` stores each line as an unstyled line with every formatting character escaped
+  (`\r\n`/`\r` become `\n`; a line of only spaces becomes an empty line); `toPlainText(md)` shows stored Markdown as typed: marks dropped, `- `/`1. ` markers kept,
+  a link as `text (address)`. No length limit. `NotePlainTextTest` proves the round trip, including 20,000 random texts.
 - Opening a note and leaving does not write it; saving after an edit rewrites the note in this dialect, so a note written by an earlier version changes form (not meaning) at its first edit.
 
 ## Share text (`share/ShareText.kt`)

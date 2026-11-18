@@ -77,7 +77,7 @@ private fun CaddisNavGraph(nav: NavHostController, opened: OpenedItem, openItem:
         }
         composable("profile") { ProfileScreen(navigate = { nav.navigate(it) }) }
         screen("item/{id}") {
-            ItemScreen(onBack = back, onNote = { nav.navigate("note/$it") }, onManageIntents = { nav.navigate("intents") })
+            ItemScreen(onBack = back, onManageIntents = { nav.navigate("intents") })
         }
         composable("note/{id}") { NoteScreen(onBack = back, onManageIntents = { nav.navigate("intents") }) }
         screen("shelf/{collectionId}") { ShelfScreen(onBack = back, onOpenItem = { openItem(it, "shelf") }) }
