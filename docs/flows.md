@@ -17,8 +17,9 @@ End-to-end traces. File names are under `app/src/main/java/com/nexxlabs/caddis/`
 5. The sheet state becomes `CaptureSheet.Saved(itemId, entry, sharedFrom)` (or `Duplicate`). `SaveSheet` observes the row
    (`savedItem`) so it fills in as details arrive (skeleton lines while `detailsFetchedAt == null`, no title).
 6. The sheet asks one question: intent chips (guess shown as "Guessed from a/an <subject>. Tap to change."), an optional
-   reason (≤ 140, saved debounced 400 ms and flushed on close), optional "Edit title" and "Who sent it", and collection
-   picker. Dismissing keeps the save (`dismiss` only flushes the reason/title/from on the app scope).
+   reason (≤ 140, saved debounced 400 ms and flushed on close), optional "Edit title" and "Who sent it", and the collection
+   chips (see "Collection chips" below). Dismissing keeps the save (`dismiss` only flushes the reason/title/from, and a collection
+   name still being typed, on the app scope).
 7. When the sheet state returns to `None`, `ShareActivity` finishes. A `CaptureNav` event (from "Open earlier save")
    starts `MainActivity` with a `route` extra and finishes.
 
@@ -110,9 +111,20 @@ combines it with the library, search results, intents and collections.
 ## 8. Item page and notes
 
 `ItemScreen` (route `item/{id}`): thumbnail, intent chip (opens `IntentSheet`), platform chip, kind·length, title, "by … · from …
-via …", description, "Why you kept it" (inline reason edit, ≤ 140), note card (opens `note/{id}`), collection chips + picker,
+via …", description, "Why you kept it" (inline reason edit, ≤ 140), note card (opens `note/{id}`), "Collections" (rests as a read-only list of the collections it is in with an Edit button, "Add" when there are none; Edit opens
+the collection chips in place and becomes Done, see "Collection chips" below),
 "Saved <date> · details loaded", Refresh. Top bar: Edit details, Share link (only with a URL), Bring back later. Bottom bar:
 Open (links only), Done/Mark active, Delete.
+
+**Collection chips** (`CollectionChips`, used by the save sheet directly, and by the item page and standalone notes through
+`CollectionsSection`, which keeps them hidden until Edit is pressed; Done with a name still typed creates it). All collections show as chips in a
+scroll area about two rows tall (a third row peeks out when there are more), newest first. Tapping a chip files or unfiles the save
+(`setInCollection`); selected chips show a tick. The first chip is a dashed **New**: tapping it turns it into a name field in place (≤ 40
+characters) with a tick and a cross. The keyboard's Done key or the tick calls `createCollectionAndFile`, which creates the collection,
+files the save in it and, on the item page and notes, shows "Created “…” and added." with Undo; an empty name or the cross cancels. A name
+that already exists files the save in that collection ("“…” already exists. Added."), with no error. On the save sheet the name is kept in the
+sheet, so tapping Done or swiping the sheet away with a name typed still creates it; there is no toast there because the sheet's scrim
+would cover it (the chip turning selected is the confirmation). With no collections, only **New** shows, with a line of encouragement.
 
 `NoteScreen` (route `note/{id}`): rich-text editor (`richeditor-compose`) holding the note as Markdown written by `NoteMarkdown`, so whatever is typed (`*`, `_`, `#`, `<`, `[`,
 a leading `-`) is kept as typed. Standalone notes also have an editable

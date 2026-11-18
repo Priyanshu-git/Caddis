@@ -81,10 +81,10 @@ Home before the first save: `HomeState.firstRun` (library has no saves at all) s
 | ViewModel | Exposes | Notes |
 | --- | --- | --- |
 | `MainViewModel` | `onboarded: StateFlow<Boolean?>`, `pendingRoute`, `messenger` | Activity-scoped. |
-| `CaptureViewModel` | `sheet: StateFlow<CaptureSheet>`, `nav: SharedFlow<CaptureNav>`, `intents`, `collections`, `savedItem` | **One instance per activity** (MainActivity and ShareActivity each have their own). Saves run on the app scope. |
+| `CaptureViewModel` | `sheet: StateFlow<CaptureSheet>`, `nav: SharedFlow<CaptureNav>`, `intents`, `collections` (newest first), `savedItem` | **One instance per activity** (MainActivity and ShareActivity each have their own). Saves run on the app scope. |
 | `HomeViewModel` | `HomeState` | `HomePicker` + 5-minute tick. |
 | `LibraryViewModel` | `LibraryState` (items, hits, intents, collections+counts, filters, query, searching, showCollections, recent) | Shared by Library and Shelf. |
-| `ItemViewModel` | `item`, `intents`, `collections`, `saving` | Note autosave, item actions, `saveDetails`. |
+| `ItemViewModel` | `item`, `intents`, `collections` (newest first), `saving` | Note autosave, item actions, `saveDetails`, `toggleCollection`, `createCollection` (toast with Undo). |
 | `TidyViewModel`, `TrashViewModel`, `CollectionsViewModel` | see `ManageViewModels.kt` | |
 | `ProfileViewModel` | `settings`, `rules`, `intents` (`IntentRow`), `cacheBytes`, intent errors, `update` | Notifications, background-work toggles, intents/rules, export, cache, delete all, start/finish an app update. |
 
@@ -108,7 +108,7 @@ Home before the first save: `HomeState.firstRun` (library has no saves at all) s
   `borderColor`), `Thumb` (thumbnail → site icon → glyph; `share` key for shared-element transition), `ItemRow`, `IconBtn`, `TopBar`,
   `BigTitle`, `SectionTitle`, `Eyebrow`, `Fine`, `Sub`, `Dot`, `Toggle`, `SettingRow`, `Chevron`, `EmptyState`, `AppMark`, `TextFieldBox`.
 - `Fields.kt`: `CField` (text field with placeholder, label, `maxLength`, keyboard type, IME action).
-- `Sheet.kt`: `CSheet` (bottom sheet), `Chips`, `CollectionPicker`, `CenterBox`.
+- `Sheet.kt`: `CSheet` (bottom sheet), `Chips`, `CollectionChips` (toggle chips + the dashed "New" chip that becomes a name field; the owner holds the draft name), `CollectionsSection` (`CollectionsSection.kt`: the item-page and note "Collections" block, a read-only list with Edit/Add/Done that expands `CollectionChips` in place), `CenterBox`. `CChip` has a `dashed` style for "make a new one" chips.
 - `Icons.kt`: `CIcons` — the prototype's 24×24 stroked icon set as `ImageVector`s. Add icons here, not as drawables.
 - `sheets/Sheets.kt`: `rememberConfirm()` → `MutableConfirm` (two-tap confirm: first tap arms, second tap acts).
 - Always give icon-only buttons a `contentDescription`/`label`; use `Role.Button`/`Role.Tab` on clickable rows (existing code does).

@@ -42,7 +42,7 @@ import com.nexxlabs.caddis.ui.components.CChip
 import com.nexxlabs.caddis.ui.components.CField
 import com.nexxlabs.caddis.ui.components.CIcons
 import com.nexxlabs.caddis.ui.components.Chips
-import com.nexxlabs.caddis.ui.components.CollectionPicker
+import com.nexxlabs.caddis.ui.components.CollectionsSection
 import com.nexxlabs.caddis.ui.components.Eyebrow
 import com.nexxlabs.caddis.ui.components.Fine
 import com.nexxlabs.caddis.ui.components.IconBtn
@@ -64,7 +64,6 @@ fun ItemScreen(onBack: () -> Unit, onNote: (String) -> Unit, onManageIntents: ()
     val collections by vm.collections.collectAsStateWithLifecycle()
     var sheet by remember { mutableStateOf<String?>(null) }
     var editReason by rememberSaveable { mutableStateOf(false) }
-    var showCollections by rememberSaveable { mutableStateOf(false) }
     val c = C.colors
     // The list we came from handed over the item, so the screen (and its thumbnail) exist on the first frame.
     val opened = LocalOpenedItem.current
@@ -118,13 +117,10 @@ fun ItemScreen(onBack: () -> Unit, onNote: (String) -> Unit, onManageIntents: ()
                 Text(preview.ifBlank { "Add a note" }, style = CaddisType.body, color = if (preview.isBlank()) c.fg2 else c.fg, modifier = Modifier.padding(top = 4.dp))
             }
 
-            Chips(Modifier.padding(top = 14.dp)) {
-                collections.filter { col -> col.id in it.collectionIds }.forEach { col -> CChip(col.name) }
-                CChip(if (showCollections) "Done" else "+ Add", onClick = { showCollections = !showCollections })
-            }
-            AnimatedVisibility(showCollections, enter = fadeIn(tween(Motion.Short)) + expandVertically(), exit = fadeOut(tween(Motion.Quick)) + shrinkVertically()) {
-                CollectionPicker(collections, it.collectionIds, vm::toggleCollection, Modifier.padding(top = 10.dp))
-            }
+            CollectionsSection(
+                all = collections, selected = it.collectionIds, onToggle = vm::toggleCollection,
+                onCreate = vm::createCollection, modifier = Modifier.padding(top = 14.dp),
+            )
 
             Row(Modifier.fillMaxWidth().padding(top = 18.dp), verticalAlignment = Alignment.CenterVertically) {
                 Fine(it.savedLabel() + if (it.detailsFetchedAt != null) " · details loaded" else "", Modifier.weight(1f))

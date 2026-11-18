@@ -126,6 +126,13 @@ through here.** Reads are `Flow`s.
 name, case-insensitive). `deleteCollection(id)` keeps its items. `setInCollection(itemId, collectionId, inIt)` adds or
 removes the ref and touches the item (`edit(id){ it }`) so `updatedAt`/`revision` change.
 
+`createCollectionAndFile(itemId, name)` (the "New" chip) runs in one transaction: trims and cuts the name to
+`EditLimits.COLLECTION_NAME` (40), creates the collection and files the item in it → `FileResult.Ok(collection, created)` | `Error`
+(blank name; item gone). A name that already exists (any case) is **not an error**: the item is filed in that collection and
+`created` is `false`. `undoCreateAndFile(itemId, collectionId, created)` unfiles it and drops the collection only if it was just made
+and nothing else uses it. `observeCollectionsNewestFirst()` is the order the chips use (newest next to "New");
+`observeCollections()` stays oldest first (Manage screen).
+
 ### Intents
 
 - `createIntent(name, doneLabel)`: name trimmed to 20, done label to 16 (default "Done"); case-insensitive unique name;

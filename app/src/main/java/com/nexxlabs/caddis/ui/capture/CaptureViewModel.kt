@@ -66,7 +66,7 @@ class CaptureViewModel @Inject constructor(
     val nav = _nav.asSharedFlow()
 
     val intents: StateFlow<List<Intent>> = repo.observeIntents().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-    val collections: StateFlow<List<Collection>> = repo.observeCollections().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    val collections: StateFlow<List<Collection>> = repo.observeCollectionsNewestFirst().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     /** The save being confirmed; updates live as details load (MET-02). */
     val savedItem: StateFlow<Item?> = _sheet
@@ -186,10 +186,12 @@ class CaptureViewModel @Inject constructor(
     fun toggleCollection(itemId: String, collectionId: String, inIt: Boolean) =
         viewModelScope.launch { repo.setInCollection(itemId, collectionId, inIt) }
 
-    fun createCollection(itemId: String, name: String) = viewModelScope.launch {
-        val r = repo.createCollection(name)
-        if (r is LibraryRepository.NameResult.Ok) repo.setInCollection(itemId, r.id, true)
-    }
+    /**
+     * Names a collection and files the save in it. Runs on the app scope because it is also called as the sheet
+     * closes with a name still typed. A name that already exists just files the save there. The chip turning
+     * selected is the confirmation: a toast would sit under this sheet's scrim.
+     */
+    fun createCollection(itemId: String, name: String) = appScope.launch { repo.createCollectionAndFile(itemId, name) }
 
     /** CAP-02: dismissing keeps the save. Flushes a pending reason first. */
     fun dismiss(finalReason: Pair<String, String>? = null) {

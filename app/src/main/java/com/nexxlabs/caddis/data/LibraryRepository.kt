@@ -13,6 +13,7 @@ import com.nexxlabs.caddis.domain.analytics.AnalyticsEvent
 import com.nexxlabs.caddis.domain.analytics.AnalyticsSink
 import com.nexxlabs.caddis.domain.analytics.ageBucket
 import com.nexxlabs.caddis.domain.details.DetailEdits
+import com.nexxlabs.caddis.domain.details.EditLimits
 import com.nexxlabs.caddis.domain.details.LinkDetails
 import com.nexxlabs.caddis.domain.details.needsDetails
 import com.nexxlabs.caddis.domain.details.withEdits
@@ -125,6 +126,9 @@ class LibraryRepository @Inject constructor(
         intents.observeRules().map { l -> l.associate { it.intentId to it.toDomain() } }
 
     fun observeCollections(): Flow<List<Collection>> = collections.observeAll().map { l -> l.map { it.toDomain() } }
+
+    /** For the collection chips on a save: the newest collection sits next to the "New" chip. */
+    fun observeCollectionsNewestFirst(): Flow<List<Collection>> = observeCollections().map { it.asReversed() }
 
     fun observeWeek(weekStart: LocalDate): Flow<WeeklySummary> = weeks.observe(weekStart.toString()).map {
         WeeklySummary(weekStart, it?.savedCount ?: 0, it?.usedCount ?: 0, it?.deletedCount ?: 0)
@@ -443,6 +447,36 @@ class LibraryRepository @Inject constructor(
         val current = collections.all().firstOrNull { it.id == id } ?: return NameResult.Error("That collection is gone.")
         collections.upsert(current.copy(name = n, updatedAt = now(), revision = current.revision + 1))
         return NameResult.Ok(id)
+    }
+
+    sealed interface FileResult {
+        /** [created]: false when the name already belonged to a collection and the save was filed in that one. */
+        data class Ok(val collection: Collection, val created: Boolean) : FileResult
+        data class Error(val message: String) : FileResult
+    }
+
+    /**
+     * Names a collection from a save and files the save in it, in one step. A name that already exists
+     * (any case) files the save in that collection rather than failing, so there is no error to recover from.
+     */
+    suspend fun createCollectionAndFile(itemId: String, name: String): FileResult = db.withTransaction {
+        val n = name.trim().take(EditLimits.COLLECTION_NAME).trim()
+        if (n.isEmpty()) return@withTransaction FileResult.Error("Give the collection a name.")
+        if (items.get(itemId) == null) return@withTransaction FileResult.Error("That save is gone.")
+        val existing = collections.findByName(n)
+        val col = existing ?: now().let { t -> CollectionEntity(UUID.randomUUID().toString(), n, t, t, 1) }.also { collections.upsert(it) }
+        collections.addRef(ItemCollectionRef(itemId, col.id))
+        edit(itemId) { it }
+        FileResult.Ok(col.toDomain(), created = existing == null)
+    }
+
+    /** Undo for [createCollectionAndFile]: unfiles the save, and drops the collection if it was just made and nothing else uses it. */
+    suspend fun undoCreateAndFile(itemId: String, collectionId: String, created: Boolean) {
+        db.withTransaction {
+            collections.removeRef(itemId, collectionId)
+            if (created && collections.allRefs().none { it.collectionId == collectionId }) collections.delete(collectionId)
+            edit(itemId) { it }
+        }
     }
 
     /** LIB-02: deleting a collection keeps its items. */

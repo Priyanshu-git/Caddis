@@ -39,7 +39,7 @@ class ItemViewModel @Inject constructor(
 
     val item: StateFlow<Item?> = repo.observeItem(id).stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val intents: StateFlow<List<Intent>> = repo.observeIntents().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-    val collections: StateFlow<List<Collection>> = repo.observeCollections().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    val collections: StateFlow<List<Collection>> = repo.observeCollectionsNewestFirst().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     /** Notes save as you type (prototype: "Saving…" → "Saved"). */
     private val noteDrafts = MutableStateFlow<String?>(null)
@@ -91,6 +91,16 @@ class ItemViewModel @Inject constructor(
     fun setIntent(intentId: String) = viewModelScope.launch { repo.setIntent(id, intentId) }
     fun setReason(r: String) = viewModelScope.launch { repo.setReason(id, r) }
     fun toggleCollection(cid: String, on: Boolean) = viewModelScope.launch { repo.setInCollection(id, cid, on) }
+
+    /** Names a collection and files this save in it, then says so with an Undo. An existing name just files it there. */
+    fun createCollection(name: String) = appScope.launch {
+        val r = repo.createCollectionAndFile(id, name) as? LibraryRepository.FileResult.Ok ?: return@launch
+        val n = r.collection.name
+        messenger.show(
+            if (r.created) "Created “$n” and added." else "“$n” already exists. Added.",
+            undo = { repo.undoCreateAndFile(id, r.collection.id, r.created) },
+        )
+    }
 
     fun open(entry: AnalyticsEvent.OpenEntry = AnalyticsEvent.OpenEntry.LIBRARY) = item.value?.let { actions.open(it, entry) }
     fun share() = item.value?.let { actions.share(it) }

@@ -39,7 +39,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
@@ -108,19 +112,31 @@ fun CChip(
     leading: ImageVector? = null,
     trailing: ImageVector? = null,
     contentDescription: String? = null,
+    /** A dashed accent outline for "make a new one" chips. */
+    dashed: Boolean = false,
 ) {
     val c = C.colors
     val shape = RoundedCornerShape(18.dp)
     val source = remember { MutableInteractionSource() }
     val fill by animateColorAsState(if (selected) c.accentTint else Color.Transparent, tween(Motion.Quick), label = "chipFill")
     val edge by animateColorAsState(if (selected) c.accent else c.line, tween(Motion.Quick), label = "chipEdge")
+    val ink = if (dashed) c.accent else c.fg
+    val dash = c.accent
     Row(
         modifier = modifier
             .then(if (onClick != null) Modifier.pressScale(source) else Modifier)
             .heightIn(min = 36.dp)
             .clip(shape)
             .background(fill)
-            .border(1.dp, edge, shape)
+            .then(
+                if (dashed) Modifier.drawBehind {
+                    drawRoundRect(
+                        color = dash,
+                        cornerRadius = CornerRadius(18.dp.toPx()),
+                        style = Stroke(width = 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(8.dp.toPx(), 6.dp.toPx()))),
+                    )
+                } else Modifier.border(1.dp, edge, shape),
+            )
             .then(if (onClick != null) Modifier.clickable(interactionSource = source, indication = LocalIndication.current, role = Role.Button, onClick = onClick) else Modifier)
             .semantics {
                 if (contentDescription != null) this.contentDescription = contentDescription
@@ -130,9 +146,9 @@ fun CChip(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (leading != null) Icon(leading, null, tint = c.fg, modifier = Modifier.size(16.dp))
-        Text(text, style = if (selected) CaddisType.buttonSm else CaddisType.sub, color = c.fg, maxLines = 1)
-        if (trailing != null) Icon(trailing, null, tint = c.fg, modifier = Modifier.size(14.dp))
+        if (leading != null) Icon(leading, null, tint = ink, modifier = Modifier.size(16.dp))
+        Text(text, style = if (selected || dashed) CaddisType.buttonSm else CaddisType.sub, color = ink, maxLines = 1)
+        if (trailing != null) Icon(trailing, null, tint = ink, modifier = Modifier.size(14.dp))
     }
 }
 

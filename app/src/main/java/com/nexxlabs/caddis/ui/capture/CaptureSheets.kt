@@ -57,7 +57,7 @@ import com.nexxlabs.caddis.ui.components.CField
 import com.nexxlabs.caddis.ui.components.CIcons
 import com.nexxlabs.caddis.ui.components.CSheet
 import com.nexxlabs.caddis.ui.components.Chips
-import com.nexxlabs.caddis.ui.components.CollectionPicker
+import com.nexxlabs.caddis.ui.components.CollectionChips
 import com.nexxlabs.caddis.ui.components.Eyebrow
 import com.nexxlabs.caddis.ui.components.Fine
 import com.nexxlabs.caddis.ui.components.Sub
@@ -156,7 +156,8 @@ private fun SaveSheet(item: Item, sharedFrom: String, intents: List<Intent>, col
     val c = C.colors
     var reason by remember(item.id) { mutableStateOf(item.reason) }
     var from by remember(item.id) { mutableStateOf(item.sourceFrom) }
-    var showCollections by rememberSaveable { mutableStateOf(false) }
+    // The name being typed for a new collection; null when not naming. Kept here so closing the sheet can still create it.
+    var newCollection by rememberSaveable(item.id) { mutableStateOf<String?>(null) }
     var showFrom by rememberSaveable { mutableStateOf(false) }
     // null until the person taps "Edit title"; the prefill is remembered so an untouched field saves nothing.
     var titleDraft by remember(item.id) { mutableStateOf<String?>(null) }
@@ -165,6 +166,7 @@ private fun SaveSheet(item: Item, sharedFrom: String, intents: List<Intent>, col
     val close = {
         titleDraft?.let { t -> if (t.trim() != titlePrefill.trim()) vm.setTitle(item.id, t) }
         if (from != item.sourceFrom) vm.setFrom(item.id, from)
+        newCollection?.trim()?.takeIf { it.isNotEmpty() }?.let { vm.createCollection(item.id, it) }
         vm.dismiss(item.id to reason)
     }
     CSheet(onDismiss = close) {
@@ -230,12 +232,15 @@ private fun SaveSheet(item: Item, sharedFrom: String, intents: List<Intent>, col
         AnimatedVisibility(showFrom, enter = fadeIn(tween(Motion.Short)) + expandVertically(), exit = fadeOut(tween(Motion.Quick)) + shrinkVertically()) {
             CField(value = from, onValueChange = { from = it }, placeholder = "Who sent it? e.g. Rohan", label = "From", maxLength = 60, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
         }
-        AnimatedVisibility(showCollections, enter = fadeIn(tween(Motion.Short)) + expandVertically(), exit = fadeOut(tween(Motion.Quick)) + shrinkVertically()) {
-            CollectionPicker(collections, item.collectionIds, { id, on -> vm.toggleCollection(item.id, id, on) }, Modifier.padding(top = 10.dp))
-        }
+        Eyebrow("Collections", Modifier.padding(top = 16.dp, bottom = 8.dp))
+        CollectionChips(
+            all = collections, selected = item.collectionIds,
+            onToggle = { id, on -> vm.toggleCollection(item.id, id, on) },
+            onCreate = { name -> vm.createCollection(item.id, name) },
+            draft = newCollection, onDraft = { newCollection = it },
+        )
         Row(Modifier.fillMaxWidth().padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                CButton(if (showCollections) "Hide collections" else "+ Add to collection", onClick = { showCollections = !showCollections }, style = BtnStyle.Ghost, small = true)
                 if (!showFrom) CButton("+ Who sent it", onClick = { showFrom = true }, style = BtnStyle.Ghost, small = true)
             }
             CButton("Done", onClick = close, style = BtnStyle.Primary)

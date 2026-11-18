@@ -49,7 +49,7 @@ import com.nexxlabs.caddis.ui.components.CChip
 import com.nexxlabs.caddis.ui.components.CField
 import com.nexxlabs.caddis.ui.components.CIcons
 import com.nexxlabs.caddis.ui.components.Chips
-import com.nexxlabs.caddis.ui.components.CollectionPicker
+import com.nexxlabs.caddis.ui.components.CollectionsSection
 import com.nexxlabs.caddis.ui.components.Dot
 import com.nexxlabs.caddis.ui.components.Fine
 import com.nexxlabs.caddis.ui.components.TopBar
@@ -77,7 +77,6 @@ fun NoteScreen(onBack: () -> Unit, onManageIntents: () -> Unit, vm: ItemViewMode
     var loaded by remember { mutableStateOf(false) }
     var title by rememberSaveable { mutableStateOf(it.title) }
     var intentSheet by remember { mutableStateOf(false) }
-    var showCollections by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(it.id) {
         if (!loaded) {
@@ -130,9 +129,11 @@ fun NoteScreen(onBack: () -> Unit, onManageIntents: () -> Unit, vm: ItemViewMode
                 Fine("Standalone notes also take an intent and a collection.", Modifier.padding(top = 14.dp))
                 Chips(Modifier.padding(top = 8.dp)) {
                     CChip(intentName(intents, it.intentId), selected = true, onClick = { intentSheet = true }, trailing = CIcons.Down)
-                    CChip(if (showCollections) "Done" else "+ Collection", onClick = { showCollections = !showCollections })
                 }
-                if (showCollections) CollectionPicker(collections, it.collectionIds, vm::toggleCollection, Modifier.padding(top = 10.dp))
+                CollectionsSection(
+                    all = collections, selected = it.collectionIds, onToggle = vm::toggleCollection,
+                    onCreate = vm::createCollection, modifier = Modifier.padding(top = 10.dp),
+                )
             }
         }
     }

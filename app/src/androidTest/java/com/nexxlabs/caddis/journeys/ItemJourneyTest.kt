@@ -20,6 +20,8 @@ import com.nexxlabs.caddis.domain.model.Intents as IntentIds
 import com.nexxlabs.caddis.domain.model.ItemStatus
 import com.nexxlabs.caddis.domain.model.ReturnRule
 import dagger.hilt.android.testing.HiltAndroidTest
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import org.hamcrest.Matchers.allOf
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -242,8 +244,51 @@ class ItemJourneyTest : JourneyTest() {
         launchApp(route = "note/${note.id}")
 
         await(field("Note title"))
-        assertShowing("Standalone notes also take an intent and a collection.", "Just keep", "+ Collection")
+        assertShowing("Standalone notes also take an intent and a collection.", "Just keep", "Not in a collection yet.")
+        assertTrue(exists(described("Add to a collection")))
         replaceText("Note title", "Gift list")
+
+    @Test
+    fun theItemPage_listsYourCollectionsAsChips_andMovesASaveBetweenThem() {
+        val a = runBlocking { repo.createCollection("Dinner ideas") } as com.nexxlabs.caddis.data.LibraryRepository.NameResult.Ok
+        runBlocking { repo.createCollection("Gifts") }
+        runBlocking { repo.setInCollection(id, a.id, true) }
+        openItem()
+
+        // Resting: only the collections it is in, and nothing to change until Edit is pressed.
+        assertShowing("COLLECTIONS", "Dinner ideas")
+        assertTrue(!exists(hasText("Gifts")))
+        assertTrue(!exists(hasText("New")))
+
+        tapDescribed("Edit collections")
+        assertShowing("New", "Gifts", "Dinner ideas")
+        tapButton("Gifts")
+        eventually("filed in Gifts") { library().first { it.id == id }.collectionIds.size == 2 }
+        tapButton("Dinner ideas")
+        eventually("taken out of Dinner ideas") { library().first { it.id == id }.collectionIds.let { ids -> a.id !in ids && ids.size == 1 } }
+
+        tapDescribed("Finish editing collections")
+        awaitGone(hasText("New"))
+        assertShowing("Gifts")
+        assertTrue(!exists(hasText("Dinner ideas")))
+    }
+
+    @Test
+    fun theItemPage_canMakeANewCollection_andUndoIt() {
+        openItem()
+
+        tapDescribed("Add to a collection")
+        tapButton("New")
+        type("New collection name", "Weekend cooking")
+        tapDescribed("Create collection")
+        eventually("made and filed") { library().first { it.id == id }.collectionIds.size == 1 }
+        awaitText("Created “Weekend cooking” and added.")
+
+        tapText("Undo")
+        eventually("made and then undone") {
+            library().first { it.id == id }.collectionIds.isEmpty() && runBlocking { repo.observeCollections().first() }.isEmpty()
+        }
+    }
         eventually("title kept") { item(note.id).title == "Gift list" }
     }
 }

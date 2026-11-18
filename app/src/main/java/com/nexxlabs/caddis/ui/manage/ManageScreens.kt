@@ -55,6 +55,7 @@ import com.nexxlabs.caddis.ui.components.Tag
 import com.nexxlabs.caddis.ui.components.Thumb
 import com.nexxlabs.caddis.ui.components.TopBar
 import com.nexxlabs.caddis.ui.intentName
+import com.nexxlabs.caddis.domain.details.EditLimits
 import com.nexxlabs.caddis.ui.library.CollectionBox
 import com.nexxlabs.caddis.ui.meta
 import com.nexxlabs.caddis.ui.sheets.rememberConfirm
@@ -167,7 +168,7 @@ fun CollectionsScreen(onBack: () -> Unit, onOpen: (String) -> Unit, vm: Collecti
                     if (editing == col.id) {
                         var draft by remember(col.id) { mutableStateOf(col.name) }
                         Row(Modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            CField(draft, { draft = it }, "Collection name", maxLength = 40, modifier = Modifier.weight(1f))
+                            CField(draft, { draft = it }, "Collection name", maxLength = EditLimits.COLLECTION_NAME, modifier = Modifier.weight(1f))
                             CButton("Save", onClick = { vm.rename(col.id, draft) { editing = null } }, style = BtnStyle.Primary, small = true)
                             CButton(
                                 if (confirm.isArmed(col.id)) "Sure? Saves stay" else "Delete",
@@ -193,7 +194,7 @@ fun CollectionsScreen(onBack: () -> Unit, onOpen: (String) -> Unit, vm: Collecti
             item {
                 CCard(Modifier.fillMaxWidth().padding(top = 22.dp), padding = 8.dp) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        CField(newName, { newName = it; vm.error.value = "" }, "Name a new collection", label = "New collection name", boxed = false, maxLength = 40, modifier = Modifier.weight(1f).padding(start = 6.dp), onIme = { vm.create(newName) { newName = "" } })
+                        CField(newName, { newName = it; vm.error.value = "" }, "Name a new collection", label = "New collection name", boxed = false, maxLength = EditLimits.COLLECTION_NAME, modifier = Modifier.weight(1f).padding(start = 6.dp), onIme = { vm.create(newName) { newName = "" } })
                         CButton("Create", onClick = { vm.create(newName) { newName = "" } }, style = BtnStyle.Primary, small = true)
                     }
                 }

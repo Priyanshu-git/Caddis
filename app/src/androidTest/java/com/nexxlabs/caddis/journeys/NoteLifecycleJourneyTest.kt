@@ -234,7 +234,7 @@ class NoteLifecycleJourneyTest : NoteJourneyBase() {
     fun aNote_canBePutInACollection_andTakenOut() {
         runBlocking { repo.createCollection("Gifts") }
         val id = openNote()
-        tapText("+ Collection")
+        tapDescribed("Add to a collection")
         tapText("Gifts")
         eventually("added to Gifts") { library().first { it.id == id }.collectionIds.isNotEmpty() }
 

@@ -8,6 +8,7 @@ import com.nexxlabs.caddis.domain.model.IntentSource
 import com.nexxlabs.caddis.domain.model.Intents
 import com.nexxlabs.caddis.domain.model.ItemType
 import dagger.hilt.android.testing.HiltAndroidTest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -70,14 +71,75 @@ class AddJourneyTest : JourneyTest() {
 
         tapButton("+ Who sent it")
         type("From", "Rohan")
-        tapButton("+ Add to collection")
         tapButton("Dinner ideas")
-        awaitText("Hide collections")
         tapButton("Done")
         awaitNoText("Saved to Caddis")
 
         eventually("sender and collection kept") {
             library().single().let { it.sourceFrom == "Rohan" && it.collectionIds.size == 1 }
+        }
+    }
+
+    @Test
+    fun theSaveSheet_showsYourCollectionsAsChips_withNewFirst() {
+        runBlocking { repo.createCollection("Dinner ideas") }
+        runBlocking { repo.createCollection("Gifts") }
+        launchApp()
+        addLink("https://example.com/one-pan-pasta")
+        awaitText("Saved to Caddis")
+
+        assertShowing("New", "Gifts", "Dinner ideas")
+    }
+
+    @Test
+    fun theSaveSheet_canMakeANewCollection_andFileTheSaveInIt() {
+        launchApp()
+        addLink("https://example.com/one-pan-pasta")
+        awaitText("Saved to Caddis")
+
+        tapButton("New")
+        type("New collection name", "Weekend recipes")
+        tapDescribed("Create collection")
+
+        eventually("collection made and the save filed in it") {
+            val saved = library().single()
+            val made = runBlocking { repo.observeCollections().first() }.singleOrNull { it.name == "Weekend recipes" }
+            made != null && saved.collectionIds == setOf(made.id)
+        }
+        // The field turns back into the New chip and the new collection shows selected.
+        awaitText("New")
+        awaitText("Weekend recipes")
+    }
+
+    @Test
+    fun theSaveSheet_createsAnUnfinishedName_whenYouTapDone() {
+        launchApp()
+        addLink("https://example.com/one-pan-pasta")
+        awaitText("Saved to Caddis")
+
+        tapButton("New")
+        type("New collection name", "Trips")
+        tapButton("Done")
+        awaitNoText("Saved to Caddis")
+
+        eventually("name typed but not confirmed is still kept") {
+            library().single().collectionIds.size == 1 && runBlocking { repo.observeCollections().first() }.any { it.name == "Trips" }
+        }
+    }
+
+    @Test
+    fun theSaveSheet_filesInTheExistingCollection_whenTheNameIsTaken() {
+        runBlocking { repo.createCollection("Gifts") }
+        launchApp()
+        addLink("https://example.com/one-pan-pasta")
+        awaitText("Saved to Caddis")
+
+        tapButton("New")
+        type("New collection name", "gifts")
+        tapDescribed("Create collection")
+
+        eventually("filed in the one that exists") {
+            library().single().collectionIds.size == 1 && runBlocking { repo.observeCollections().first() }.size == 1
         }
     }
 

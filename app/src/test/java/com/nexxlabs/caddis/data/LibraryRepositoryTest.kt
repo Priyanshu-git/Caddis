@@ -3,6 +3,7 @@ package com.nexxlabs.caddis.data
 import com.nexxlabs.caddis.Fixture
 import com.nexxlabs.caddis.domain.analytics.AnalyticsEvent
 import com.nexxlabs.caddis.domain.analytics.AnalyticsEvent.SaveEntry
+import com.nexxlabs.caddis.domain.details.EditLimits
 import com.nexxlabs.caddis.domain.details.LinkDetails
 import com.nexxlabs.caddis.domain.link.LinkCheck
 import com.nexxlabs.caddis.domain.link.Links
@@ -179,6 +180,77 @@ class LibraryRepositoryTest {
         repo.deleteCollection(a)
         assertEquals(setOf(b), repo.observeItem(item.id).first()!!.collectionIds)
         assertNotNull(repo.get(item.id))
+    }
+
+    @Test
+    fun `naming a collection from a save creates it and files the save in it`() = runBlocking {
+        val item = save("https://example.com/n")
+        val before = repo.get(item.id)!!.revision
+        val r = repo.createCollectionAndFile(item.id, "  Weekend recipes  ") as LibraryRepository.FileResult.Ok
+        assertTrue(r.created)
+        assertEquals("Weekend recipes", r.collection.name)
+        assertEquals(setOf(r.collection.id), repo.observeItem(item.id).first()!!.collectionIds)
+        assertEquals(listOf("Weekend recipes"), repo.observeCollections().first().map { it.name })
+        assertTrue(repo.get(item.id)!!.revision > before)
+    }
+
+    @Test
+    fun `a name that already exists files the save in that collection instead of failing`() = runBlocking {
+        val existing = (repo.createCollection("Gifts") as LibraryRepository.NameResult.Ok).id
+        val item = save("https://example.com/d")
+        val r = repo.createCollectionAndFile(item.id, "gifts") as LibraryRepository.FileResult.Ok
+        assertEquals(existing, r.collection.id)
+        assertEquals("Gifts", r.collection.name)
+        assertTrue(!r.created)
+        assertEquals(1, repo.observeCollections().first().size)
+        assertEquals(setOf(existing), repo.observeItem(item.id).first()!!.collectionIds)
+    }
+
+    @Test
+    fun `a blank name or a missing save creates nothing`() = runBlocking {
+        val item = save("https://example.com/b")
+        assertTrue(repo.createCollectionAndFile(item.id, "   ") is LibraryRepository.FileResult.Error)
+        assertTrue(repo.createCollectionAndFile("gone", "Trips") is LibraryRepository.FileResult.Error)
+        assertTrue(repo.observeCollections().first().isEmpty())
+    }
+
+    @Test
+    fun `a long name is cut to the limit`() = runBlocking {
+        val item = save("https://example.com/long")
+        val r = repo.createCollectionAndFile(item.id, "x".repeat(80)) as LibraryRepository.FileResult.Ok
+        assertEquals(EditLimits.COLLECTION_NAME, r.collection.name.length)
+    }
+
+    @Test
+    fun `undo removes a collection that was just made, but keeps one others use or that already existed`() = runBlocking {
+        val a = save("https://example.com/ua")
+        val b = save("https://example.com/ub")
+        val made = repo.createCollectionAndFile(a.id, "Trips") as LibraryRepository.FileResult.Ok
+        repo.undoCreateAndFile(a.id, made.collection.id, created = true)
+        assertTrue(repo.observeCollections().first().isEmpty())
+
+        val shared = repo.createCollectionAndFile(a.id, "Books") as LibraryRepository.FileResult.Ok
+        repo.setInCollection(b.id, shared.collection.id, true)
+        repo.undoCreateAndFile(a.id, shared.collection.id, created = true)
+        assertEquals(listOf("Books"), repo.observeCollections().first().map { it.name })
+        assertTrue(repo.observeItem(a.id).first()!!.collectionIds.isEmpty())
+        assertEquals(setOf(shared.collection.id), repo.observeItem(b.id).first()!!.collectionIds)
+
+        repo.createCollectionAndFile(a.id, "books")
+        repo.undoCreateAndFile(a.id, shared.collection.id, created = false)
+        assertEquals(1, repo.observeCollections().first().size)
+        assertTrue(repo.observeItem(a.id).first()!!.collectionIds.isEmpty())
+    }
+
+    @Test
+    fun `the picker lists the newest collection first`() = runBlocking {
+        repo.createCollection("First")
+        f.clock.advance(Duration.ofMinutes(1))
+        repo.createCollection("Second")
+        f.clock.advance(Duration.ofMinutes(1))
+        repo.createCollection("Third")
+        assertEquals(listOf("Third", "Second", "First"), repo.observeCollectionsNewestFirst().first().map { it.name })
+        assertEquals(listOf("First", "Second", "Third"), repo.observeCollections().first().map { it.name })
     }
 
     @Test

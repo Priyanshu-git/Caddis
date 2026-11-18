@@ -17,6 +17,8 @@ object EditLimits {
     const val TITLE = 200
     const val DESCRIPTION = 1000
     const val CREATOR = 80
+    /** Longest collection name; the name field and the repository both enforce it. */
+    const val COLLECTION_NAME = 40
 }
 
 /**
