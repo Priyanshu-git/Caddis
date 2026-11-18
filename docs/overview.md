@@ -84,7 +84,7 @@ unless asked.
 - **Library**: all saves and notes newest first; a Kept chip (Just keep saves) and platform chips (only platforms the library has); Filter sheet (intent, platform, status);
   collections tab and shelves; offline keyword search (FTS4) with "why it matched" text and
   recent searches (in memory only).
-- **Item page** and **Note editor** (rich text stored as Markdown, autosave).
+- **Item page** and **Note editor** (rich text stored as Markdown, autosave, links, undo; formatting bar above the keyboard; done/later/delete in its ⋮ menu).
 - **Finish**: Done/Mark active, delete to Trash with Undo, Trash screen (restore / delete forever),
   Tidy-up (keep or delete link saves untouched for 90 days; never Just keep saves, notes or saves set to "Not again").
 - **Notifications** (opt-in): one daily pick and a Sunday-evening weekly summary, quiet hours,

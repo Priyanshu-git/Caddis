@@ -131,11 +131,13 @@ The item page's note box shows `NoteMarkdown.toPlainText(item.note)` and stores 
 `ItemViewModel.noteChanged` autosave (500 ms, flushed on leaving), so what is typed is kept as typed and older rich notes open as plain text.
 
 `NoteScreen` (route `note/{id}`, **standalone notes only**: created from the Add sheet or opened from the Library): rich-text editor (`richeditor-compose`) holding the note as Markdown written by `NoteMarkdown`, so whatever is typed (`*`, `_`, `#`, `<`, `[`,
-a leading `-`) is kept as typed. Standalone notes also have an editable
-title, intent chip and collections. Typing calls `ItemViewModel.noteChanged` → debounced 500 ms → `repo.setNote`; the top bar shows
-"Saving…"/"Saved"; leaving flushes via `flushNote` on the app scope. Typing something and undoing it within the pause records the saved text as the
-latest draft, so the undone text is never written. A screen turn reopens the editor on `currentNote()` (pending draft first). Toolbar: bold, italic,
-bullets, numbers, code; each lights up while it applies at the caret.
+a leading `-`) is kept as typed. An editable title sits at the top with the intent chip and one chip per collection right under it (tap the intent for
+`IntentSheet`, any collection chip for a sheet of tick chips with "New"). An empty note opens with the caret in the body. Typing calls
+`ItemViewModel.noteChanged` → debounced 500 ms → `repo.setNote`; once something has changed, the top bar shows "Saving…" then "Saved"; leaving flushes
+via `flushNote` on the app scope. Typing something and undoing it within the pause records the saved text as the latest draft, so the undone text is
+never written. A screen turn reopens the editor on `currentNote()` (pending draft first). While the body has focus a formatting bar sits above the
+keyboard: bold, italic, bullets, numbers, code, link (a sheet for the address; only web links), and undo (steps back through bursts of typing, a
+pause of 1 s or more starting a new step). The ⋮ menu marks the note done (or active), brings it back later, or deletes it (to Trash, with Undo) and goes back.
 
 Share: `ItemActions.share(item)` → chooser with `ShareText.of(item)` (+ subject/title). Open: `ACTION_VIEW` on the saved URL (Android
 picks the original app when installed, else the browser); failure toast "No app on this phone can open that link."

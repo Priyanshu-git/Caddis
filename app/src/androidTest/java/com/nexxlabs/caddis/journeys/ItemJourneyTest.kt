@@ -242,8 +242,10 @@ class ItemJourneyTest : JourneyTest() {
         launchApp(route = "note/${note.id}")
 
         await(field("Note title"))
-        assertShowing("Standalone notes also take an intent and a collection.", "Just keep", "Not in a collection yet.")
+        // The intent and an empty collection chip sit right under the title.
+        assertShowing("Just keep", "Collection")
         assertTrue(exists(described("Add to a collection")))
+        assertTrue(!exists(hasText("Edited visually, stored as Markdown.")))
         replaceText("Note title", "Gift list")
         eventually("title kept") { item(note.id).title == "Gift list" }
     }

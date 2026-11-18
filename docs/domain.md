@@ -243,6 +243,11 @@ what was typed. `fromHtml(html)` (the editor's HTML export, parsed with Jsoup) w
   a link as `text (address)`. No length limit. `NotePlainTextTest` proves the round trip, including 20,000 random texts.
 - Opening a note and leaving does not write it; saving after an edit rewrites the note in this dialect, so a note written by an earlier version changes form (not meaning) at its first edit.
 
+`EditHistory<T>` (`notes/EditHistory.kt`) is the note editor's undo (the editor library has none). `record(state, atMillis)` adds a step only when the
+content changed (`same`, so a caret move alone is not a step); changes less than `groupMillis` (1 s) after the previous one join its step, so undo takes back
+a burst of typing. `undo()` returns the state to show (null when there is none) and starts a new step; `replace(state)` sets the current state without a step
+(loading, applying an undo). At most `limit` (100) steps are kept, oldest dropped first. Tests: `EditHistoryTest`.
+
 ## Share text (`share/ShareText.kt`)
 
 `ShareText.of(item)`: `null` if no URL. Otherwise `[title\n]<cleanUrl>\n\nShared via Caddis app`. The

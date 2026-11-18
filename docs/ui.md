@@ -141,8 +141,24 @@ Calm: short, decelerating, never bouncy. Compose honours the system animator sca
 
 `NoteScreen` uses `com.mohamedrejeb.richeditor` (`rememberRichTextState`, `BasicRichTextEditor`), at version `1.0.0-rc13` (`gradle/libs.versions.toml`; check Kotlin compatibility before bumping).
 Content is loaded with `setHtml(NoteMarkdown.toHtml(stored))` and saved as `NoteMarkdown.fromHtml(rich.toHtml())`, never with the library's `setMarkdown`/`toMarkdown`
-(they do not escape or honour escapes; see [domain.md](domain.md#notes-notesmarkdownkt-notesnotemarkdownkt)). Toolbar has bold, italic, bullets, numbers, inline code.
-Each toolbar button **lights up** (`accentTint` background, accent text, `selected` semantics) when its style applies at the caret or to the
-selection: bold/italic from `RichTextState.currentSpanStyle`, lists from `isUnorderedList`/`isOrderedList`, code from `isCodeSpan`. A style just
-switched on with no text yet counts, and it follows the caret as it moves. The editor opens on `ItemViewModel.currentNote()` (typed but unsaved
-words win over the saved note) so a screen turn right after typing keeps the text.
+(they do not escape or honour escapes; see [domain.md](domain.md#notes-notesmarkdownkt-notesnotemarkdownkt)).
+
+Layout, top to bottom: `TopBar` (back, save status, ⋮ `More` menu) → title (`CField`, unboxed, h1 × 0.86) → chip row (intent chip with `Down`, one
+selected chip per collection described "Collection: <name>", then "+ Collection"/"+ Add" described "Add to a collection") → divider → the body, whose
+minimum height reaches the bottom of the screen so a tap anywhere under the text writes in it. There is no helper copy under the body.
+- **Save status** shows only after something was changed on this visit: "Saving…" while the autosave pause runs, then a check and "Saved" (`fg2`, no green dot).
+- **⋮ menu** (`DropdownMenu` on `surface`): the intent's done label (or "Mark active" when done), "Bring back later" (`LaterSheet`), "Delete" (`crit`; moves it to Trash and goes back).
+- **Collections sheet**: tapping any collection chip opens a `CSheet` with `CollectionChips` (tick chips, dashed "New" first) and Done; closing with a name typed creates it.
+- **Formatting bar** (`FormatBar`): flat, full width, top hairline, 48 dp, docked above the keyboard (the screen uses `imePadding`), shown **only while the body has focus**.
+  Icon buttons (`CIcons.Bold`, `Italic`, `BulletList`, `NumberList`, `Code`, `Link`), a divider, then `Undo` (dimmed when there is nothing to undo).
+  Each button **lights up** (`accentTint` pill, accent icon, `selected` semantics) when its style applies at the caret or to the selection: bold/italic
+  from `RichTextState.currentSpanStyle`, lists from `isUnorderedList`/`isOrderedList`, code from `isCodeSpan`, link from `isLink`. A style just
+  switched on with no text yet counts, and it follows the caret as it moves.
+- **Link sheet**: "Add a link" with Text (optional) and Address fields when the caret has no selection (`addLink`), Address only for a selection
+  (`addLinkToSelection`), "Edit link" with Remove link when the caret is in one (`updateLink`/`removeLink`). Addresses go through `Links.check`; links
+  are drawn in `accent`. Closing the sheet puts the focus back in the body.
+- **Undo** keeps `EditHistory<NoteState>` (domain) of the stored Markdown plus caret, recorded from the same `snapshotFlow` that autosaves; undo reloads
+  the state with `setHtml(NoteMarkdown.toHtml(…))` and is itself saved like any edit. The history lasts for the visit.
+- An **empty body gets focus on open**, so a new note is ready to write in (keyboard and bar up).
+
+The editor opens on `ItemViewModel.currentNote()` (typed but unsaved words win over the saved note) so a screen turn right after typing keeps the text.

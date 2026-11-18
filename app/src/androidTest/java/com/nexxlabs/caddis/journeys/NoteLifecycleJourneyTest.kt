@@ -1,9 +1,11 @@
 package com.nexxlabs.caddis.journeys
 
 import androidx.compose.ui.test.hasText
+import com.nexxlabs.caddis.domain.model.ItemStatus
 import com.nexxlabs.caddis.domain.model.ItemType
 import com.nexxlabs.caddis.domain.model.Intents
 import dagger.hilt.android.testing.HiltAndroidTest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -37,7 +39,10 @@ class NoteLifecycleJourneyTest : NoteJourneyBase() {
         tapButton("Continue")
 
         await(field("Note"))
-        assertShowing("Write a note", "Saved")
+        awaitText("Write a note")
+        // It opens ready to write in (the formatting bar is up), with no save status before anything changes.
+        await(described("Bold"))
+        assertFalse(exists(hasText("Saved")))
         val note = library().single()
         assertEquals(ItemType.NOTE, note.type)
         assertEquals("Packing list", note.title)
@@ -235,12 +240,56 @@ class NoteLifecycleJourneyTest : NoteJourneyBase() {
         runBlocking { repo.createCollection("Gifts") }
         val id = openNote()
         tapDescribed("Add to a collection")
+        awaitText("Collections")
         tapText("Gifts")
         eventually("added to Gifts") { library().first { it.id == id }.collectionIds.isNotEmpty() }
+        tapButton("Done")
 
-        tapText("Gifts")
+        // Each collection it is in shows as a chip under the title; tapping one opens the sheet again.
+        await(described("Collection: Gifts"))
+        tapDescribed("Collection: Gifts")
+        awaitText("Collections")
+        tap(hasText("Gifts") and !described("Collection: Gifts"))
         eventually("taken out of Gifts") { library().first { it.id == id }.collectionIds.isEmpty() }
     }
+
+    // ---------- the ⋮ menu ----------
+
+    @Test
+    fun theMenu_marksANoteDone_andBackActive() {
+        val id = openNote()
+        tapDescribed("More")
+        tapText(doneLabelFor(id))
+        eventually("marked done") { item(id).status == ItemStatus.DONE }
+
+        tapDescribed("More")
+        tapText("Mark active")
+        eventually("active again") { item(id).status == ItemStatus.ACTIVE }
+    }
+
+    @Test
+    fun theMenu_deletesANote_andGoesBack() {
+        val id = saveNote("Packing list").id
+        openFromLibrary("Packing list")
+        androidx.test.espresso.Espresso.closeSoftKeyboard()
+        tapDescribed("More")
+        tapText("Delete")
+        eventually("moved to Trash") { trash().any { it.id == id } }
+        awaitText("Search your saves")
+    }
+
+    @Test
+    fun theMenu_bringsANoteBackLater() {
+        val id = openNote()
+        tapDescribed("More")
+        tapText("Bring back later")
+        awaitText("Bring it back")
+        tapText("Next week")
+        eventually("return set") { item(id).returnRule == com.nexxlabs.caddis.domain.model.ReturnRule.NEXT_WEEK }
+    }
+
+    private fun doneLabelFor(id: String): String =
+        com.nexxlabs.caddis.domain.schedule.doneLabel(runBlocking { repo.observeIntents().first() }, item(id).intentId)
 
     // ---------- a note on a saved link ----------
 

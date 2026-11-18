@@ -62,6 +62,7 @@ JUnit 5 (`org.junit.jupiter.api.Test`) with Kotest matchers (`shouldBe`). Pure f
 | `share/ShareTextTest` | share text, tracking-param stripping, private words never shared |
 | `notes/NoteMarkdownTest` | editor HTML ⇄ stored Markdown: paragraphs, lists, marks, escaping of every typed character, spaces, old-format notes |
 | `notes/NotePlainTextTest` | the item page's plain text note: new lines, empty lines, escaped formatting characters, list-looking lines, 2,000-line notes, older rich notes shown as plain text, 20,000 random texts round-trip |
+| `notes/EditHistoryTest` | note undo: bursts of typing are one step, a pause starts a new one, caret-only changes are not steps, replace adds none, oldest steps dropped |
 | `notes/NoteRoundTripPropertyTest` | save-and-reopen keeps every character's styles: all bold/italic sequences of up to 4 pieces (~70,000), 60,000 seeded random notes with every style, special character, list and empty line |
 | `MiscTest` | search query, Markdown (plain text/preview), JSON/HTML export, analytics buckets |
 
@@ -113,8 +114,11 @@ CI does not run them (it has no emulator). The runner is `com.nexxlabs.caddis.Hi
   character, list items start with "• ").
 - `NoteEditorJourneyTest`: Return in every flavour (after a word, while composing, as a newline character, with the word, twice, mid-word, in lists,
   after bold) never repeats a line; formatting kept as Markdown; the toolbar lighting up with the caret; editing saved notes (append, insert, delete,
-  replace, clear, bold text, long text, emoji), typed `* _ # < [ -` and spaces stored escaped and reopened as typed. `NoteLifecycleJourneyTest`: creating from the Add sheet, autosave, leaving and reopening, screen turn
-  right after typing, title, intent, collections, notes on links (item page preview), finding a note in the Library.
+  replace, clear, bold text, long text, emoji), typed `* _ # < [ -` and spaces stored escaped and reopened as typed; the bar showing only while the body
+  has focus; links (at the caret, on a selection, a non-web address refused); undo stepping back one burst at a time. The bar is hidden when the body
+  loses focus, so `tool(…)` needs the body focused (`openNote`/`focusBody` do that). `NoteLifecycleJourneyTest`: creating from the Add sheet (opens focused, no
+  save status yet), autosave, leaving and reopening, screen turn right after typing, title, intent, collections (chips and the sheet), the ⋮ menu (done
+  and active, later, delete), notes on links (item page preview), finding a note in the Library.
 
 Things to know when writing more:
 - The compose test clock only moves when the test lets it. `await*` and `eventually` do; a bare `Thread.sleep` does not (an activity that finishes from a

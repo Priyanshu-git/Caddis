@@ -1,5 +1,6 @@
 package com.nexxlabs.caddis.journeys
 
+import androidx.compose.ui.test.performClick
 import dagger.hilt.android.testing.HiltAndroidTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -524,5 +525,72 @@ class NoteEditorJourneyTest : NoteJourneyBase() {
         scenario.close()
         openEditor(id)
         assertEquals("a  b   indented", visible())
+    }
+
+    // ---------- the toolbar sits above the keyboard ----------
+
+    @Test
+    fun theToolbar_showsOnlyWhileWritingTheBody() {
+        openNote()
+        await(described("Bold"))
+        compose.onAllNodes(field("Note title"))[0].performClick()
+        awaitGone(described("Bold"))
+        focusBody()
+        await(described("Bold"))
+    }
+
+    // ---------- links ----------
+
+    @Test
+    fun aLink_isAddedWhereTheCaretIs_andKeptAsMarkdown() {
+        val id = openNote()
+        commit("Read ")
+        tool("Link")
+        awaitText("Add a link")
+        type("Link text", "the guide")
+        type("Link address", "example.com/guide")
+        tapButton("Save")
+        assertStored(id, "Read [the guide](https://example.com/guide)")
+    }
+
+    @Test
+    fun selectedWords_becomeALink() {
+        val id = openNote()
+        commit("see the guide")
+        select(4, 13)
+        tool("Link")
+        type("Link address", "https://example.com")
+        tapButton("Save")
+        assertStored(id, "see [the guide](https://example.com)")
+    }
+
+    @Test
+    fun anAddressThatIsNotAWebLink_isNotAdded() {
+        val id = openNote()
+        commit("hello")
+        assertStored(id, "hello")
+        tool("Link")
+        type("Link address", "not a link")
+        tapButton("Save")
+        awaitText("That doesn't look like a web link.")
+        assertStored(id, "hello")
+    }
+
+    // ---------- undo ----------
+
+    @Test
+    fun undo_takesBackTheLastBurstOfTyping_oneAtATime() {
+        val id = openNote()
+        commit("first")
+        assertStored(id, "first")
+        Thread.sleep(1_200) // longer than one undo step
+        commit(" second")
+        assertStored(id, "first second")
+
+        tool("Undo")
+        assertStored(id, "first")
+        assertEquals("first", visible())
+        tool("Undo")
+        assertStored(id, "")
     }
 }

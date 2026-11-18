@@ -56,4 +56,13 @@ object CIcons {
     /** A clock running back: "bring it back later". */
     val BringBack = icon("bring-back", "M3.5 12a8.5 8.5 0 1 0 2.6-6.1L3.5 8.5", "M3.5 3.5v5h5", "M12 7.5V12l3 2")
     val Mark = icon("mark", circle(9f, 9f, 3f), circle(16f, 11f, 2f), circle(12f, 17f, 3.2f))
+
+    // Note editor toolbar.
+    val Bold = icon("bold", "M7.5 5h5.5a3.5 3.5 0 010 7H7.5zM7.5 12h6.5a3.5 3.5 0 010 7H7.5z")
+    val Italic = icon("italic", "M10 5h8M6 19h8M14.5 5l-5 14")
+    val BulletList = icon("bullet-list", "M10 7h10M10 12h10M10 17h10", circle(5f, 7f, 0.5f), circle(5f, 12f, 0.5f), circle(5f, 17f, 0.5f))
+    val NumberList = icon("number-list", "M11 7h9M11 12h9M11 17h9", "M4.5 5.5l1.5-1v5", "M4 14.6a1.4 1.4 0 012.6.6c0 1.1-2.6 2.2-2.6 3.3h2.8")
+    val Code = icon("code", "M8 8l-4 4 4 4M16 8l4 4-4 4M13.5 5.5l-3 13")
+    val Link = icon("link", "M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1", "M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1")
+    val Undo = icon("undo", "M9 14L4 9l5-5", "M4 9h10.5a5.5 5.5 0 010 11H11")
 }
