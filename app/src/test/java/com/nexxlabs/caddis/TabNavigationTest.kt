@@ -10,6 +10,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.nexxlabs.caddis.ui.nav.HOME_ROUTE
 import com.nexxlabs.caddis.ui.nav.navigateToTab
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -65,6 +66,23 @@ class TabNavigationTest {
         nav.navigateToTab("profile")
         nav.navigateToTab("home")
         assertEquals(HOME_ROUTE, route())
+    }
+
+    @Test
+    fun `tapping the tab you are on keeps the same screen`() {
+        val home = nav.currentBackStackEntry
+        nav.navigateToTab("home")
+        assertSame(home, nav.currentBackStackEntry)
+
+        nav.navigateToTab("library")
+        val library = nav.currentBackStackEntry
+        nav.navigateToTab("library")
+        assertSame(library, nav.currentBackStackEntry)
+
+        nav.navigateToTab("profile")
+        val profile = nav.currentBackStackEntry
+        nav.navigateToTab("profile")
+        assertSame(profile, nav.currentBackStackEntry)
     }
 
     @Test

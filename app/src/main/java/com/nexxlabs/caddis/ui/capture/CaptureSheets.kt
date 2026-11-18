@@ -229,9 +229,6 @@ private fun SaveSheet(item: Item, sharedFrom: String, intents: List<Intent>, col
             maxLength = 140,
             modifier = Modifier.fillMaxWidth(),
         )
-        AnimatedVisibility(showFrom, enter = fadeIn(tween(Motion.Short)) + expandVertically(), exit = fadeOut(tween(Motion.Quick)) + shrinkVertically()) {
-            CField(value = from, onValueChange = { from = it }, placeholder = "Who sent it? e.g. Rohan", label = "From", maxLength = 60, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
-        }
         Eyebrow("Collections", Modifier.padding(top = 16.dp, bottom = 8.dp))
         CollectionChips(
             all = collections, selected = item.collectionIds,
@@ -239,6 +236,9 @@ private fun SaveSheet(item: Item, sharedFrom: String, intents: List<Intent>, col
             onCreate = { name -> vm.createCollection(item.id, name) },
             draft = newCollection, onDraft = { newCollection = it },
         )
+        AnimatedVisibility(showFrom, enter = fadeIn(tween(Motion.Short)) + expandVertically(), exit = fadeOut(tween(Motion.Quick)) + shrinkVertically()) {
+            CField(value = from, onValueChange = { from = it }, placeholder = "Who sent it? e.g. God", label = "From", maxLength = 60, modifier = Modifier.fillMaxWidth().padding(top = 12.dp))
+        }
         Row(Modifier.fillMaxWidth().padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 if (!showFrom) CButton("+ Who sent it", onClick = { showFrom = true }, style = BtnStyle.Ghost, small = true)

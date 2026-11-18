@@ -106,8 +106,12 @@ private fun NavGraphBuilder.screen(
  * Bottom-bar navigation. Leaving a tab saves its stack so coming back restores it. Home is the start
  * destination, and a non-inclusive pop saves the popped stack under Home's id too, so restoring
  * state on the way to Home would bring the tab you just left back. Home therefore never restores.
+ *
+ * Tapping the tab you are already on does nothing: the pop-and-restore below would otherwise tear the
+ * screen down and rebuild it (a visible redraw), for Library and Profile as much as for Home.
  */
 internal fun NavHostController.navigateToTab(route: String) {
+    if (currentDestination?.route?.startsWith(route) == true) return
     val toHome = route.startsWith("home")
     navigate(route) {
         popUpTo(HOME_ROUTE) { saveState = true }

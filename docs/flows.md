@@ -202,4 +202,5 @@ Google Play's **flexible** in-app update (`com.google.android.play:app-update`);
 
 `navigateToTab(route)` pops to Home with `saveState`, `launchSingleTop`, and `restoreState = !toHome`: leaving a tab saves its stack and
 returning restores it, **except Home, which never restores** (as the start destination it would otherwise inherit the stack of the tab you left).
+Tapping the tab you are already on is a no-op (the pop-and-restore would rebuild the screen, a visible redraw).
 Covered by `TabNavigationTest`.

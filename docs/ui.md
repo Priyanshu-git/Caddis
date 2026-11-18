@@ -13,6 +13,8 @@ never guilt-inducing.
   `CaptureSheetHost`. Chrome visibility: bottom bar on the three tab routes; FAB only on Home and Library. The bar keeps showing
   the tab you left while it animates away. Toasts sit above the bar (84 dp) or near the bottom when the bar is hidden.
 - `BottomBar.kt`: `enum Tab(HOME "home", LIBRARY "library", PROFILE "profile")`. The selected tab is found with `route.startsWith(tab.route)`.
+  Tabs have no ripple. The active mark is one `accentTint` pill that glides behind the tabs (`animateFloatAsState` slot index,
+  380 ms ease-out, drawn with `graphicsLayer.translationX`), while the icon and label colours cross-fade over `Motion.Short`.
 - `ShareActivity` hosts only `CaptureSheetHost(vm)` in a translucent window with `CaddisTheme`.
 
 ## Routes (`ui/nav/Navigation.kt`)
