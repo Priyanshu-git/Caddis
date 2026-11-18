@@ -30,7 +30,8 @@ Written for AI coding agents, and describing the code as it is:
 ## Privacy
 
 No ads, no AI, no analytics backend. Link details are fetched by the phone straight from each
-source, and Instagram and Facebook are never contacted.
+source (only the link you saved is requested, no cookies, logins or proxy), and every site is
+treated alike.
 
 Fonts: Bricolage Grotesque and DM Sans, both under the SIL Open Font License, bundled in
 `app/src/main/res/font`.

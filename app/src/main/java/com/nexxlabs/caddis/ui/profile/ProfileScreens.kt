@@ -357,14 +357,17 @@ fun PrivacyScreen(onBack: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
         TopBar("Privacy policy", onBack)
         Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 18.dp).padding(bottom = 40.dp)) {
-            Sub("A short version of how Caddis treats your saves.", style = CaddisType.body)
-            Point("Your library is yours", "Saves, notes and collections stay on this phone. Nobody else can see them.")
-            Point("No ads, no selling data", "Caddis does not run ads and does not sell what you save.")
-            Point("Details come straight from the source", "To show a title and thumbnail, your phone asks the site directly. Only the link is sent. Instagram and Facebook are never asked.")
+            Sub("A short version of how Caddis treats your saves. Last updated 10 November 2026.", style = CaddisType.body)
+            Point("Your library is yours", "Saves, notes, reasons and collections stay on this phone. There are no accounts and no Caddis server, so the developers never receive them.")
+            Point("No ads, no analytics, no selling data", "Caddis has no ads, no analytics and does not sell or share what you save.")
+            Point("Details come straight from the source", "To show a title and thumbnail, your phone asks the site you saved directly, like any web request. Only that link is requested, with no cookies, logins or third-party proxy. The site can see your IP address, and its own privacy policy applies.")
+            Point("Sharing", "Caddis gets links through Android's share sheet and may note which app sent them. When you share a save out, only its title and a cleaned link go with it, never your reason, notes or collections.")
             Point("The clipboard", "Caddis reads it only after you tap Add, never in the background.")
+            Point("Notifications", "Off by default. If you turn them on, at most one a day, created on your phone and never during quiet hours.")
             Point("Search stays on your phone", "Searching your library runs on the device, so it works offline.")
             Point("No AI", "No language model reads your saves, on the phone or anywhere else.")
-            Point("You stay in control", "Export everything or delete all your data any time from Profile.")
+            Point("Backups", "Android may back up Caddis to your Google account or copy it to a new phone. That is handled by Android and Google, and you can turn it off in system settings.")
+            Point("You stay in control", "Deleted saves stay in Trash for 30 days. Export everything or delete all your data any time from Profile. Uninstalling removes it all.")
             CButton("Read the full policy", onClick = {
                 val url = FULL_POLICY_URL
                 if (url == null) {
@@ -377,8 +380,8 @@ fun PrivacyScreen(onBack: () -> Unit) {
     }
 }
 
-/** Set once the full policy is published (ACC-04). */
-private val FULL_POLICY_URL: String? = null
+/** The full policy, hosted as a GitHub gist (ACC-04). Null shows a "will be published" toast instead. */
+private val FULL_POLICY_URL: String? = "https://gist.github.com/Priyanshu-git/b8b5b7a228afc6273df47f51f3e0fae2"
 
 @Composable
 private fun Point(title: String, body: String) {

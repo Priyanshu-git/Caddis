@@ -237,7 +237,7 @@ class ProfileJourneyTest : JourneyTest() {
     fun privacy_isShortAndPlain() {
         openFromProfile("Privacy policy")
 
-        assertShowing("Your library is yours", "No ads, no selling data", "The clipboard", "No AI")
+        assertShowing("Your library is yours", "No ads, no analytics, no selling data", "The clipboard", "No AI")
     }
 
     @Test

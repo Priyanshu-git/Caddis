@@ -101,7 +101,7 @@ break. Section 3 are **known gaps**.
 - No sign-in or sync. Account screen shows "On this phone · Sync Off · Sign-in None"; its only action is **Delete all data**.
 - `AnalyticsSink` logs only in debug builds; release builds emit nothing.
 - Crashlytics uploads only from release builds that were built with `app/google-services.json` (gitignored). Without the file (CI, fresh clones) the Firebase plugins are skipped and crash reporting is off. Crash reports still include a stack trace and an installation id, so the privacy policy must say so.
-- The full privacy policy link is unset (`FULL_POLICY_URL = null`); the button shows a toast saying it will be published before release. The text lives in `PRIVACY_POLICY.md` at the repo root and must be updated with any change to data collection, permissions or network use.
+- "Read the full policy" opens `FULL_POLICY_URL` (a GitHub gist). The full text lives in that gist and the short version in `PrivacyScreen`; both must be updated with any change to data collection, permissions or network use.
 - The note editor has no heading or quote buttons (they render if imported).
 - Notes are never saved or loaded with the editor library's `toMarkdown`/`setMarkdown`: they do not escape what the person typed (`2*3*4` came back as italic "234",
   `<tag>` vanished) and ignore backslash escapes. Use `NoteMarkdown` ([domain.md](domain.md#notes-notesmarkdownkt-notesnotemarkdownkt)); a new editor feature (a new style) needs
