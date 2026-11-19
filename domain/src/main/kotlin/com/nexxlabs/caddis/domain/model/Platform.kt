@@ -22,7 +22,8 @@ class Platform private constructor(val label: String) {
     companion object {
         const val NOTE_ID = "note"
         private const val UNKNOWN = "web"
-        private const val MAX_SITE_NAME = 40
+        /** The longest name a page or a person can give a site. */
+        const val MAX_SITE_NAME = 40
         private val hostPrefixes = listOf("www.", "m.", "mobile.", "amp.")
 
         val NOTE: Platform = Platform("Note")

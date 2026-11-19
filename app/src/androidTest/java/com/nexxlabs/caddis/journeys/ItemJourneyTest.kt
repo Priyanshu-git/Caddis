@@ -124,6 +124,22 @@ class ItemJourneyTest : JourneyTest() {
     }
 
     @Test
+    fun editDetails_canNameThePlatform_andResetItToWhatCaddisFinds() {
+        openItem()
+
+        tapDescribed("Edit details")
+        replaceText("Platform", "Hacker News")
+        tapButton("Save")
+        eventually("platform named") { item(id).platform.label == "Hacker News" }
+        assertTrue(EditableField.PLATFORM in item(id).userEdited)
+
+        tapDescribed("Edit details")
+        tapDescribed("Reset Platform")
+        tapButton("Save")
+        eventually("platform handed back") { EditableField.PLATFORM !in item(id).userEdited }
+    }
+
+    @Test
     fun editDetails_canMoveTheLink_andFetchesAgain() {
         openItem()
         val before = details.scheduled.size

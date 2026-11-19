@@ -105,7 +105,7 @@ Singletons: `LibraryRepository`, `SettingsRepository`, `DetailsFetcher`, `WorkSc
 | Scope | Used for |
 | --- | --- |
 | `viewModelScope` | Screen-local work that may be cancelled with the screen (filters, debounced drafts, loads). |
-| App `CoroutineScope` | Anything that must finish even if the screen/sheet closes: saves from the share sheet, `ItemActions`, last edits (`setTitle`, `editTitle`, final reason), Edit details save, `WorkScheduler.schedule`, startup tasks. |
+| App `CoroutineScope` | Anything that must finish even if the screen/sheet closes: saves from the share sheet, `ItemActions`, last edits (`setTitle`, `editFields`, final reason), Edit details save, `WorkScheduler.schedule`, startup tasks. |
 | WorkManager | Details fetching (`DetailsWorker`), hourly reminder check (`ReminderWorker`). |
 | `Dispatchers.IO` | `DetailsFetcher.fetch`, export file writing, cache size/clear. |
 

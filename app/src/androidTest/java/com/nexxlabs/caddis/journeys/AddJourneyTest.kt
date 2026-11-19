@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import androidx.test.platform.app.InstrumentationRegistry
 import com.nexxlabs.caddis.domain.details.LinkDetails
+import com.nexxlabs.caddis.domain.model.EditableField
 import com.nexxlabs.caddis.domain.model.IntentSource
 import com.nexxlabs.caddis.domain.model.Intents
 import com.nexxlabs.caddis.domain.model.ItemType
@@ -69,8 +70,10 @@ class AddJourneyTest : JourneyTest() {
         addLink("https://example.com/one-pan-pasta")
         awaitText("Saved to Caddis")
 
-        tapButton("+ Who sent it")
-        type("From", "Rohan")
+        tapDescribed("Edit details")
+        type("Who sent it", "Rohan")
+        tapDescribed("Done editing")
+        awaitText("From Rohan")
         tapButton("Dinner ideas")
         tapButton("Done")
         awaitNoText("Saved to Caddis")
@@ -149,13 +152,52 @@ class AddJourneyTest : JourneyTest() {
         addLink("https://example.com/one-pan-pasta")
         awaitText("Saved to Caddis")
 
-        tapButton("Edit title")
+        tapDescribed("Edit details")
         replaceText("Title", "Tuesday pasta")
-        awaitText("Your title is kept when details load.")
+        awaitText("Edited by you. Reset to let Caddis fill it in.")
+        tapDescribed("Done editing")
         tapButton("Done")
         awaitNoText("Saved to Caddis")
 
         eventually("title kept") { library().single().title == "Tuesday pasta" }
+    }
+
+    @Test
+    fun theSaveSheet_letsYouNameThePlatform_andItIsYoursFromThen() {
+        launchApp()
+        addLink("https://example.com/one-pan-pasta")
+        awaitText("Saved to Caddis")
+
+        tapDescribed("Edit details")
+        replaceText("Platform", "Hacker News")
+        tapDescribed("Done editing")
+        awaitText("Hacker News", substring = true)
+        tapButton("Done")
+        awaitNoText("Saved to Caddis")
+
+        eventually("platform kept") {
+            library().single().let { it.platform.label == "Hacker News" && EditableField.PLATFORM in it.userEdited }
+        }
+    }
+
+    @Test
+    fun theSaveSheet_resetsAPlatformYouNamed_toWhatCaddisFinds() {
+        launchApp()
+        addLink("https://example.com/one-pan-pasta")
+        awaitText("Saved to Caddis")
+
+        tapDescribed("Edit details")
+        replaceText("Platform", "Hacker News")
+        tapDescribed("Done editing")
+        tapDescribed("Edit details")
+        tapDescribed("Reset Platform")
+        tapDescribed("Done editing")
+        tapButton("Done")
+        awaitNoText("Saved to Caddis")
+
+        eventually("platform handed back") {
+            library().single().let { it.platform.label == "example.com" && EditableField.PLATFORM !in it.userEdited }
+        }
     }
 
     @Test

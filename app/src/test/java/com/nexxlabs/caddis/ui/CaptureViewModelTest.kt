@@ -113,10 +113,22 @@ class CaptureViewModelTest {
         vm.openAdd(null)
         vm.submitLink("https://example.com/post").join()
         val id = (awaitSheet() as CaptureSheet.Saved).itemId
-        vm.setTitle(id, "My own title").join()
+        vm.editFields(id, title = "My own title").join()
         f.repo.applyDetails(id, com.nexxlabs.caddis.domain.details.LinkDetails(title = "Their title", creator = "Site"))
         val item = f.repo.observeItem(id).first()!!
         assertEquals("My own title", item.title)
         assertEquals("Site", item.creator)
+    }
+
+    @Test
+    fun `a platform typed on the save sheet is kept when details arrive`() = runBlocking {
+        vm.openAdd(null)
+        vm.submitLink("https://example.com/post").join()
+        val id = (awaitSheet() as CaptureSheet.Saved).itemId
+        vm.editFields(id, platform = "Hacker News").join()
+        f.repo.applyDetails(id, com.nexxlabs.caddis.domain.details.LinkDetails(title = "Their title", siteName = "Example Blog"))
+        val item = f.repo.observeItem(id).first()!!
+        assertEquals("Hacker News", item.platform.label)
+        assertEquals("Their title", item.title)
     }
 }

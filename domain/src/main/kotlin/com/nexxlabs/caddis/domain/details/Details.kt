@@ -173,8 +173,8 @@ fun Item.mergeDetails(d: LinkDetails, now: Instant): Item {
     fun pick(field: EditableField, current: String, fetched: String?): String =
         if (field in userEdited || fetched.isNullOrBlank()) current else fetched
     return copy(
-        // The site names itself; a person cannot edit the platform, so the page's name always wins.
-        platform = if (isNote || d.siteName == null) platform else Platform.named(d.siteName),
+        // The site names itself, unless the person named it: then their word stays.
+        platform = if (isNote || d.siteName == null || EditableField.PLATFORM in userEdited) platform else Platform.named(d.siteName),
         // A page only ever refines a plain webpage (video, article, PDF); a kind we already have is kept.
         kind = if (kind == ContentKind.WEBPAGE && d.kind != null) d.kind else kind,
         title = pick(EditableField.TITLE, title, d.title),

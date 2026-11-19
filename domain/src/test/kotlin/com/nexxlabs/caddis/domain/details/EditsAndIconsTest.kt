@@ -138,6 +138,63 @@ class EditsAndIconsTest {
         tidy.detailsFetchedAt shouldBe now
     }
 
+    private fun same(item: Item, platform: String?) =
+        DetailEdits(item.title, item.description, item.creator, platform)
+
+    @Test
+    fun `a platform the person names is theirs and survives the next fetch`() {
+        val item = link("https://example.com/a")
+        val edited = item.withEdits(same(item, "  Hacker   News "), now)
+        edited.platform.label shouldBe "Hacker News"
+        edited.userEdited shouldBe setOf(EditableField.PLATFORM)
+        edited.revision shouldBe 2
+        edited.mergeDetails(LinkDetails(title = "T", siteName = "Example Blog"), now).platform.label shouldBe "Hacker News"
+        item.mergeDetails(LinkDetails(siteName = "Example Blog"), now).platform.label shouldBe "Example Blog"
+    }
+
+    @Test
+    fun `an unchanged or unspecified platform changes nothing, a case-only fix counts`() {
+        val item = link("https://example.com/a", Platform.named("Youtube"))
+        item.withEdits(same(item, "Youtube"), now) shouldBe item
+        item.withEdits(same(item, null), now) shouldBe item
+        item.withEdits(same(item, "YouTube"), now).let {
+            it.platform.label shouldBe "YouTube"
+            it.userEdited shouldBe setOf(EditableField.PLATFORM)
+        }
+    }
+
+    @Test
+    fun `clearing an edited platform puts the host back and lets the page name it again`() {
+        val base = link("https://www.example.com/a", Platform.named("Hacker News"))
+        val mine = base.copy(userEdited = setOf(EditableField.PLATFORM))
+        val cleared = mine.withEdits(same(mine, "  "), now)
+        cleared.platform.label shouldBe "example.com"
+        cleared.userEdited shouldBe emptySet()
+        cleared.mergeDetails(LinkDetails(siteName = "Example Blog"), now).platform.label shouldBe "Example Blog"
+    }
+
+    @Test
+    fun `clearing a platform the person never edited keeps the name the page gave`() {
+        val item = link("https://example.com/a", Platform.named("Example Blog"))
+        item.withEdits(same(item, ""), now) shouldBe item
+    }
+
+    @Test
+    fun `text that cannot be a site name is ignored, and notes have no platform`() {
+        val item = link("https://example.com/a")
+        item.withEdits(same(item, "https://example.com/a"), now) shouldBe item
+        item.withEdits(same(item, "x".repeat(41)), now) shouldBe item
+        item.withEdits(same(item, "..."), now) shouldBe item
+        val note = item.copy(type = ItemType.NOTE, url = null, platform = Platform.NOTE)
+        note.withEdits(same(note, "Hacker News"), now) shouldBe note
+    }
+
+    @Test
+    fun `a new link keeps a platform the person named`() {
+        val mine = link("https://example.com/a", Platform.named("Hacker News")).copy(userEdited = setOf(EditableField.PLATFORM))
+        mine.withLink(valid("https://other.org/b"), now).platform.label shouldBe "Hacker News"
+    }
+
     @Test
     fun `a cosmetic link change keeps the details`() {
         val item = link("https://example.com/a?utm_source=x").copy(normalizedUrl = "example.com/a", detailsFetchedAt = now)

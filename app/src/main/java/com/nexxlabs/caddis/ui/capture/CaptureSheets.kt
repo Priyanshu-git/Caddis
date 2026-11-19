@@ -1,13 +1,10 @@
 package com.nexxlabs.caddis.ui.capture
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import com.nexxlabs.caddis.ui.Motion
 import androidx.compose.foundation.background
@@ -46,9 +43,11 @@ import androidx.compose.ui.unit.dp
 import com.nexxlabs.caddis.domain.details.EditLimits
 import com.nexxlabs.caddis.domain.model.Collection
 import com.nexxlabs.caddis.domain.model.ContentKind
+import com.nexxlabs.caddis.domain.model.EditableField
 import com.nexxlabs.caddis.domain.model.Intent
 import com.nexxlabs.caddis.domain.model.IntentSource
 import com.nexxlabs.caddis.domain.model.Item
+import com.nexxlabs.caddis.domain.model.Platform
 import com.nexxlabs.caddis.ui.components.BtnStyle
 import com.nexxlabs.caddis.ui.components.CButton
 import com.nexxlabs.caddis.ui.components.CCard
@@ -58,8 +57,11 @@ import com.nexxlabs.caddis.ui.components.CIcons
 import com.nexxlabs.caddis.ui.components.CSheet
 import com.nexxlabs.caddis.ui.components.Chips
 import com.nexxlabs.caddis.ui.components.CollectionChips
+import com.nexxlabs.caddis.ui.components.DetailField
 import com.nexxlabs.caddis.ui.components.Eyebrow
 import com.nexxlabs.caddis.ui.components.Fine
+import com.nexxlabs.caddis.ui.components.IconBtn
+import com.nexxlabs.caddis.ui.components.canReset
 import com.nexxlabs.caddis.ui.components.Sub
 import com.nexxlabs.caddis.ui.components.Thumb
 import com.nexxlabs.caddis.ui.dayMonth
@@ -158,13 +160,28 @@ private fun SaveSheet(item: Item, sharedFrom: String, intents: List<Intent>, col
     var from by remember(item.id) { mutableStateOf(item.sourceFrom) }
     // The name being typed for a new collection; null when not naming. Kept here so closing the sheet can still create it.
     var newCollection by rememberSaveable(item.id) { mutableStateOf<String?>(null) }
-    var showFrom by rememberSaveable { mutableStateOf(false) }
-    // null until the person taps "Edit title"; the prefill is remembered so an untouched field saves nothing.
-    var titleDraft by remember(item.id) { mutableStateOf<String?>(null) }
+    // The details card turns into an editor when the pencil is tapped. Each prefill is remembered so an
+    // untouched field saves nothing (and never fights a fetch that lands while the editor is open).
+    var editing by remember(item.id) { mutableStateOf(false) }
+    var title by remember(item.id) { mutableStateOf("") }
     var titlePrefill by remember(item.id) { mutableStateOf("") }
+    var platform by remember(item.id) { mutableStateOf("") }
+    var platformPrefill by remember(item.id) { mutableStateOf("") }
+    var creator by remember(item.id) { mutableStateOf("") }
+    var creatorPrefill by remember(item.id) { mutableStateOf("") }
     val loading = !item.isNote && item.detailsFetchedAt == null && item.title.isBlank()
+    /** Saves what was touched in the editor; after this the drafts are the new prefills. */
+    val commit = {
+        if (editing) {
+            val t = title.takeIf { it.trim() != titlePrefill.trim() }
+            val p = platform.takeIf { !item.isNote && it.trim() != platformPrefill.trim() }
+            val b = creator.takeIf { !item.isNote && it.trim() != creatorPrefill.trim() }
+            if (t != null || p != null || b != null) vm.editFields(item.id, t, b, p)
+            titlePrefill = title; platformPrefill = platform; creatorPrefill = creator
+        }
+    }
     val close = {
-        titleDraft?.let { t -> if (t.trim() != titlePrefill.trim()) vm.setTitle(item.id, t) }
+        commit()
         if (from != item.sourceFrom) vm.setFrom(item.id, from)
         newCollection?.trim()?.takeIf { it.isNotEmpty() }?.let { vm.createCollection(item.id, it) }
         vm.dismiss(item.id to reason)
@@ -176,41 +193,61 @@ private fun SaveSheet(item: Item, sharedFrom: String, intents: List<Intent>, col
             if (sharedFrom.isNotBlank()) Fine("Shared from $sharedFrom")
         }
         CCard {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Thumb(item, 64.dp, loading = loading)
-                // Details arriving replace the skeleton with a fade, and the card eases to its new height.
-                AnimatedContent(
-                    targetState = loading && titleDraft == null,
-                    modifier = Modifier.weight(1f),
-                    transitionSpec = { fadeIn(tween(Motion.Short, delayMillis = 60, easing = LinearEasing)) togetherWith fadeOut(tween(Motion.Quick, easing = LinearEasing)) },
-                    label = "saveDetails",
-                ) { showSkeleton ->
-                    Column(Modifier.fillMaxWidth()) {
-                        if (showSkeleton) {
-                            SkeletonLine(0.9f); Spacer(Modifier.height(8.dp)); SkeletonLine(0.62f); Spacer(Modifier.height(8.dp)); SkeletonLine(0.36f)
-                            Fine("Loading details", Modifier.padding(top = 8.dp))
-                        } else {
-                            Text(titleDraft?.takeIf { it.isNotBlank() } ?: item.displayTitle, style = CaddisType.strong, color = c.fg, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            Fine(item.meta())
-                            if (item.creator.isNotBlank()) Fine(item.creator)
+            if (editing) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Thumb(item, 40.dp, loading = loading)
+                    Text("Edit details", style = CaddisType.strong, color = c.fg, modifier = Modifier.weight(1f))
+                    IconBtn(CIcons.Check, "Done editing", { commit(); editing = false }, tint = c.accent)
+                }
+                DetailField(
+                    "Title", title, { title = it }, item.displayTitle, EditLimits.TITLE, lines = 3,
+                    onReset = if (canReset(title, titlePrefill, EditableField.TITLE in item.userEdited)) ({ title = "" }) else null,
+                )
+                if (!item.isNote) {
+                    DetailField(
+                        "Platform", platform, { platform = it }, Platform.fromUrl(item.url.orEmpty()).label, Platform.MAX_SITE_NAME,
+                        onReset = if (canReset(platform, platformPrefill, EditableField.PLATFORM in item.userEdited)) ({ platform = "" }) else null,
+                    )
+                    DetailField(
+                        "By", creator, { creator = it }, "Who made it", EditLimits.CREATOR,
+                        onReset = if (canReset(creator, creatorPrefill, EditableField.CREATOR in item.userEdited)) ({ creator = "" }) else null,
+                    )
+                }
+                DetailField("Who sent it", from, { from = it }, "e.g. God", 60)
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Thumb(item, 64.dp, loading = loading)
+                    // Details arriving replace the skeleton with a fade, and the card eases to its new height.
+                    AnimatedContent(
+                        targetState = loading,
+                        modifier = Modifier.weight(1f),
+                        transitionSpec = { fadeIn(tween(Motion.Short, delayMillis = 60, easing = LinearEasing)) togetherWith fadeOut(tween(Motion.Quick, easing = LinearEasing)) },
+                        label = "saveDetails",
+                    ) { showSkeleton ->
+                        Column(Modifier.fillMaxWidth()) {
+                            if (showSkeleton) {
+                                SkeletonLine(0.9f); Spacer(Modifier.height(8.dp)); SkeletonLine(0.62f); Spacer(Modifier.height(8.dp)); SkeletonLine(0.36f)
+                                Fine("Loading details", Modifier.padding(top = 8.dp))
+                            } else {
+                                Text(item.displayTitle, style = CaddisType.strong, color = c.fg, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                Fine(item.meta())
+                                if (item.creator.isNotBlank()) Fine(item.creator)
+                                if (from.isNotBlank()) Fine("From ${from.trim()}")
+                            }
                         }
                     }
+                    IconBtn(
+                        CIcons.Edit, "Edit details",
+                        {
+                            title = item.title.ifBlank { item.displayTitle }; titlePrefill = title
+                            platform = item.platform.label; platformPrefill = platform
+                            creator = item.creator; creatorPrefill = creator
+                            editing = true
+                        },
+                        tint = c.accent,
+                    )
                 }
             }
-        }
-        val draft = titleDraft
-        if (draft == null) {
-            CButton(
-                "Edit title",
-                onClick = { titlePrefill = item.title.ifBlank { item.displayTitle }; titleDraft = titlePrefill },
-                style = BtnStyle.Ghost, small = true, modifier = Modifier.padding(top = 4.dp),
-            )
-        } else {
-            CField(
-                value = draft, onValueChange = { titleDraft = it }, placeholder = item.displayTitle, label = "Title",
-                maxLength = EditLimits.TITLE, lines = 3, modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-            )
-            Fine("Your title is kept when details load.", Modifier.padding(top = 6.dp))
         }
         Eyebrow("Why are you keeping it?", Modifier.padding(top = 16.dp, bottom = 8.dp))
         Chips {
@@ -236,13 +273,7 @@ private fun SaveSheet(item: Item, sharedFrom: String, intents: List<Intent>, col
             onCreate = { name -> vm.createCollection(item.id, name) },
             draft = newCollection, onDraft = { newCollection = it },
         )
-        AnimatedVisibility(showFrom, enter = fadeIn(tween(Motion.Short)) + expandVertically(), exit = fadeOut(tween(Motion.Quick)) + shrinkVertically()) {
-            CField(value = from, onValueChange = { from = it }, placeholder = "Who sent it? e.g. God", label = "From", maxLength = 60, modifier = Modifier.fillMaxWidth().padding(top = 12.dp))
-        }
-        Row(Modifier.fillMaxWidth().padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                if (!showFrom) CButton("+ Who sent it", onClick = { showFrom = true }, style = BtnStyle.Ghost, small = true)
-            }
+        Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.End) {
             CButton("Done", onClick = close, style = BtnStyle.Primary)
         }
         Fine("Tap outside to close. The save stays.", Modifier.fillMaxWidth().padding(top = 6.dp), align = TextAlign.Center)

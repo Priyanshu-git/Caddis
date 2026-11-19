@@ -197,7 +197,7 @@ https only) it reads that too. All public and keyless: no API keys, login, paywa
 
 `Item.mergeDetails(d, now)`: for each of title/description/creator/thumbnail/length, keep the current
 value if the field is in `userEdited` **or** the fetched value is blank; favicon is replaced only when
-the fetch has one; **`platform` becomes the fetched site name** (the person cannot edit it; notes never change) and **`kind` is refined only
+the fetch has one; **`platform` becomes the fetched site name** unless `PLATFORM` is in `userEdited` (the person named it; notes never change) and **`kind` is refined only
 from `WEBPAGE`** (to VIDEO/ARTICLE/PROFILE/PDF); sets `detailsFetchedAt`, `updatedAt`, bumps `revision`. Never blanks a known field.
 
 `formatLength(seconds, isVideo)` → "12 min", "1 h 5 min", plus " read" for non-video; "" for null/≤0.
@@ -208,8 +208,15 @@ from `WEBPAGE`** (to VIDEO/ARTICLE/PROFILE/PDF); sets `detailsFetchedAt`, `updat
   (`EditLimits`: title 200, description 1000, creator 80). Unchanged → no-op. Changed non-empty →
   field added to `userEdited`. **Emptied → removed from `userEdited`** (handed back to Caddis; next
   fetch may refill). Returns the same instance if nothing changed.
+  **Platform** (`DetailEdits.platform`, `null` = leave it; links only) follows the same rules with two differences:
+  text that is not a usable site name (`Platform.cleanSiteName`: blank, a web address, longer than
+  `Platform.MAX_SITE_NAME` = 40) is ignored; and emptying an *edited* platform puts the link's host back
+  (`Platform.fromUrl`) and removes `PLATFORM` from `userEdited`, so the next fetch may name it again. Emptying a platform
+  that was never edited does nothing, so a name the page gave is not lost to an empty field. Names are compared by label,
+  so a case-only fix (`youtube` → `YouTube`) counts as an edit.
 - `Item.withLink(LinkCheck.Valid, now)`: notes and same-URL are no-ops. If the duplicate key
-  is unchanged (cosmetic change) only `url` changes, so a name the page already gave is kept. Otherwise re-detect platform/kind,
+  is unchanged (cosmetic change) only `url` changes, so a name the page already gave is kept. Otherwise re-detect platform/kind
+  (a platform in `userEdited` is kept),
   reset title/description/creator/thumbnail/length for fields **not** in `userEdited`, creator becomes
   the host, clear `faviconUrl` and `detailsFetchedAt` (so details refetch).
 - `Item.needsDetails()` = link, has URL, `detailsFetchedAt == null`.

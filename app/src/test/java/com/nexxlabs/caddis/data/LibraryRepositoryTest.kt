@@ -308,8 +308,69 @@ class LibraryRepositoryTest {
         assertEquals("Site again", now.creator)
     }
 
-    private fun edits(title: String = "", description: String = "", creator: String = "") =
-        com.nexxlabs.caddis.domain.details.DetailEdits(title, description, creator)
+    private fun edits(title: String = "", description: String = "", creator: String = "", platform: String? = null) =
+        com.nexxlabs.caddis.domain.details.DetailEdits(title, description, creator, platform)
+
+    @Test
+    fun `a platform the person names is kept when the page is read`() = runBlocking {
+        val item = save("https://example.com/how-to-read-faster")
+        assertEquals("example.com", item.platform.label)
+        f.scheduler.scheduled.clear()
+
+        repo.editFields(item.id, platform = "YouTube")
+        val named = repo.observeItem(item.id).first()!!
+        assertEquals("YouTube", named.platform.label)
+        assertEquals(setOf(EditableField.PLATFORM), named.userEdited)
+        assertTrue(f.scheduler.scheduled.isEmpty())
+
+        repo.applyDetails(item.id, LinkDetails(title = "Their title", siteName = "Example Blog"))
+        assertEquals("YouTube", repo.get(item.id)!!.platform.label)
+    }
+
+    @Test
+    fun `a platform you named does not move an intent you chose`() = runBlocking {
+        val item = save("https://example.com/a")
+        repo.setIntent(item.id, Intents.TRY)
+        repo.editFields(item.id, platform = "YouTube")
+        assertEquals(Intents.TRY, repo.get(item.id)!!.intentId)
+    }
+
+    @Test
+    fun `clearing a named platform puts the host back and reads the page again`() = runBlocking {
+        val item = save("https://www.example.com/a")
+        repo.editFields(item.id, platform = "Hacker News")
+        f.scheduler.scheduled.clear()
+
+        repo.editFields(item.id, platform = "")
+        val back = repo.get(item.id)!!
+        assertEquals("example.com", back.platform.label)
+        assertEquals(emptySet<EditableField>(), back.userEdited)
+        assertEquals(listOf(item.id), f.scheduler.scheduled)
+
+        repo.applyDetails(item.id, LinkDetails(siteName = "Example Blog"))
+        assertEquals("Example Blog", repo.get(item.id)!!.platform.label)
+    }
+
+    @Test
+    fun `the save sheet's other fields leave the platform alone`() = runBlocking {
+        val item = save("https://example.com/a")
+        repo.applyDetails(item.id, LinkDetails(title = "Their title", siteName = "Example Blog"))
+        repo.editFields(item.id, title = "Mine", creator = "Me")
+        val now = repo.get(item.id)!!
+        assertEquals("Example Blog", now.platform.label)
+        assertEquals("Mine", now.title)
+        assertEquals("Me", now.creator)
+        assertEquals(setOf(EditableField.TITLE, EditableField.CREATOR), now.userEdited)
+    }
+
+    @Test
+    fun `the details sheet can name the platform together with the link`() = runBlocking {
+        val item = save("https://example.com/a")
+        repo.saveDetails(item.id, "https://other.org/b", edits(creator = "x", platform = "Hacker News"))
+        val now = repo.get(item.id)!!
+        assertEquals("Hacker News", now.platform.label)
+        assertEquals("other.org/b", now.normalizedUrl)
+    }
 
     @Test
     fun `editing the link re-reads the platform, re-guesses the intent and fetches again`() = runBlocking {

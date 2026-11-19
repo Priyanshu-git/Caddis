@@ -10,7 +10,8 @@ break. Section 3 are **known gaps**.
 1. **Never lose a save.** The Room insert happens first; details, sheets and network come after. Saves from the share sheet run on the
    app scope and happen in `ShareActivity.onCreate` before the UI draws.
 2. **Your words win.** Fetched details never overwrite a field in `Item.userEdited`, and never blank a field that already has a value
-   (`mergeDetails`). Only the person emptying a field hands it back (`withEdits`).
+   (`mergeDetails`). Only the person emptying a field hands it back (`withEdits`). The platform is one of these fields
+   (`EditableField.PLATFORM`): a name the person typed is kept over the page's `og:site_name`.
 3. **Home shows at most 3** (`HomePicker.maxPicks`). Notes never appear on Home. A deferred item (`returnAt` in the future) never appears before its date.
 4. **Zero taps to organise:** the intent is guessed, not asked for; changing it is optional.
 5. **Calm:** no streaks, no guilt copy, at most one notification a day (daily and weekly share the budget), none in quiet hours, no catch-up bursts.
@@ -25,6 +26,7 @@ break. Section 3 are **known gaps**.
 9. **No per-site tables.** There is no registry of services and no list of hosts. A platform is the host until the page names itself (`og:site_name` →
    `application-name` → oEmbed `provider_name`); kind comes from `og:type`/response type; oEmbed comes from the endpoint the page advertises. Every link, Instagram
    and Facebook included, is fetched the same way. (The earlier "never call Meta" rule was withdrawn by the product owner.) Do not add a `when (host)` list anywhere.
+   A person can still rename a save's platform by hand (free text, ≤ 40 characters); there is no picker, because a picker would need that list.
    Analytics report only `link` or `note` for a platform — **never a site name or domain**, because that is what a person browses.
 10. **No language models or AI anywhere.** Intent guessing is rules; search is keyword FTS.
 11. Fetching uses only public, keyless endpoints (oEmbed / Open Graph). No API keys, login, paywall bypass or third-party proxy. Only the link is sent; no cookies.

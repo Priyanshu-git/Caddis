@@ -44,7 +44,7 @@ enum class TimeOfDay(val label: String, val startHour: Int, val endHour: Int) {
 }
 
 /** Fields the person can edit; automation never overwrites these once edited (MET-03, principle 5). */
-enum class EditableField { TITLE, DESCRIPTION, CREATOR, THUMBNAIL, LENGTH }
+enum class EditableField { TITLE, DESCRIPTION, CREATOR, THUMBNAIL, LENGTH, PLATFORM }
 
 data class Item(
     val id: String,

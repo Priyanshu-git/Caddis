@@ -49,7 +49,7 @@ Adding a route: add a `composable(...)` (use `screen(...)` if it shows a thumbna
 | 1 | Google sign-in | **not built** (Account says "On this phone") |
 | 2 | Onboarding: five swipeable intro cards, then "Want a nudge now and then?" | `ui/onboarding/OnboardingScreen.kt` (`OnboardingScreen`) |
 | 7a | Home, first run ("Nothing saved yet") | `HomeScreen` (`FirstRun`) |
-| 3 / 4 / 5 | Save sheet / Duplicate / Add | `ui/capture/CaptureSheets.kt` (`SaveSheet`, `DuplicateSheet`, `AddSheet`) |
+| 3 / 4 / 5 | Save sheet (the details card has one pencil, "Edit details", that opens an inline editor: Title, Platform, By, Who sent it) / Duplicate / Add | `ui/capture/CaptureSheets.kt` (`SaveSheet`, `DuplicateSheet`, `AddSheet`) |
 | 7, 8, 21 | Home, all clear, This week | `HomeScreen` (`PickCard`, `WeekCard`, empty state) |
 | 9 / 10 | Bring back later (Tonight, This weekend, Next week, Pick a date, **Not again**) / Change intent (and Edit details); Just keep reads "For when you need it" | `ui/sheets/Sheets.kt` (`LaterSheet`, `IntentSheet`, `EditDetailsSheet`) |
 | 11, 13, 17, 18 | Library, filters, search | `LibraryScreen` (`SearchHeader`: title + search icon + Trash at rest; the icon animates into a full-width field over `Motion.Medium` (title and Trash fade out, icon turns into a back arrow, keyboard opens); the body fades between the library and `SearchBody`; icon description is "Search your saves", then "Close search"; the field is "Search saves"); the list is the active saves, then `CompletedHeader` ("COMPLETED · n", Show/Hide, collapsed by default, `stateDescription` Expanded/Collapsed) and, when open, the latest 3 completed rows plus `ShowAllCompleted`; completed rows use `ItemRow(completed = true)`, which draws `CompletedTick` on the thumbnail) (+ `FilterSheet`; its Platform group is built from `LibraryState.platforms`, not a fixed list; `showStatus = false` on the Library; there is no Kept chip) |
@@ -113,6 +113,9 @@ Home before the first save: `HomeState.firstRun` (library has no saves at all) s
   `borderColor`), `Thumb` (thumbnail → site icon → glyph; `share` key for shared-element transition), `ItemRow`, `IconBtn`, `TopBar`,
   `BigTitle`, `SectionTitle`, `Eyebrow`, `Fine`, `Sub`, `Dot`, `Toggle`, `SettingRow`, `Chevron`, `EmptyState`, `AppMark`, `TextFieldBox`.
 - `Fields.kt`: `CField` (text field with placeholder, label, `maxLength`, keyboard type, IME action).
+- `DetailField.kt`: `DetailField` (a labelled `CField` for the details editor, with an optional reset arrow `Reset <label>` and
+  "Edited by you. Reset to let Caddis fill it in.") and `canReset`. Shared by the save sheet's inline editor and `EditDetailsSheet`
+  (Link, Platform, Title, By, Description; Platform and Link are hidden for notes).
 - `Sheet.kt`: `CSheet` (bottom sheet), `Chips`, `CollectionChips` (toggle chips + the dashed "New" chip that becomes a name field; the owner holds the draft name), `CollectionsSection` (`CollectionsSection.kt`: the item-page and note "Collections" block, a read-only list with Edit/Add/Done that expands `CollectionChips` in place), `CenterBox`. `CChip` has a `dashed` style for "make a new one" chips.
 - `Icons.kt`: `CIcons` — the prototype's 24×24 stroked icon set as `ImageVector`s. Add icons here, not as drawables.
 - `sheets/Sheets.kt`: `rememberConfirm()` → `MutableConfirm` (two-tap confirm: first tap arms, second tap acts).

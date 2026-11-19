@@ -17,8 +17,13 @@ End-to-end traces. File names are under `app/src/main/java/com/nexxlabs/caddis/`
 5. The sheet state becomes `CaptureSheet.Saved(itemId, entry, sharedFrom)` (or `Duplicate`). `SaveSheet` observes the row
    (`savedItem`) so it fills in as details arrive (skeleton lines while `detailsFetchedAt == null`, no title).
 6. The sheet asks one question: intent chips (guess shown as "Guessed from a/an <subject>. Tap to change."), an optional
-   reason (≤ 140, saved debounced 400 ms and flushed on close), optional "Edit title" and "Who sent it", and the collection
-   chips (see "Collection chips" below). Dismissing keeps the save (`dismiss` only flushes the reason/title/from, and a collection
+   reason (≤ 140, saved debounced 400 ms and flushed on close), and the collection chips (see "Collection chips" below).
+   The details card has one pencil ("Edit details"): it turns the card into an inline editor with **Title, Platform, By and
+   Who sent it** (notes: Title and Who sent it). Each field starts with its current value; one the person has written shows a
+   reset arrow ("Reset <field>") that empties the draft, which hands the field back to Caddis. The check ("Done editing"), Done,
+   or dismissing saves only the fields that differ from what they started as (`CaptureViewModel.editFields`, on the app scope),
+   so a fetch landing while the editor is open is never overwritten. "Who sent it" shows as "From …" on the card.
+   Dismissing keeps the save (`dismiss` only flushes the reason, the edited fields, from, and a collection
    name still being typed, on the app scope).
 7. When the sheet state returns to `None`, `ShareActivity` finishes. A `CaptureNav` event (from "Open earlier save")
    starts `MainActivity` with a `route` extra and finishes.
@@ -63,7 +68,9 @@ Thumbnails: `Thumb` shows `thumbnailUrl`; if absent or failing, the site icon (`
 - Bad link → message shown on the sheet. Link already on another save → "Another save already has this link: “…”."
 - Otherwise text edits then link change in one transaction (see [data.md](data.md#edits)). If the link points somewhere new
   details are fetched again and a toast says "Link changed. Fetching its details."
-- Clearing a field hands it back to Caddis; a changed field becomes the person's own and is never overwritten.
+- Clearing a field hands it back to Caddis (and schedules a fetch so it can be filled); a changed field becomes the
+  person's own and is never overwritten. This includes the **Platform** field (links only, starts as the current name,
+  placeholder is the host). A written field shows the same reset arrow as on the save sheet (shared `DetailField`).
 
 "Refresh" on the item page schedules a fetch for any link ("Refreshing details. Your edits are kept.").
 

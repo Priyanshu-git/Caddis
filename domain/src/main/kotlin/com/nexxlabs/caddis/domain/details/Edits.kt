@@ -4,6 +4,7 @@ import com.nexxlabs.caddis.domain.link.LinkCheck
 import com.nexxlabs.caddis.domain.link.PlatformDetector
 import com.nexxlabs.caddis.domain.model.EditableField
 import com.nexxlabs.caddis.domain.model.Item
+import com.nexxlabs.caddis.domain.model.Platform
 import java.time.Instant
 
 /** What the person typed on the Edit details sheet (MET-03). */
@@ -11,6 +12,8 @@ data class DetailEdits(
     val title: String,
     val description: String,
     val creator: String,
+    /** The site's name. `null` leaves it as it is; blank hands an edited one back to Caddis. Notes have none. */
+    val platform: String? = null,
 )
 
 object EditLimits {
@@ -25,6 +28,11 @@ object EditLimits {
  * MET-03 / principle 5. A changed field becomes "yours" and automation never overwrites it. Clearing
  * a field hands it back: it is emptied and the next details fetch may fill it again. An unchanged
  * field keeps its current state, so opening and saving the sheet changes nothing.
+ *
+ * The platform follows the same rules, with two differences: text that cannot be a site name
+ * ([Platform.cleanSiteName]) is ignored, and clearing an edited platform puts the link's host back
+ * (a details fetch may then name it again). Clearing a platform that was never edited does nothing,
+ * so a name the page gave is not lost to an empty field.
  */
 fun Item.withEdits(e: DetailEdits, now: Instant): Item {
     var edited = userEdited
@@ -37,9 +45,26 @@ fun Item.withEdits(e: DetailEdits, now: Instant): Item {
     val title = apply(EditableField.TITLE, title, e.title, EditLimits.TITLE)
     val description = apply(EditableField.DESCRIPTION, description, e.description, EditLimits.DESCRIPTION)
     val creator = apply(EditableField.CREATOR, creator, e.creator, EditLimits.CREATOR)
-    if (title == this.title && description == this.description && creator == this.creator) return this
+    var platform = this.platform
+    val typedPlatform = e.platform?.replace(Regex("\\s+"), " ")?.trim()
+    if (!isNote && typedPlatform != null) {
+        if (typedPlatform.isEmpty()) {
+            if (EditableField.PLATFORM in edited) {
+                edited = edited - EditableField.PLATFORM
+                url?.let { platform = Platform.fromUrl(it) }
+            }
+        } else if (typedPlatform != platform.label) {
+            Platform.cleanSiteName(typedPlatform)?.let {
+                platform = Platform.named(it)
+                edited = edited + EditableField.PLATFORM
+            }
+        }
+    }
+    if (title == this.title && description == this.description && creator == this.creator &&
+        platform.label == this.platform.label && edited == userEdited
+    ) return this
     return copy(
-        title = title, description = description, creator = creator, userEdited = edited,
+        title = title, description = description, creator = creator, platform = platform, userEdited = edited,
         updatedAt = now, revision = revision + 1,
     )
 }
@@ -60,7 +85,7 @@ fun Item.withLink(link: LinkCheck.Valid, now: Instant): Item {
     return copy(
         url = link.url,
         normalizedUrl = link.normalized,
-        platform = d.platform,
+        platform = keep(EditableField.PLATFORM, platform, d.platform),
         kind = d.kind,
         title = keep(EditableField.TITLE, title, ""),
         description = keep(EditableField.DESCRIPTION, description, ""),

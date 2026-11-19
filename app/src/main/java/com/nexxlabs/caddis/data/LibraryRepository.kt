@@ -275,12 +275,30 @@ class LibraryRepository @Inject constructor(
      * so a details fetch that lands at the same moment is never mistaken for the person's edit.
      */
     suspend fun editDetails(id: String, edits: (Item) -> DetailEdits) {
+        var refresh = false
         db.withTransaction {
             val current = items.get(id)?.toDomain() ?: return@withTransaction
             val next = current.withEdits(edits(current), now())
-            if (next != current) items.upsert(next.toEntity())
+            if (next == current) return@withTransaction
+            refresh = fieldHandedBack(current, next)
+            items.upsert(reguessIfPlatformMoved(current, next).toEntity())
         }
+        if (refresh) details.schedule(id)
     }
+
+    /** The person cleared a field they had written (title, by, platform…): the page may fill it again, so read it again. */
+    private fun fieldHandedBack(before: Item, after: Item) =
+        before.userEdited.any { it !in after.userEdited }
+
+    /** A different platform can mean a different intent while the intent is still a guess. */
+    private suspend fun reguessIfPlatformMoved(before: Item, after: Item): Item =
+        if (after.platform.label != before.platform.label && after.intentSource == IntentSource.GUESSED) {
+            after.copy(intentId = guess(GuessInput(after.platform, after.kind, after.url.orEmpty(), after.title, after.description)))
+        } else after
+
+    /** The details card on the save sheet: only the fields that were touched (`null` = leave as is). */
+    suspend fun editFields(id: String, title: String? = null, creator: String? = null, platform: String? = null) =
+        editDetails(id) { DetailEdits(title ?: it.title, it.description, creator ?: it.creator, platform) }
 
     sealed interface DetailsResult {
         /** [refetching]: the link moved and details are being fetched again. */
@@ -304,9 +322,12 @@ class LibraryRepository @Inject constructor(
             findDuplicate(link.normalized)?.takeIf { it.id != id }?.let { return DetailsResult.LinkTaken(it) }
         }
         var refetch = false
+        var refresh = false
         db.withTransaction {
             val current = items.get(id)?.toDomain() ?: return@withTransaction
             var next = current.withEdits(edits, now())
+            refresh = fieldHandedBack(current, next)
+            next =reguessIfPlatformMoved(current, next)
             if (link != null) {
                 val moved = next.withLink(link, now())
                 if (moved.platform != next.platform || moved.normalizedUrl != next.normalizedUrl) {
@@ -318,12 +339,9 @@ class LibraryRepository @Inject constructor(
             }
             if (next != current) items.upsert(next.toEntity())
         }
-        if (refetch) details.schedule(id)
+        if (refetch || refresh) details.schedule(id)
         return DetailsResult.Saved(refetch)
     }
-
-    /** The title field on the save sheet; everything else stays as it is. */
-    suspend fun editTitle(id: String, title: String) = editDetails(id) { DetailEdits(title, it.description, it.creator) }
 
     // ---------- finish and delete ----------
 

@@ -179,7 +179,9 @@ class CaptureViewModel @Inject constructor(
     }
 
     /** Runs on the app scope: the sheet is closing as this is called. */
-    fun setTitle(itemId: String, title: String) = appScope.launch { repo.editTitle(itemId, title) }
+    /** The details card on the save sheet. Only the fields the person touched are passed; `null` leaves a field alone. */
+    fun editFields(itemId: String, title: String? = null, creator: String? = null, platform: String? = null) =
+        appScope.launch { repo.editFields(itemId, title, creator, platform) }
 
     fun setFrom(itemId: String, from: String) = viewModelScope.launch { repo.setSourceFrom(itemId, from) }
 

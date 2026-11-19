@@ -35,16 +35,20 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.runtime.rememberCoroutineScope
 import com.nexxlabs.caddis.domain.details.DetailEdits
 import com.nexxlabs.caddis.domain.details.EditLimits
+import com.nexxlabs.caddis.domain.model.EditableField
 import com.nexxlabs.caddis.domain.model.Intent
 import com.nexxlabs.caddis.domain.model.IntentSource
 import com.nexxlabs.caddis.domain.model.Intents
 import com.nexxlabs.caddis.domain.model.Item
+import com.nexxlabs.caddis.domain.model.Platform
 import com.nexxlabs.caddis.domain.model.ReturnRule
 import com.nexxlabs.caddis.ui.components.BtnStyle
 import com.nexxlabs.caddis.ui.components.CButton
 import com.nexxlabs.caddis.ui.components.CField
 import com.nexxlabs.caddis.ui.components.CSheet
+import com.nexxlabs.caddis.ui.components.DetailField
 import com.nexxlabs.caddis.ui.components.Fine
+import com.nexxlabs.caddis.ui.components.canReset
 import com.nexxlabs.caddis.ui.theme.C
 import com.nexxlabs.caddis.ui.theme.CaddisType
 import java.time.Instant
@@ -170,6 +174,7 @@ fun CenteredFine(text: String) = Fine(text, Modifier.fillMaxWidth().padding(top 
 @Composable
 fun EditDetailsSheet(item: Item, onSave: suspend (String?, DetailEdits) -> String?, onDone: () -> Unit) {
     var url by rememberSaveable(item.id) { mutableStateOf(item.url.orEmpty()) }
+    var platform by rememberSaveable(item.id) { mutableStateOf(item.platform.label) }
     var title by rememberSaveable(item.id) { mutableStateOf(item.title) }
     var creator by rememberSaveable(item.id) { mutableStateOf(item.creator) }
     var description by rememberSaveable(item.id) { mutableStateOf(item.description) }
@@ -181,7 +186,7 @@ fun EditDetailsSheet(item: Item, onSave: suspend (String?, DetailEdits) -> Strin
         if (!saving) {
             saving = true
             scope.launch {
-                val message = onSave(if (item.isNote) null else url, DetailEdits(title, description, creator))
+                val message = onSave(if (item.isNote) null else url, DetailEdits(title, description, creator, platform.takeIf { !item.isNote }))
                 saving = false
                 if (message == null) onDone() else error = message
             }
@@ -204,12 +209,24 @@ fun EditDetailsSheet(item: Item, onSave: suspend (String?, DetailEdits) -> Strin
                 linkChanged -> Fine("Caddis will read the new link and fetch its details again.", Modifier.padding(top = 6.dp))
             }
         }
-        Fine("Title", Modifier.padding(top = 12.dp, bottom = 6.dp))
-        CField(title, { title = it }, item.displayTitle, label = "Title", maxLength = EditLimits.TITLE, lines = 3, modifier = Modifier.fillMaxWidth())
-        Fine("By", Modifier.padding(top = 12.dp, bottom = 6.dp))
-        CField(creator, { creator = it }, "Who made it", label = "By", maxLength = EditLimits.CREATOR, modifier = Modifier.fillMaxWidth())
-        Fine("Description", Modifier.padding(top = 12.dp, bottom = 6.dp))
-        CField(description, { description = it }, "What it’s about (optional)", label = "Description", maxLength = EditLimits.DESCRIPTION, lines = 5, modifier = Modifier.fillMaxWidth())
+        if (!item.isNote) {
+            DetailField(
+                "Platform", platform, { platform = it }, Platform.fromUrl(url.ifBlank { item.url.orEmpty() }).label, Platform.MAX_SITE_NAME,
+                onReset = if (canReset(platform, item.platform.label, EditableField.PLATFORM in item.userEdited)) ({ platform = "" }) else null,
+            )
+        }
+        DetailField(
+            "Title", title, { title = it }, item.displayTitle, EditLimits.TITLE, lines = 3,
+            onReset = if (canReset(title, item.title, EditableField.TITLE in item.userEdited)) ({ title = "" }) else null,
+        )
+        DetailField(
+            "By", creator, { creator = it }, "Who made it", EditLimits.CREATOR,
+            onReset = if (canReset(creator, item.creator, EditableField.CREATOR in item.userEdited)) ({ creator = "" }) else null,
+        )
+        DetailField(
+            "Description", description, { description = it }, "What it’s about (optional)", EditLimits.DESCRIPTION, lines = 5,
+            onReset = if (canReset(description, item.description, EditableField.DESCRIPTION in item.userEdited)) ({ description = "" }) else null,
+        )
         Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             CButton("Cancel", onClick = onDone, modifier = Modifier.weight(1f))
             CButton(if (saving) "Saving…" else "Save", onClick = { save() }, style = BtnStyle.Primary, modifier = Modifier.weight(1f))

@@ -94,13 +94,16 @@ through here.** Reads are `Flow`s.
   was `GUESSED`, increments `intent_corrections[(platform:kind, newIntent)]`; always logs `IntentChanged`.
 - `setReason` (trim, ≤ 140), `setSourceFrom` (trim, ≤ 60), `setNote(markdown)`, `setTitle` (marks TITLE user-edited).
 - `editDetails(id, edits: (Item) -> DetailEdits)`: builds the edits **inside** the transaction from the stored row so a
-  concurrent fetch is never mistaken for a user edit; applies `withEdits`.
+  concurrent fetch is never mistaken for a user edit; applies `withEdits`. If the platform changed while the intent is
+  still a guess, the intent is re-guessed. If a field the person had written was emptied (title, by, description or
+  platform), a details fetch is scheduled so the page can fill it again.
 - `saveDetails(id, rawUrl?, DetailEdits): DetailsResult` (`Saved(refetching)`, `BadLink(message)`, `LinkTaken(other)`):
   validates the link (notes ignore it), refuses a link whose duplicate key belongs to **another** item, then in one
   transaction applies `withEdits` **first** and `withLink` second (so the old link's fetched title is not mistaken
   for the person's); re-guesses the intent if the platform/key moved and the intent is still guessed; schedules a
-  refetch when `needsDetails()`.
-- `editTitle(id, title)` (used by the save sheet): `editDetails` with only the title changed.
+  refetch when `needsDetails()`, or a refresh when a written field was emptied (the toast only says "Link changed" for a new link).
+- `editFields(id, title?, creator?, platform?)` (used by the save sheet's details editor): `editDetails` with only the
+  fields that were touched; `null` leaves a field alone (`DetailEdits.platform == null` means "leave the platform").
 
 ### Finish and delete
 
