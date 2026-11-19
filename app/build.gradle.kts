@@ -24,8 +24,8 @@ android {
         applicationId = "com.nexxlabs.caddis"
         minSdk = 28
         targetSdk = 36
-        versionCode = 5
-        versionName = "0.0.5"
+        versionCode = 6
+        versionName = "0.0.6"
         // Starts HiltTestApplication so journey tests can swap the database, clock and network for fakes.
         testInstrumentationRunner = "com.nexxlabs.caddis.HiltTestRunner"
     }
