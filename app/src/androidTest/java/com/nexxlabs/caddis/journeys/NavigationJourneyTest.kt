@@ -19,7 +19,7 @@ class NavigationJourneyTest : JourneyTest() {
         goTo("Library")
         await(described("Search your saves"))
         goTo("Profile")
-        awaitText("On this phone")
+        awaitText("Pause on low battery")
         goTo("Home")
         awaitText("Today")
     }
@@ -35,7 +35,7 @@ class NavigationJourneyTest : JourneyTest() {
         assertTrue(exists(addButton))
 
         goTo("Profile")
-        awaitText("On this phone")
+        awaitText("Pause on low battery")
         awaitGone(addButton)
     }
 
@@ -48,7 +48,7 @@ class NavigationJourneyTest : JourneyTest() {
         awaitGone(addButton)
 
         back()
-        awaitText("On this phone")
+        awaitText("Pause on low battery")
         await(tab("Library"))
     }
 
@@ -71,7 +71,7 @@ class NavigationJourneyTest : JourneyTest() {
         awaitText("Manage collections")
 
         goTo("Profile")
-        awaitText("On this phone")
+        awaitText("Pause on low battery")
         goTo("Library")
         awaitText("Manage collections")
     }

@@ -104,18 +104,6 @@ fun ProfileScreen(navigate: (String) -> Unit, vm: ProfileViewModel = hiltViewMod
     Column(Modifier.fillMaxSize()) {
         BigTitle("Profile")
         Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 18.dp).padding(bottom = 100.dp)) {
-            CCard(Modifier.fillMaxWidth(), onClick = { navigate("account") }) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Box(Modifier.size(46.dp).clip(CircleShape).background(C.colors.tint).border(1.dp, C.colors.line, CircleShape), contentAlignment = Alignment.Center) {
-                        Icon(CIcons.User, null, tint = C.colors.fg2, modifier = Modifier.size(22.dp))
-                    }
-                    Column(Modifier.weight(1f)) {
-                        Text("On this phone", style = CaddisType.strong, color = C.colors.fg)
-                        Fine("No account yet. Sync comes later.")
-                    }
-                    Chevron()
-                }
-            }
             when (update) {
                 is UpdateState.Available -> {
                     Eyebrow("Update")
@@ -137,13 +125,12 @@ fun ProfileScreen(navigate: (String) -> Unit, vm: ProfileViewModel = hiltViewMod
             SettingRow("Notifications", onClick = { navigate("notifications") }) { Chevron() }
             Eyebrow("Background work")
             SettingRow("Pause on low battery") { Toggle(st.pauseOnLowBattery, "Pause on low battery", vm::setPauseBattery) }
-            SettingRow("Pause on mobile data") { Toggle(st.pauseOnMobileData, "Pause on mobile data", vm::setPauseData) }
             Eyebrow("Your data")
             SettingRow("Export and cache", onClick = { navigate("data") }) { Chevron() }
             SettingRow("Trash", onClick = { navigate("trash") }) { Chevron() }
-            Eyebrow("Privacy and account")
+            SettingRow("Delete all data", onClick = { navigate("account") }) { Chevron() }
+            Eyebrow("Privacy")
             SettingRow("Privacy policy", onClick = { navigate("privacy") }) { Chevron() }
-            SettingRow("Account settings", onClick = { navigate("account") }) { Chevron() }
         }
     }
 }
@@ -310,25 +297,18 @@ fun DataScreen(onBack: () -> Unit, vm: ProfileViewModel = hiltViewModel()) {
     }
 }
 
-/** Screen 28 (+26): account settings. Client-only for now: data lives on this phone. */
+/** Screen 28 (+26): delete all data. Route `account` (there is no account; data lives on this phone). */
 @Composable
 fun AccountScreen(onBack: () -> Unit, onDeleted: () -> Unit, vm: ProfileViewModel = hiltViewModel()) {
     var ask by remember { mutableStateOf(false) }
     val c = C.colors
     Column(Modifier.fillMaxSize()) {
-        TopBar("Account settings", onBack)
+        TopBar("Delete all data", onBack)
         Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 18.dp)) {
-            CCard(Modifier.fillMaxWidth()) {
-                Text("On this phone", style = CaddisType.strong, color = c.fg)
-                Fine("Your saves live only on this phone for now. Google sign-in and sync across devices come in a later release.")
-            }
-            SettingRow("Sync") { Fine("Off · this phone only") }
-            SettingRow("Sign-in method") { Fine("None yet") }
-            Eyebrow("Delete", Modifier.padding(top = 22.dp, bottom = 8.dp))
             CCard(Modifier.fillMaxWidth(), borderColor = c.crit, onClick = { ask = true }) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Delete all data", style = CaddisType.strong, color = c.crit)
+                        Text("Delete it all", style = CaddisType.strong, color = c.crit)
                         Fine("Removes your saves, notes and collections from this phone.")
                     }
                     Chevron()

@@ -92,7 +92,6 @@ class ProfileViewModel @Inject constructor(
     // ---------- background work ----------
 
     fun setPauseBattery(on: Boolean) = viewModelScope.launch { settingsRepo.setPauseOnLowBattery(on) }
-    fun setPauseData(on: Boolean) = viewModelScope.launch { settingsRepo.setPauseOnMobileData(on) }
 
     // ---------- intents and rules (INT-04/05) ----------
 

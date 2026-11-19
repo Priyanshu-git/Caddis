@@ -46,7 +46,7 @@ Adding a route: add a `composable(...)` (use `screen(...)` if it shows a thumbna
 
 | # | Screen | Code |
 | --- | --- | --- |
-| 1 | Google sign-in | **not built** (Account says "On this phone") |
+| 1 | Google sign-in | **not built** (no account or sync UI anywhere) |
 | 2 | Onboarding: five swipeable intro cards, then "Want a nudge now and then?" | `ui/onboarding/OnboardingScreen.kt` (`OnboardingScreen`) |
 | 7a | Home, first run ("Nothing saved yet") | `HomeScreen` (`FirstRun`) |
 | 3 / 4 / 5 | Save sheet (the details card has one pencil, "Edit details", that opens an inline editor: Title, Platform, By, Who sent it) / Duplicate / Add | `ui/capture/CaptureSheets.kt` (`SaveSheet`, `DuplicateSheet`, `AddSheet`) |

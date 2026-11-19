@@ -61,7 +61,7 @@ class UpdateJourneyTest : JourneyTest() {
     fun profile_showsNothingWhenThereIsNoUpdate() {
         launchApp()
         goTo("Profile")
-        awaitText("On this phone")
+        awaitText("Pause on low battery")
 
         awaitNoText("Update Caddis")
         awaitNoText("Restart to update")

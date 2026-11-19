@@ -143,7 +143,7 @@ counters, done/delete + counters, intent deletion + reassignment, delete-all).
 
 | Work | Scheduling | Behaviour |
 | --- | --- | --- |
-| `DetailsWorker` | `WorkScheduler.schedule(itemId)`: unique name `details-<id>`, `ExistingWorkPolicy.REPLACE`, exponential backoff 30 s. Constraints from settings: network `UNMETERED` if "pause on mobile data" else `CONNECTED`; battery-not-low if "pause on low battery" (default on). | Loads the item; fetches; `Ok` → `repo.applyDetails(..., forUrl)`, `GiveUp` → `repo.markDetailsAttempted`, `Retry` → `Result.retry()` up to `MAX_ATTEMPTS = 4`, then success without marking (next app start retries). |
+| `DetailsWorker` | `WorkScheduler.schedule(itemId)`: unique name `details-<id>`, `ExistingWorkPolicy.REPLACE`, exponential backoff 30 s. Constraints from settings: network `CONNECTED`; battery-not-low if "pause on low battery" (default on). | Loads the item; fetches; `Ok` → `repo.applyDetails(..., forUrl)`, `GiveUp` → `repo.markDetailsAttempted`, `Retry` → `Result.retry()` up to `MAX_ATTEMPTS = 4`, then success without marking (next app start retries). |
 | `ReminderWorker` | `WorkScheduler.scheduleReminders()`: unique periodic **every 1 hour**, battery-not-low, `KEEP`. | If neither reminder is on, return. Otherwise asks `HomePicker` for the top pick and `Reminders.decide(...)`; posts via `Notifier`; records the send date in settings only if the notification was actually posted. |
 
 ## Image loading

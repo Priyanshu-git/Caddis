@@ -36,7 +36,7 @@ class ProfileJourneyTest : JourneyTest() {
     private fun openProfile() {
         launchApp()
         goTo("Profile")
-        awaitText("On this phone")
+        awaitText("Pause on low battery")
     }
 
     private fun openFromProfile(row: String, title: String = row) {
@@ -54,23 +54,25 @@ class ProfileJourneyTest : JourneyTest() {
         openProfile()
 
         assertShowing(
-            "No account yet. Sync comes later.", "Return rules", "Intents", "Notifications",
-            "Pause on low battery", "Pause on mobile data", "Export and cache", "Trash", "Privacy policy", "Account settings",
+            "Return rules", "Intents", "Notifications",
+            "Pause on low battery", "Export and cache", "Trash", "Delete all data", "Privacy policy",
         )
+        // No promises about accounts or sync.
+        awaitNoText("sync", substring = true)
+        awaitNoText("account", substring = true)
         // Eight default intents.
         assertTrue(exists(hasText("8")))
     }
 
     @Test
-    fun backgroundWork_canBePausedOnMobileData_orLowBattery() {
+    fun backgroundWork_canBePausedOnLowBattery() {
         openProfile()
         assertTrue(runBlocking { settings.current() }.pauseOnLowBattery)
-        assertFalse(runBlocking { settings.current() }.pauseOnMobileData)
+        awaitNoText("mobile data", substring = true)
 
-        tap(described("Pause on mobile data"))
         tap(described("Pause on low battery"))
 
-        eventually("both flipped") { runBlocking { settings.current() }.let { it.pauseOnMobileData && !it.pauseOnLowBattery } }
+        eventually("flipped") { !runBlocking { settings.current() }.pauseOnLowBattery }
     }
 
     // ---------- notifications ----------
@@ -241,25 +243,19 @@ class ProfileJourneyTest : JourneyTest() {
     }
 
     @Test
-    fun account_saysThereIsNoAccountYet() {
-        openFromProfile("Account settings")
-
-        assertShowing("Sync", "Off · this phone only", "Sign-in method", "None yet")
-    }
-
-    @Test
     fun deleteAllData_asksFirst_thenClearsEverything_butKeepsYouInTheApp() {
         save("https://example.com/pasta", "Pasta night")
         saveNote("Gift ideas")
-        openFromProfile("Account settings")
+        openFromProfile("Delete all data", "Export your library first if you want a copy.")
+        awaitNoText("sync", substring = true)
 
-        tapText("Delete all data")
+        tapText("Delete it all")
         awaitText("Delete all your data?")
         tapButton("Cancel")
         awaitNoText("Delete all your data?")
         assertEquals("cancelling deletes nothing", 2, library().size)
 
-        tapText("Delete all data")
+        tapText("Delete it all")
         tapButton("Delete everything")
 
         // Home, empty. (Not asserted: which toast shows. Clearing the image cache posts its own, right after the delete one.)

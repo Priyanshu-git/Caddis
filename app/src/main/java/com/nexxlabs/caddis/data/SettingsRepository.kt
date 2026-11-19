@@ -24,9 +24,8 @@ data class Settings(
     val dailyReminder: Boolean = false,
     val weeklySummary: Boolean = false,
     val quietHours: QuietHours = QuietHours.TEN_TO_SEVEN,
-    /** NFR battery and data: pause background work on low battery / mobile data if chosen. */
+    /** NFR battery: pause background work on low battery if chosen. */
     val pauseOnLowBattery: Boolean = true,
-    val pauseOnMobileData: Boolean = false,
     val lastDailySent: LocalDate? = null,
     val lastWeeklySentWeek: LocalDate? = null,
     /** The last time Google Play's update dialog was opened on its own (see [UpdatePrompts]). */
@@ -44,7 +43,6 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
         val weekly = booleanPreferencesKey("weekly_summary")
         val quiet = intPreferencesKey("quiet_hours")
         val battery = booleanPreferencesKey("pause_low_battery")
-        val metered = booleanPreferencesKey("pause_mobile_data")
         val lastDaily = stringPreferencesKey("last_daily_sent")
         val lastWeekly = stringPreferencesKey("last_weekly_week")
         val updateVersion = intPreferencesKey("update_asked_version")
@@ -58,7 +56,6 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
             weeklySummary = p[K.weekly] ?: false,
             quietHours = QuietHours.entries.getOrElse(p[K.quiet] ?: 0) { QuietHours.TEN_TO_SEVEN },
             pauseOnLowBattery = p[K.battery] ?: true,
-            pauseOnMobileData = p[K.metered] ?: false,
             lastDailySent = p[K.lastDaily]?.let(LocalDate::parse),
             lastWeeklySentWeek = p[K.lastWeekly]?.let(LocalDate::parse),
             updateAsked = p[K.updateVersion]?.let { v -> p[K.updateAt]?.let { UpdatePrompts.Asked(v, Instant.ofEpochMilli(it)) } },
@@ -72,7 +69,6 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
     suspend fun setWeeklySummary(on: Boolean) = store.edit { it[K.weekly] = on }
     suspend fun setQuietHours(q: QuietHours) = store.edit { it[K.quiet] = q.ordinal }
     suspend fun setPauseOnLowBattery(on: Boolean) = store.edit { it[K.battery] = on }
-    suspend fun setPauseOnMobileData(on: Boolean) = store.edit { it[K.metered] = on }
     suspend fun markDailySent(date: LocalDate) = store.edit { it[K.lastDaily] = date.toString() }
     suspend fun markWeeklySent(date: LocalDate, week: LocalDate) = store.edit {
         it[K.lastDaily] = date.toString()

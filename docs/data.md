@@ -168,7 +168,6 @@ image cache.
 | `weeklySummary` | `weekly_summary` (bool) | false (opt-in) |
 | `quietHours` | `quiet_hours` (int, **enum ordinal**) | `TEN_TO_SEVEN` |
 | `pauseOnLowBattery` | `pause_low_battery` (bool) | true |
-| `pauseOnMobileData` | `pause_mobile_data` (bool) | false |
 | `lastDailySent` | `last_daily_sent` (ISO date string) | null |
 | `lastWeeklySentWeek` | `last_weekly_week` (ISO date string) | null |
 | `updateAsked` | `update_asked_version` (int) + `update_asked_at` (epoch millis) | null |

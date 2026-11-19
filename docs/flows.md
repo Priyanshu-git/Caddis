@@ -178,11 +178,11 @@ logs `TidyUpFinished(kept, deleted)` and shows "All tidy". "Open it first" opens
 ## 11. Settings and data
 
 - Quiet hours: tap cycles `TEN_TO_SEVEN → ELEVEN_TO_SIX → NINE_TO_EIGHT`.
-- "Pause on low battery" (default on) and "Pause on mobile data" (default off) only change the **constraints of future** details work.
+- "Pause on low battery" (default on) only changes the **constraints of future** details work.
 - **Export**: `ProfileViewModel.export(json)` builds text from Room, writes `cacheDir/exports/caddis-<date>.json|html`, gets a
   `FileProvider` URI and starts a chooser (`ACTION_SEND`, read grant).
 - **Clear cache**: clears Coil memory and disk caches, then refreshes the displayed size.
-- **Delete all data** (Account): confirm dialog → `repo.deleteAllData()`, `settingsRepo.reset()` (keeps `onboarded`), clear image cache, toast, navigate to Home with the back stack cleared.
+- **Delete all data** (Profile → Your data → Delete all data, then "Delete it all"): confirm dialog → `repo.deleteAllData()`, `settingsRepo.reset()` (keeps `onboarded`), clear image cache, toast, navigate to Home with the back stack cleared.
 
 ## 12. Intents and return rules
 

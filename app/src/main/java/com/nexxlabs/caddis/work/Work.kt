@@ -51,7 +51,7 @@ class WorkScheduler @Inject constructor(
         appScope.launch {
             val s = settings.current()
             val constraints = Constraints.Builder()
-                .setRequiredNetworkType(if (s.pauseOnMobileData) NetworkType.UNMETERED else NetworkType.CONNECTED)
+                .setRequiredNetworkType(NetworkType.CONNECTED)
                 .setRequiresBatteryNotLow(s.pauseOnLowBattery)
                 .build()
             val req = OneTimeWorkRequestBuilder<DetailsWorker>()
