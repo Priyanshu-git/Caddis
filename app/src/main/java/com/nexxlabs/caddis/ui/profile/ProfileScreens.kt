@@ -138,7 +138,6 @@ fun ProfileScreen(navigate: (String) -> Unit, vm: ProfileViewModel = hiltViewMod
             Eyebrow("Background work")
             SettingRow("Pause on low battery") { Toggle(st.pauseOnLowBattery, "Pause on low battery", vm::setPauseBattery) }
             SettingRow("Pause on mobile data") { Toggle(st.pauseOnMobileData, "Pause on mobile data", vm::setPauseData) }
-            SettingRow("Thumbnail cache") { Fine("200 MB cap") }
             Eyebrow("Your data")
             SettingRow("Export and cache", onClick = { navigate("data") }) { Chevron() }
             SettingRow("Trash", onClick = { navigate("trash") }) { Chevron() }
