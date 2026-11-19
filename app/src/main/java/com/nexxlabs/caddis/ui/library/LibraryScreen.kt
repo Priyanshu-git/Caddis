@@ -1,6 +1,16 @@
 package com.nexxlabs.caddis.ui.library
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.unit.lerp
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
@@ -42,16 +52,16 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexxlabs.caddis.domain.model.Intent
-import com.nexxlabs.caddis.domain.model.Intents
 import com.nexxlabs.caddis.domain.model.Item
+import com.nexxlabs.caddis.domain.model.ItemStatus
 import com.nexxlabs.caddis.domain.platform.PlatformFacets
 import com.nexxlabs.caddis.ui.capture.Segmented
-import com.nexxlabs.caddis.ui.components.BigTitle
 import com.nexxlabs.caddis.ui.components.BtnStyle
 import com.nexxlabs.caddis.ui.components.CButton
 import com.nexxlabs.caddis.ui.components.CChip
@@ -66,6 +76,7 @@ import com.nexxlabs.caddis.ui.components.Fine
 import com.nexxlabs.caddis.ui.components.IconBtn
 import com.nexxlabs.caddis.ui.components.ItemRow
 import com.nexxlabs.caddis.ui.components.Tag
+import com.nexxlabs.caddis.ui.completedMeta
 import com.nexxlabs.caddis.ui.intentName
 import com.nexxlabs.caddis.ui.meta
 import com.nexxlabs.caddis.ui.rightTag
@@ -84,74 +95,83 @@ fun LibraryScreen(
 ) {
     val s by vm.state.collectAsStateWithLifecycle()
     var filters by remember { mutableStateOf(false) }
+    // Completed starts collapsed. The back stack entry keeps these, so it stays as you left it while you read a save and come back.
+    var completedOpen by rememberSaveable { mutableStateOf(false) }
+    var showAllCompleted by rememberSaveable { mutableStateOf(false) }
 
-    // Search opens and closes with a fade rather than a cut.
-    AnimatedContent(
-        targetState = s.searching,
-        modifier = Modifier.fillMaxSize(),
-        transitionSpec = { fadeIn(tween(Motion.Short, delayMillis = 60, easing = LinearEasing)) togetherWith fadeOut(tween(Motion.Quick, easing = LinearEasing)) },
-        label = "librarySearch",
-    ) { searching ->
-        if (searching) {
-            SearchView(s, vm, onOpenItem, onFilters = { filters = true })
-        } else {
-            Column(Modifier.fillMaxSize()) {
-                BigTitle("Library") {
-                    IconBtn(CIcons.Trash, "Trash", onTrash)
-                }
-                Row(
-                    Modifier
-                        .padding(horizontal = 18.dp)
-                        .padding(bottom = 10.dp)
-                        .fillMaxWidth()
-                        .heightIn(min = 46.dp)
-                        .border(1.dp, C.colors.line, RoundedCornerShape(24.dp))
-                        .clickable(role = Role.Button) { vm.openSearch() }
-                        .semantics { contentDescription = "Search your saves" }
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Icon(CIcons.Search, null, tint = C.colors.fg2, modifier = Modifier.size(20.dp))
-                    Text("Search your saves", style = CaddisType.body, color = C.colors.fg2)
-                }
-                Segmented(
-                    listOf("All saves", "Collections"), if (s.showCollections) 1 else 0, { vm.showCollections(it == 1) }, "Library view",
-                    Modifier.padding(horizontal = 18.dp).padding(bottom = 0.dp),
-                )
-                AnimatedContent(
-                    targetState = s.showCollections,
-                    modifier = Modifier.weight(1f),
-                    transitionSpec = { fadeIn(tween(Motion.Short, delayMillis = Motion.Out, easing = LinearEasing)) togetherWith fadeOut(tween(Motion.Out, easing = LinearEasing)) },
-                    label = "libraryView",
-                ) { showCollections ->
-                    if (showCollections) {
-                        LazyColumn(contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 100.dp)) {
-                            items(s.collections, key = { it.first.id }) { (c, n) -> Box(calmItem()) { CollectionRow(c.name, n) { onCollection(c.id) } } }
-                            item(key = "manage") { CButton("Manage collections", onClick = onManageCollections, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) }
-                        }
-                    } else {
-                        Column(Modifier.fillMaxSize()) {
-                            PlatformChipRow(s, vm, onFilters = { filters = true })
+    Column(Modifier.fillMaxSize()) {
+        SearchHeader(s.searching, s.query, vm::setQuery, vm::submitSearch, vm::openSearch, vm::closeSearch, onTrash)
+        // The body swaps between the library and the search results with a fade rather than a cut.
+        AnimatedContent(
+            targetState = s.searching,
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            transitionSpec = { fadeIn(tween(Motion.Short, delayMillis = 60, easing = LinearEasing)) togetherWith fadeOut(tween(Motion.Quick, easing = LinearEasing)) },
+            label = "librarySearch",
+        ) { searching ->
+            if (searching) {
+                SearchBody(s, vm, onOpenItem, onFilters = { filters = true })
+            } else {
+                Column(Modifier.fillMaxSize()) {
+                    Segmented(
+                        listOf("All saves", "Collections"), if (s.showCollections) 1 else 0, { vm.showCollections(it == 1) }, "Library view",
+                        Modifier.padding(horizontal = 18.dp).padding(bottom = 0.dp),
+                    )
+                    AnimatedContent(
+                        targetState = s.showCollections,
+                        modifier = Modifier.weight(1f),
+                        transitionSpec = { fadeIn(tween(Motion.Short, delayMillis = Motion.Out, easing = LinearEasing)) togetherWith fadeOut(tween(Motion.Out, easing = LinearEasing)) },
+                        label = "libraryView",
+                    ) { showCollections ->
+                        if (showCollections) {
                             LazyColumn(contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 100.dp)) {
-                                item(key = "count") {
-                                    val n = s.items.size
-                                    val what = buildString {
-                                        s.filters.intentId?.let { append(" for ", intentName(s.intents, it)) }
-                                        s.filters.platform?.let { append(" from ", it.label) }
-                                        if (isEmpty()) append(" and notes")
+                                items(s.collections, key = { it.first.id }) { (c, n) -> Box(calmItem()) { CollectionRow(c.name, n) { onCollection(c.id) } } }
+                                item(key = "manage") { CButton("Manage collections", onClick = onManageCollections, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) }
+                            }
+                        } else {
+                            Column(Modifier.fillMaxSize()) {
+                                PlatformChipRow(s, vm, onFilters = { filters = true })
+                                val sec = s.sections
+                                LazyColumn(contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 100.dp)) {
+                                    item(key = "count") {
+                                        val n = sec.active.size
+                                        val what = buildString {
+                                            s.filters.intentId?.let { append(" for ", intentName(s.intents, it)) }
+                                            s.filters.platform?.let { append(" from ", it.label) }
+                                            if (isEmpty()) append(" and notes")
+                                        }
+                                        Fine("$n ${if (n == 1) "save" else "saves"}$what · newest first", Modifier.padding(top = 6.dp))
                                     }
-                                    Fine("$n ${if (n == 1) "save" else "saves"}$what · newest first", Modifier.padding(top = 6.dp))
-                                }
-                                if (s.items.isEmpty()) {
-                                    item(key = "empty") { EmptyState(null, "Nothing matches these filters.", { CButton("Clear filters", onClick = vm::resetFilters, small = true) }, rings = false) }
-                                }
-                                items(s.items, key = { it.id }) { i ->
-                                    ItemRow(
-                                        i, i.meta() + " · " + i.savedLabel(), onClick = { onOpenItem(i) },
-                                        right = { Tag(i.rightTag(s.intents) ?: intentName(s.intents, i.intentId)) },
-                                        modifier = calmItem(), share = "library",
-                                    )
+                                    if (sec.active.isEmpty() && sec.completed.isEmpty()) {
+                                        item(key = "empty") { EmptyState(null, "Nothing matches these filters.", { CButton("Clear filters", onClick = vm::resetFilters, small = true) }, rings = false) }
+                                    } else if (sec.active.isEmpty()) {
+                                        item(key = "nothingActive") { Fine("Nothing waiting. What you finished is below.", Modifier.padding(vertical = 14.dp)) }
+                                    }
+                                    items(sec.active, key = { it.id }) { i ->
+                                        ItemRow(
+                                            i, i.meta() + " · " + i.savedLabel(), onClick = { onOpenItem(i) },
+                                            right = { Tag(i.rightTag(s.intents) ?: intentName(s.intents, i.intentId)) },
+                                            modifier = calmItem(), share = "library",
+                                        )
+                                    }
+                                    if (sec.completed.isNotEmpty()) {
+                                        item(key = "completedHeader") {
+                                            CompletedHeader(sec.completed.size, completedOpen) {
+                                                completedOpen = !completedOpen
+                                                if (!completedOpen) showAllCompleted = false
+                                            }
+                                        }
+                                        if (completedOpen) {
+                                            items(sec.shownCompleted(showAllCompleted), key = { it.id }) { i ->
+                                                ItemRow(
+                                                    i, i.completedMeta(s.intents), onClick = { onOpenItem(i) },
+                                                    completed = true, modifier = calmItem(), share = "library",
+                                                )
+                                            }
+                                            if (sec.hiddenCompleted(showAllCompleted) > 0) {
+                                                item(key = "completedMore") { ShowAllCompleted(sec.completed.size) { showAllCompleted = true } }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -161,24 +181,124 @@ fun LibraryScreen(
         }
     }
 
-    if (filters) FilterSheet(s, vm, onDismiss = { filters = false })
+    if (filters) FilterSheet(s, vm, onDismiss = { filters = false }, showStatus = false)
 }
 
-/** A Kept chip (saves kept for when you need them) and the platforms the library has, as scrolling chips. Other intents and status live in the Filter sheet. */
+private val FieldHeight = 46.dp
+
+/**
+ * The Library header. At rest it is the title with a search icon and the Trash button. Opening search grows
+ * the icon leftwards into a full-width field (the title and Trash fade out, the icon turns into a back arrow),
+ * so the page needs no permanent search box.
+ */
+@Composable
+private fun SearchHeader(
+    searching: Boolean,
+    query: String,
+    onQuery: (String) -> Unit,
+    onSubmit: () -> Unit,
+    onOpen: () -> Unit,
+    onClose: () -> Unit,
+    onTrash: () -> Unit,
+) {
+    val c = C.colors
+    val p by animateFloatAsState(if (searching) 1f else 0f, tween(Motion.Medium, easing = Motion.Decelerate), label = "searchOpen")
+    val focus = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    BackHandler(enabled = searching, onBack = onClose)
+    LaunchedEffect(searching) { if (searching) focus.requestFocus() else focusManager.clearFocus() }
+
+    BoxWithConstraints(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 6.dp).heightIn(min = 52.dp)) {
+        val titleAlpha = (1f - p / 0.4f).coerceIn(0f, 1f)
+        val contentAlpha = ((p - 0.3f) / 0.7f).coerceIn(0f, 1f)
+        Text("Library", style = CaddisType.h1, color = c.fg, modifier = Modifier.align(Alignment.CenterStart).padding(start = 18.dp).graphicsLayer { alpha = titleAlpha })
+        if (p < 1f) {
+            IconBtn(CIcons.Trash, "Trash", onTrash, Modifier.align(Alignment.CenterEnd).padding(end = 10.dp).graphicsLayer { alpha = 1f - p })
+        }
+        // Collapsed: a 46 dp circle just left of Trash. Open: from 10 dp to 10 dp of the screen width.
+        val closedX = maxWidth - 54.dp - FieldHeight
+        val x = lerp(closedX, 10.dp, p)
+        val w = lerp(FieldHeight, maxWidth - 20.dp, p)
+        Row(
+            Modifier
+                .align(Alignment.CenterStart)
+                .offset(x = x)
+                .size(width = w, height = FieldHeight)
+                .border(1.dp, c.line.copy(alpha = c.line.alpha * contentAlpha), RoundedCornerShape(FieldHeight / 2))
+                .clip(RoundedCornerShape(FieldHeight / 2)),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                Modifier
+                    .size(FieldHeight)
+                    .clip(CircleShape)
+                    .clickable(role = Role.Button) { if (searching) onClose() else onOpen() }
+                    .semantics { contentDescription = if (searching) "Close search" else "Search your saves" },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(CIcons.Search, null, tint = c.fg, modifier = Modifier.size(22.dp).graphicsLayer { alpha = 1f - p })
+                Icon(CIcons.Back, null, tint = c.fg, modifier = Modifier.size(22.dp).graphicsLayer { alpha = p })
+            }
+            if (searching || p > 0f) {
+                CField(
+                    query, onQuery, "Search your saves", label = "Search saves", boxed = false,
+                    imeAction = ImeAction.Search, onIme = onSubmit,
+                    modifier = Modifier.weight(1f).focusRequester(focus).graphicsLayer { alpha = contentAlpha },
+                )
+                if (query.isNotEmpty()) IconBtn(CIcons.Close, "Clear search", { onQuery("") }, size = 18.dp)
+                else Spacer(Modifier.width(12.dp))
+            }
+        }
+    }
+}
+
+/** The platforms the library has, as scrolling chips. Intents (Just keep included) live in the Filter sheet. */
 @Composable
 private fun PlatformChipRow(s: LibraryState, vm: LibraryViewModel, onFilters: () -> Unit) {
-    val n = s.filters.sheetCount(platformInRow = true, keptInRow = true)
-    val kept = s.filters.intentId == Intents.KEEP
+    val n = s.filters.sheetCount(platformInRow = true)
     LazyRow(contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 4.dp, bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         item { CChip("Filter" + if (n > 0) " · $n" else "", selected = n > 0, onClick = onFilters, leading = CIcons.Filter, contentDescription = "More filters") }
-        item { CChip("All", selected = s.filters.platform == null && !kept, onClick = { vm.setPlatform(null); if (kept) vm.setIntentFilter(Intents.KEEP) /* toggles Kept off */ }) }
-        if (s.keptCount > 0 || kept) {
-            item { CChip("Kept · ${s.keptCount}", selected = kept, onClick = { vm.setIntentFilter(Intents.KEEP) }, contentDescription = "Saves kept for when you need them") }
-        }
+        item { CChip("All", selected = s.filters.platform == null, onClick = { vm.setPlatform(null) }) }
         items(s.platforms, key = { it.platform.id }) { f ->
             val on = s.filters.platform == f.platform
             CChip(f.platform.label, selected = on, onClick = { vm.setPlatform(if (on) null else f.platform) })
         }
+    }
+}
+
+/** The one quiet row that opens and closes the Completed section: "COMPLETED · 12" and Show / Hide. */
+@Composable
+private fun CompletedHeader(count: Int, open: Boolean, onToggle: () -> Unit) {
+    val c = C.colors
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .padding(top = 8.dp)
+            .clickable(role = Role.Button, onClick = onToggle)
+            .semantics {
+                contentDescription = "Completed, $count ${if (count == 1) "save" else "saves"}"
+                stateDescription = if (open) "Expanded" else "Collapsed"
+            },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("COMPLETED · $count", style = CaddisType.eyebrow, color = c.fg2, modifier = Modifier.weight(1f))
+        Text(if (open) "Hide" else "Show", style = CaddisType.sub, color = c.accent)
+        Icon(if (open) CIcons.Down else CIcons.Chevron, null, tint = c.accent, modifier = Modifier.size(18.dp))
+    }
+    HorizontalDivider(color = c.line)
+}
+
+/** Under the latest few completed saves: the rest, in place. */
+@Composable
+private fun ShowAllCompleted(total: Int, onClick: () -> Unit) {
+    val c = C.colors
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("Show all $total", style = CaddisType.strong, color = c.accent, modifier = Modifier.weight(1f))
+        Icon(CIcons.Chevron, null, tint = c.accent, modifier = Modifier.size(18.dp))
     }
 }
 
@@ -207,24 +327,10 @@ fun CollectionBox() {
     ) { Icon(CIcons.Library, null, tint = c.fg2, modifier = Modifier.size(22.dp)) }
 }
 
-/** Screens 17–18: search on the phone (SRC-01/02/03). */
+/** Screens 17-18: search results on the phone (SRC-01/02/03). The field lives in [SearchHeader]. */
 @Composable
-private fun SearchView(s: LibraryState, vm: LibraryViewModel, onOpenItem: (Item) -> Unit, onFilters: () -> Unit) {
-    val focus = remember { FocusRequester() }
-    BackHandler { vm.closeSearch() }
-    LaunchedEffect(Unit) { focus.requestFocus() }
+private fun SearchBody(s: LibraryState, vm: LibraryViewModel, onOpenItem: (Item) -> Unit, onFilters: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.padding(start = 18.dp, end = 8.dp, top = 10.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(
-                Modifier.weight(1f).heightIn(min = 46.dp).border(1.dp, C.colors.line, RoundedCornerShape(24.dp)).padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Icon(CIcons.Search, null, tint = C.colors.fg2, modifier = Modifier.size(20.dp))
-                CField(s.query, vm::setQuery, "Search your saves", label = "Search saves", boxed = false, imeAction = ImeAction.Search, onIme = vm::submitSearch, modifier = Modifier.weight(1f).focusRequester(focus))
-            }
-            CButton("Cancel", onClick = vm::closeSearch, style = BtnStyle.Ghost, small = true)
-        }
         LazyColumn(contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 100.dp)) {
             if (s.query.isBlank()) {
                 if (s.recent.isNotEmpty()) {
@@ -244,16 +350,24 @@ private fun SearchView(s: LibraryState, vm: LibraryViewModel, onOpenItem: (Item)
                 }
                 if (s.hits.isEmpty()) item { EmptyState(null, "Nothing matches. Try fewer words.", rings = false) }
                 items(s.hits, key = { it.item.id }) { h ->
-                    ItemRow(h.item, h.item.meta(), onClick = { onOpenItem(h.item) }, why = h.why, right = h.item.rightTag(s.intents)?.let { t -> { Tag(t) } })
+                    // A completed save keeps its look and carries the tick, so it sits among the other matches by relevance.
+                    if (h.item.status == ItemStatus.DONE) {
+                        ItemRow(h.item, h.item.completedMeta(s.intents), onClick = { onOpenItem(h.item) }, why = h.why, completed = true)
+                    } else {
+                        ItemRow(h.item, h.item.meta(), onClick = { onOpenItem(h.item) }, why = h.why, right = h.item.rightTag(s.intents)?.let { t -> { Tag(t) } })
+                    }
                 }
             }
         }
     }
 }
 
-/** Screen 13: filters for intent, platform and status (SRC-04, LIB-03). */
+/**
+ * Screen 13: filters for intent, platform and status (SRC-04, LIB-03). The Library passes [showStatus] = false: its
+ * Completed section already says which saves are finished, so a Status choice would only fight with it.
+ */
 @Composable
-fun FilterSheet(s: LibraryState, vm: LibraryViewModel, onDismiss: () -> Unit) {
+fun FilterSheet(s: LibraryState, vm: LibraryViewModel, onDismiss: () -> Unit, showStatus: Boolean = true) {
     val count = if (s.searching && s.query.isNotBlank()) s.hits.size else s.items.size
     CSheet(onDismiss) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -262,7 +376,7 @@ fun FilterSheet(s: LibraryState, vm: LibraryViewModel, onDismiss: () -> Unit) {
         }
         FilterGroup("Intent", s.intents.map { it.name to (s.filters.intentId == it.id) }) { idx -> vm.setIntentFilter(s.intents[idx].id) }
         PlatformGroup(s, vm)
-        FilterGroup("Status", StatusFilter.entries.map { it.label to (s.filters.status == it) }) { idx -> vm.setStatus(StatusFilter.entries[idx]) }
+        if (showStatus) FilterGroup("Status", StatusFilter.entries.map { it.label to (s.filters.status == it) }) { idx -> vm.setStatus(StatusFilter.entries[idx]) }
         CButton("Show $count ${if (count == 1) "save" else "saves"}", onClick = onDismiss, style = BtnStyle.Primary, modifier = Modifier.fillMaxWidth().padding(top = 18.dp))
     }
 }

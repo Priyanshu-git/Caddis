@@ -56,7 +56,7 @@ unless asked.
             saveLink / saveNote
                    │
                    ▼
-   ┌────────────  ACTIVE  ◄───────── markActive (undo done / "Mark active")
+   ┌────────────  ACTIVE  ◄───────── markActive (undo done / "Mark incomplete")
    │               │  ▲                    ▲
    │ markDone      │  │ restore            │
    ▼               │  │ (back to DONE if doneAt != null, else ACTIVE)
@@ -81,11 +81,11 @@ unless asked.
 - **Onboarding**: five intro cards you swipe through (save from any app, say why, it comes back when it fits, finish it or keep it), then an opt-in reminders question; Skip leaves early; Home explains how to save the first one.
 - **Home**: ≤3 picks, "Bring it back" later options (tonight / weekend / next week / date / not again),
   Done and Open, This week card, "Time for a tidy-up" card, "Next up" hint when nothing fits.
-- **Library**: all saves and notes newest first; a Kept chip (Just keep saves) and platform chips (only platforms the library has); Filter sheet (intent, platform, status);
+- **Library**: active saves and notes newest first, then a collapsed **Completed** section for finished ones (latest 3, then "Show all"); platform chips (only platforms the library has); Filter sheet (intent, platform);
   collections tab and shelves; offline keyword search (FTS4) with "why it matched" text and
   recent searches (in memory only).
 - **Item page** and **Note editor** (rich text stored as Markdown, autosave, links, undo; formatting bar above the keyboard; done/later/delete in its ⋮ menu).
-- **Finish**: Done/Mark active, delete to Trash with Undo, Trash screen (restore / delete forever),
+- **Finish**: Done/Mark incomplete, delete to Trash with Undo, Trash screen (restore / delete forever),
   Tidy-up (keep or delete link saves untouched for 90 days; never Just keep saves, notes or saves set to "Not again").
 - **Notifications** (opt-in): one daily pick and a Sunday-evening weekly summary, quiet hours,
   shared one-a-day budget; local only.

@@ -72,6 +72,13 @@ selected platform in view, and never folds a single platform.
 
 `DefaultTitles.of(url)` — readable title when none is known (see also `Item.displayTitle`): the URL without its scheme, for every site.
 
+## Library sections (`library/LibrarySections.kt`)
+
+`LibrarySections.of(items)` splits the Library into `active` (status ACTIVE, the input order, newest saved first) and `completed` (status DONE,
+latest `doneAt` first, falling back to `updatedAt`, then newest saved first). DELETED saves are in neither. `shownCompleted(showAll)` is
+the latest `PREVIEW` (3) completed saves, or all of them; `hiddenCompleted(showAll)` is how many "Show all" would add (0 means no link).
+Tests: `LibrarySectionsTest`.
+
 ## Intent guessing (`intent/IntentGuesser.kt`)
 
 `IntentGuesser(validIntentIds).guess(GuessInput, CorrectionStats): String`:

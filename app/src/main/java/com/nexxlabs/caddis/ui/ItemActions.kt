@@ -111,5 +111,11 @@ fun Item.rightTag(intents: List<CaddisIntent>, clock: Clock = Clock.systemDefaul
     return null
 }
 
+/** The second line of a completed save: "Made it · 12 Nov", the intent's done word and the day it was finished. */
+fun Item.completedMeta(intents: List<CaddisIntent>, clock: Clock = Clock.systemDefaultZone()): String {
+    val at = doneAt ?: return doneLabel(intents, intentId)
+    return doneLabel(intents, intentId) + " · " + at.atZone(clock.zone).toLocalDate().dayMonth()
+}
+
 fun intentName(intents: List<CaddisIntent>, id: String) = intents.firstOrNull { it.id == id }?.name ?: "Just keep"
 

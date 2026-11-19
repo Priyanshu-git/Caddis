@@ -179,7 +179,7 @@ fun NoteScreen(onBack: () -> Unit, onManageIntents: () -> Unit, vm: ItemViewMode
                 IconBtn(CIcons.More, "More", { menu = true })
                 NoteMenu(
                     open = menu,
-                    doneLabel = if (it.status == ItemStatus.DONE) "Mark active" else doneLabel(intents, it.intentId),
+                    doneLabel = if (it.status == ItemStatus.DONE) "Mark incomplete" else doneLabel(intents, it.intentId),
                     onDismiss = { menu = false },
                     onDone = { menu = false; if (it.status == ItemStatus.DONE) vm.markActive() else vm.done() },
                     onLater = { menu = false; sheet = NoteSheet.Later },

@@ -6,9 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.nexxlabs.caddis.data.LibraryRepository
 import com.nexxlabs.caddis.domain.analytics.AnalyticsEvent
 import com.nexxlabs.caddis.domain.analytics.AnalyticsSink
+import com.nexxlabs.caddis.domain.library.LibrarySections
 import com.nexxlabs.caddis.domain.model.Collection
 import com.nexxlabs.caddis.domain.model.Intent
-import com.nexxlabs.caddis.domain.model.Intents
 import com.nexxlabs.caddis.domain.model.Item
 import com.nexxlabs.caddis.domain.model.ItemStatus
 import com.nexxlabs.caddis.domain.model.Platform
@@ -43,10 +43,10 @@ data class Filters(
 ) {
     /**
      * What the Filter button counts: the choices that live inside the sheet. The Library's chip row
-     * shows platforms itself ([platformInRow]) and a Kept chip ([keptInRow]), so those are not counted there.
+     * shows platforms itself ([platformInRow]), so that one is not counted there.
      */
-    fun sheetCount(platformInRow: Boolean = false, keptInRow: Boolean = false): Int =
-        (if (intentId != null && !(keptInRow && intentId == Intents.KEEP)) 1 else 0) +
+    fun sheetCount(platformInRow: Boolean = false): Int =
+        (if (intentId != null) 1 else 0) +
             (if (platform != null && !platformInRow) 1 else 0) +
             (if (status != StatusFilter.ALL) 1 else 0)
 
@@ -65,14 +65,15 @@ data class Filters(
 data class SearchHit(val item: Item, val why: String)
 
 data class LibraryState(
+    /** Everything the filters let through, finished or not. The shelf lists these; the Library splits them in [sections]. */
     val items: List<Item> = emptyList(),
+    /** The same saves as the Library shows them: active first, then a Completed section (LIB-01). */
+    val sections: LibrarySections = LibrarySections(emptyList(), emptyList()),
     val hits: List<SearchHit> = emptyList(),
     val intents: List<Intent> = emptyList(),
     val collections: List<Pair<Collection, Int>> = emptyList(),
     /** Platforms that have at least one save in scope, most saves first (LIB-03). Not a fixed list. */
     val platforms: List<PlatformFacet> = emptyList(),
-    /** Saves in scope that were kept "for when you need it" (Just keep). The Kept chip shows only when there are some. */
-    val keptCount: Int = 0,
     val filters: Filters = Filters(),
     val query: String = "",
     val searching: Boolean = false,
@@ -118,13 +119,14 @@ class LibraryViewModel @Inject constructor(
         // The chosen platform's last save may be gone: then there is nothing left to filter by.
         val filters = u.filters.platform?.takeIf { p -> platforms.none { it.platform == p } }
             ?.let { u.filters.copy(platform = null) } ?: u.filters
+        val shown = filters.apply(items)
         LibraryState(
-            items = filters.apply(items),
+            items = shown,
+            sections = LibrarySections.of(shown),
             hits = if (q.isEmpty()) emptyList() else filters.apply(found).map { SearchHit(it, SearchQuery.explain(it, q)) },
             intents = intents,
             collections = counts,
             platforms = platforms,
-            keptCount = inScope.count { it.intentId == Intents.KEEP },
             filters = filters,
             query = u.query,
             searching = u.searching,

@@ -263,7 +263,7 @@ class NoteLifecycleJourneyTest : NoteJourneyBase() {
         eventually("marked done") { item(id).status == ItemStatus.DONE }
 
         tapDescribed("More")
-        tapText("Mark active")
+        tapText("Mark incomplete")
         eventually("active again") { item(id).status == ItemStatus.ACTIVE }
     }
 
@@ -275,7 +275,7 @@ class NoteLifecycleJourneyTest : NoteJourneyBase() {
         tapDescribed("More")
         tapText("Delete")
         eventually("moved to Trash") { trash().any { it.id == id } }
-        awaitText("Search your saves")
+        await(described("Search your saves"))
     }
 
     @Test
@@ -389,7 +389,7 @@ class NoteLifecycleJourneyTest : NoteJourneyBase() {
         assertStored(id, "lanterns and ribbon")
         leaveEditor()
 
-        awaitText("Search your saves")
+        await(described("Search your saves"))
         tapDescribed("Search your saves")
         type("Search saves", "lanterns")
         awaitText("1 result")
@@ -418,7 +418,7 @@ class NoteLifecycleJourneyTest : NoteJourneyBase() {
         assertStored(id, "candle")
         leaveEditor()
 
-        awaitText("Search your saves")
+        await(described("Search your saves"))
         tapDescribed("Search your saves")
         type("Search saves", "scarf")
         awaitText("Nothing matches. Try fewer words.")

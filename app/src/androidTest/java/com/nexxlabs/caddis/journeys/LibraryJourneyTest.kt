@@ -35,7 +35,7 @@ class LibraryJourneyTest : JourneyTest() {
     private fun openLibrary() {
         launchApp()
         goTo("Library")
-        awaitText("Search your saves")
+        await(described("Search your saves"))
     }
 
     private fun search(words: String) {
@@ -70,12 +70,40 @@ class LibraryJourneyTest : JourneyTest() {
     }
 
     @Test
+    fun search_isAnIconAtRest_andOpensAField_thatTheBackArrowCloses() {
+        openLibrary()
+        // At rest there is no search box, only the icon next to Trash.
+        assertTrue(!exists(field("Search saves")))
+        assertTrue(exists(described("Trash")))
+
+        tapDescribed("Search your saves")
+        await(field("Search saves"))
+        awaitGone(described("Trash"))
+
+        tapDescribed("Close search")
+        awaitGone(field("Search saves"))
+        await(described("Trash"))
+        awaitText("3 saves and notes · newest first")
+    }
+
+    @Test
+    fun search_clearButtonEmptiesTheWords_withoutClosingSearch() {
+        openLibrary()
+        search("sourdough")
+        awaitText("1 result")
+
+        tapDescribed("Clear search")
+        awaitText("Search matches the words you type", substring = true)
+        assertTrue(exists(field("Search saves")))
+    }
+
+    @Test
     fun search_withNoMatch_saysSo_andCancelGoesBack() {
         openLibrary()
         search("zzzz")
 
         awaitText("Nothing matches. Try fewer words.")
-        tapButton("Cancel")
+        tapDescribed("Close search")
         awaitText("3 saves and notes · newest first")
     }
 
@@ -85,7 +113,7 @@ class LibraryJourneyTest : JourneyTest() {
         search("sourdough")
         awaitText("1 result")
         compose.onNode(field("Search saves")).performImeAction()
-        tapButton("Cancel")
+        tapDescribed("Close search")
 
         tapDescribed("Search your saves")
         awaitText("RECENT")
@@ -114,19 +142,21 @@ class LibraryJourneyTest : JourneyTest() {
     }
 
     @Test
-    fun theKeptChip_showsWhatYouKeptForLater_andTappingAgainClearsIt() {
+    fun justKeep_hasNoChip_andFiltersFromTheFilterSheet() {
         save("https://example.com/size-chart", "Size chart", Intents.KEEP)
         openLibrary()
 
         // The seeded note is Just keep too, so two saves are kept.
-        awaitText("Kept · 2")
-        tapButton("Kept · 2")
+        awaitText("Sourdough basics")
+        assertTrue("there is no Kept chip", !exists(hasText("Kept · 2")))
+
+        tapButton("Filter")
+        tapButton("Just keep")
+        tapButton("Show 2 saves")
+        awaitText("2 saves for Just keep · newest first")
         assertShowing("Size chart", "Gift ideas")
         assertTrue(!exists(hasText("Sourdough basics")))
-        assertTrue("the Filter button does not count the Kept chip", !exists(hasText("Filter · 1")))
-
-        tapButton("Kept · 2")
-        awaitText("Sourdough basics")
+        assertTrue("the Filter button counts the intent", exists(hasText("Filter · 1")))
     }
 
     @Test
@@ -144,25 +174,65 @@ class LibraryJourneyTest : JourneyTest() {
 
     @Test
     fun aFilterThatMatchesNothing_offersToClearIt() {
-        runBlocking { repo.markDone(sourdoughId) }
         openLibrary()
 
+        // The only Cook save is on example.com, not YouTube.
+        tapButton("YouTube")
+        awaitText("1 save from YouTube · newest first")
         tapButton("Filter")
         tapButton("Cook")
-        // Cook saves are all done, and Active hides them.
-        tapButton("Active")
-        awaitText("Nothing matches these filters.")
         tapButton("Show 0 saves")
+        awaitText("Nothing matches these filters.")
         tapButton("Clear filters")
         awaitText("3 saves and notes · newest first")
     }
 
     @Test
-    fun aFinishedSave_staysInTheLibrary_taggedWithItsDoneWord() {
+    fun aFinishedSave_movesToACollapsedCompletedSection_thatOpensAndClosesOnTap() {
         runBlocking { repo.markDone(rustId) }
         openLibrary()
 
-        assertShowing("Rust ownership explained", "Learned")
+        // Collapsed by default: the count line is the active saves only, and the finished one is out of sight.
+        awaitText("2 saves and notes · newest first")
+        assertShowing("COMPLETED · 1")
+        assertTrue(!exists(hasText("Rust ownership explained")))
+
+        tapDescribed("Completed, 1 save")
+        awaitText("Rust ownership explained")
+        awaitText("Learned", substring = true)
+
+        tapDescribed("Completed, 1 save")
+        awaitNoText("Rust ownership explained")
+    }
+
+    @Test
+    fun theCompletedSection_showsTheLatestThree_andShowAllOpensTheRest() {
+        val older = (1..4).map { n ->
+            testClock.advance(java.time.Duration.ofMinutes(1))
+            save("https://example.com/old-$n", "Old save $n", Intents.READ).id
+        }
+        older.forEach { id -> testClock.advance(java.time.Duration.ofMinutes(1)); runBlocking { repo.markDone(id) } }
+        openLibrary()
+
+        tapDescribed("Completed, 4 saves")
+        awaitText("Show all 4")
+        // Finished last is on top; the first one finished is behind "Show all".
+        awaitText("Old save 4")
+        assertTrue(!exists(hasText("Old save 1")))
+
+        tapText("Show all 4")
+        awaitText("Old save 1")
+    }
+
+    @Test
+    fun search_stillFindsCompletedSaves_markedWithTheirDoneWord() {
+        runBlocking { repo.markDone(rustId) }
+        openLibrary()
+        search("rust")
+
+        awaitText("1 result")
+        assertShowing("Rust ownership explained")
+        awaitText("Learned", substring = true)
     }
 
     @Test
@@ -181,7 +251,7 @@ class LibraryJourneyTest : JourneyTest() {
         tapTab("All saves")
         tapText("Sourdough basics")
         awaitText("WHY YOU KEPT IT")
-        tapButton("+ Add")
+        tapButton("Add")
         tapButton("Weekend cooking")
         eventually("filed") { inLibrary(sourdoughId).collectionIds.size == 1 }
         back()

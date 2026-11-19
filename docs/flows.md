@@ -89,7 +89,7 @@ no picks but some intent has active saves and a rule.
 
 All via `ItemActions` (app scope) so leaving a screen never drops them:
 
-- Done: `markDone` → toast with Undo (`markActive`). On the item page a DONE item shows "Mark active" instead.
+- Done: `markDone` → toast with Undo (`markActive`). On the item page a DONE item shows a "Completed · Made it · 12 Nov" card under the description and "Mark incomplete" (same `markActive`) in the bottom bar.
 - Delete: `delete(item, source)` → toast "Moved “<title ≤ 28>” to Trash" with Undo (`restore`). Item page Delete also pops back.
 - Trash screen: Restore (`restore`, toast "Restored to your Library.") or Delete forever (`purge`, "Deleted for good.").
 - Weekly counters adjust inside the same transactions (see [data.md](data.md#weekly-counters)).
@@ -99,12 +99,22 @@ All via `ItemActions` (app scope) so leaving a screen never drops them:
 `LibraryViewModel` keeps UI state (`Filters`, query, `searching`, `showCollections`, `recent`) in a private `MutableStateFlow` and
 combines it with the library, search results, intents and collections.
 
-- **Filters**: Library chip row = Filter button + "All" + **"Kept · n"** (only when the library has Just keep saves, `LibraryState.keptCount`; it is the Just keep intent filter, tap again to clear, and the Filter button does not count it) + one chip per platform in the library (`LibraryState.platforms`, scrolls, tap again to clear); Filter sheet (intent, platform, status Active/Done/All; the button counts intent + status on the Library, plus platform in search), applied in memory by `Filters.apply`. The Platform group is **dynamic**: `LibraryState.platforms` comes from
+- **Filters**: Library chip row = Filter button + "All" + one chip per platform in the library (`LibraryState.platforms`, scrolls, tap again to clear); there is no Kept chip, Just keep is an ordinary choice in the sheet's Intent group. Filter sheet (intent and platform; the Library passes `showStatus = false`, the shelf still shows Status Active/Done/All; the button counts intent, plus platform in search), applied in memory by `Filters.apply`. The Platform group is **dynamic**: `LibraryState.platforms` comes from
   `PlatformFacets.of` over the saves in scope (a collection shelf lists only its own), most saves first; first 6 shown, then "More · n"; the
   chosen platform stays visible; the group is hidden when there are no link saves; a filter on a platform whose last save is gone is dropped.
-- **Search**: `openSearch()` resets query and filters. The query is debounced 120 ms into `repo.search(q)` (FTS prefix AND). Hits
+- **Completed section** (LIB-01): `LibraryState.sections = LibrarySections.of(filtered items)` splits the saves the filters let through into `active`
+  (newest saved first, shown as before) and `completed` (status DONE, latest `doneAt` first). The count line counts `active` only. Under the active
+  rows sits one "COMPLETED · n" row, **collapsed on first open**; tapping it shows the latest 3 (`LibrarySections.PREVIEW`) and "Show all n"
+  shows the rest in place. Open/closed and show-all are `rememberSaveable` in `LibraryScreen`, so they survive opening a save and coming
+  back or switching tabs, and start collapsed again after the app restarts. Collapsing resets "Show all". Filters apply to both groups. Completed rows
+  keep their normal colours and thumbnails, gain a green tick (`CompletedTick`) and read "Made it · 12 Nov" (`Item.completedMeta`). With no
+  active saves the list says "Nothing waiting. What you finished is below."; with nothing at all it shows the usual empty state.
+- **Search**: there is no search box at rest; the Library header shows a search icon beside Trash. Tapping it (`openSearch()`) grows the
+  icon into a full-width field in the header (the icon becomes a back arrow, ✕ clears the words and keeps search open, back arrow or system
+  back calls `closeSearch()`). `openSearch()` and `closeSearch()` reset query and filters. The query is debounced 120 ms into `repo.search(q)` (FTS prefix AND). Hits
   show `SearchQuery.explain` ("Matched in the title"). `submitSearch()` adds the words to `recent` (max 4, **memory only**) and logs
-  `SearchRun(resultBucket)` — never the words.
+  `SearchRun(resultBucket)` — never the words. Search returns active and completed saves together by relevance; a completed hit carries the
+  tick and "Made it · 12 Nov" instead of a done-word pill.
 - **Collections tab** lists collections with counts; a collection opens `shelf/<id>` (same `LibraryViewModel`, `collectionId`
   nav argument, status defaults to Active).
 
@@ -115,7 +125,7 @@ via …", description, "Why you kept it" (inline reason edit, ≤ 140), note car
 allowed, no length limit, autosaves as you type, no other screen), "Collections" (rests as a read-only list of the collections it is in with an Edit button, "Add" when there are none; Edit opens
 the collection chips in place and becomes Done, see "Collection chips" below),
 "Saved <date> · details loaded", Refresh. Top bar: Edit details, Share link (only with a URL), Bring back later. Bottom bar:
-Open (links only), Done/Mark active, Delete.
+Open (links only), Done/Mark incomplete, and Delete as a 48 dp trash icon button at the end (`CIconButton`, description "Delete") so the middle button has room for a long label.
 
 **Collection chips** (`CollectionChips`, used by the save sheet directly, and by the item page and standalone notes through
 `CollectionsSection`, which keeps them hidden until Edit is pressed; Done with a name still typed creates it). All collections show as chips in a

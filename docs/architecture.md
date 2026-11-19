@@ -72,7 +72,7 @@ Details of every rule: [domain.md](domain.md).
 | `notify/Notifier.kt` | Notification channels; daily pick and weekly summary notifications; permission check. |
 | `di/AppModule.kt` | Hilt: DB, DataStore, `Clock`, app `CoroutineScope`, `OkHttpClient`, `AnalyticsSink`; `BindingsModule` binds `DetailsScheduler → WorkScheduler`. Instrumented tests replace both with `androidTest/…/TestModule.kt` (so a binding added here needs a test counterpart there). |
 | `ui/` | `ItemActions` (shared item actions), `Messenger` (toasts), `Motion.kt` (animation vocabulary). Sub-packages below. |
-| `ui/shell/` | `CaddisRoot`, `CaddisShell`, `BottomBar` (+ `Tab`), `ToastHost`. |
+| `ui/shell/` | `CaddisRoot`, `CaddisShell`, `BottomBar` (+ `Tab`), `BarVisibility` (hide-on-scroll), `ToastHost`. |
 | `ui/nav/Navigation.kt` | The route table (`CaddisNavHost`), `HOME_ROUTE`, `navigateToTab`. |
 | `ui/home/`, `ui/library/`, `ui/item/`, `ui/capture/`, `ui/manage/`, `ui/profile/`, `ui/sheets/` | Screens and their ViewModels. See [ui.md](ui.md). |
 | `ui/components/` | Shared composables (`Components.kt`, `Fields.kt`, `Icons.kt`, `Sheet.kt`). |

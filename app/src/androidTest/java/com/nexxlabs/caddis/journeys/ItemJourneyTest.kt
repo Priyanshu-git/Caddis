@@ -64,7 +64,9 @@ class ItemJourneyTest : JourneyTest() {
     fun theItemPage_showsWhatYouKept_andWhy() {
         openItem()
 
-        assertShowing("Sourdough basics", "“for the long weekend”", "Open", "Made it", "Delete")
+        assertShowing("Sourdough basics", "“for the long weekend”", "Open", "Made it")
+        // Delete is an icon at the end of the bottom bar.
+        await(described("Delete"))
         assertTrue(exists(described("Intent: Cook. Change")))
         assertTrue(exists(described("Edit details")))
         assertTrue(exists(described("Share link")))
@@ -162,15 +164,22 @@ class ItemJourneyTest : JourneyTest() {
     }
 
     @Test
-    fun done_thenMarkActive() {
+    fun done_thenMarkIncomplete() {
         openItem()
 
         tapButton("Made it")
         awaitText("Marked “Made it”.")
         eventually("done") { item(id).status == ItemStatus.DONE }
-        awaitText("Mark active")
+        // The page says the save is completed, and the bottom button takes it back.
+        awaitText("Completed")
+        awaitText("Mark incomplete")
+        // The whole label fits in its button; it is not cut off with an ellipsis.
+        val layouts = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+        compose.onNode(hasText("Mark incomplete"), useUnmergedTree = true).fetchSemanticsNode()
+            .config[androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
+        assertTrue("the label is cut off", layouts.isNotEmpty() && !layouts.first().isLineEllipsized(0))
 
-        tapButton("Mark active")
+        tapButton("Mark incomplete")
         eventually("active again") { item(id).status == ItemStatus.ACTIVE }
         awaitText("Made it")
     }
@@ -179,7 +188,7 @@ class ItemJourneyTest : JourneyTest() {
     fun delete_movesToTrash_withUndo() {
         openItem()
 
-        tapButton("Delete")
+        tapDescribed("Delete")
         awaitText("Moved “Sourdough basics” to Trash")
         awaitText("Today")
         eventually("deleted") { item(id).status == ItemStatus.DELETED }

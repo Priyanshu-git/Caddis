@@ -43,14 +43,17 @@ import com.nexxlabs.caddis.ui.components.CButton
 import com.nexxlabs.caddis.ui.components.CCard
 import com.nexxlabs.caddis.ui.components.CChip
 import com.nexxlabs.caddis.ui.components.CField
+import com.nexxlabs.caddis.ui.components.CIconButton
 import com.nexxlabs.caddis.ui.components.CIcons
 import com.nexxlabs.caddis.ui.components.Chips
 import com.nexxlabs.caddis.ui.components.CollectionsSection
+import com.nexxlabs.caddis.ui.components.CompletedTick
 import com.nexxlabs.caddis.ui.components.Eyebrow
 import com.nexxlabs.caddis.ui.components.Fine
 import com.nexxlabs.caddis.ui.components.IconBtn
 import com.nexxlabs.caddis.ui.components.Sub
 import com.nexxlabs.caddis.ui.components.Thumb
+import com.nexxlabs.caddis.ui.completedMeta
 import com.nexxlabs.caddis.ui.intentName
 import com.nexxlabs.caddis.ui.savedLabel
 import com.nexxlabs.caddis.ui.sheets.EditDetailsSheet
@@ -102,6 +105,19 @@ fun ItemScreen(onBack: () -> Unit, onManageIntents: () -> Unit, vm: ItemViewMode
             if (by.isNotBlank()) Sub(by, Modifier.padding(top = 4.dp))
             if (it.description.isNotBlank()) Sub(it.description, Modifier.padding(top = 8.dp), style = CaddisType.body)
 
+            // A finished save says so here; the bottom button below takes it back to active.
+            if (it.status == ItemStatus.DONE) {
+                CCard(Modifier.fillMaxWidth().padding(top = 14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        CompletedTick(size = 30.dp)
+                        Column {
+                            Text("Completed", style = CaddisType.strong, color = c.fg)
+                            Fine(it.completedMeta(intents))
+                        }
+                    }
+                }
+            }
+
             Eyebrow("Why you kept it", Modifier.padding(top = 18.dp, bottom = 8.dp))
             if (editReason) {
                 var draft by remember { mutableStateOf(it.reason) }
@@ -142,9 +158,10 @@ fun ItemScreen(onBack: () -> Unit, onManageIntents: () -> Unit, vm: ItemViewMode
         HorizontalDivider(color = c.line)
         Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 18.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (it.url != null) CButton("Open", onClick = { vm.open() }, style = BtnStyle.Primary, modifier = Modifier.weight(1f))
-            if (it.status == ItemStatus.DONE) CButton("Mark active", onClick = { vm.markActive() }, modifier = Modifier.weight(1.3f))
-            else CButton(doneLabel(intents, it.intentId), onClick = { vm.done() }, modifier = Modifier.weight(1.3f))
-            CButton("Delete", onClick = { vm.delete(); onBack() }, modifier = Modifier.weight(1f))
+            // Delete is an icon so the middle button has room for "Mark incomplete" or a long done word.
+            if (it.status == ItemStatus.DONE) CButton("Mark incomplete", onClick = { vm.markActive() }, modifier = Modifier.weight(1.6f))
+            else CButton(doneLabel(intents, it.intentId), onClick = { vm.done() }, modifier = Modifier.weight(1.6f))
+            CIconButton(CIcons.Trash, "Delete", onClick = { vm.delete(); onBack() })
         }
     }
 

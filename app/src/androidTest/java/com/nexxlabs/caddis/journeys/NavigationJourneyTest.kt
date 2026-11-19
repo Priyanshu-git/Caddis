@@ -17,7 +17,7 @@ class NavigationJourneyTest : JourneyTest() {
         awaitText("Today")
 
         goTo("Library")
-        awaitText("Search your saves")
+        await(described("Search your saves"))
         goTo("Profile")
         awaitText("On this phone")
         goTo("Home")
@@ -31,7 +31,7 @@ class NavigationJourneyTest : JourneyTest() {
         assertTrue(exists(addButton))
 
         goTo("Library")
-        awaitText("Search your saves")
+        await(described("Search your saves"))
         assertTrue(exists(addButton))
 
         goTo("Profile")
@@ -56,7 +56,7 @@ class NavigationJourneyTest : JourneyTest() {
     fun back_fromATab_goesToHome() {
         launchApp()
         goTo("Library")
-        awaitText("Search your saves")
+        await(described("Search your saves"))
 
         back()
         awaitText("Today")
@@ -87,7 +87,7 @@ class NavigationJourneyTest : JourneyTest() {
         awaitText("WHY YOU KEPT IT")
         back()
         goTo("Library")
-        awaitText("Search your saves")
+        await(described("Search your saves"))
         goTo("Home")
 
         awaitText("Today")

@@ -36,7 +36,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -107,7 +109,12 @@ private fun CaddisShell(main: MainViewModel, capture: CaptureViewModel) {
     }
 
     // Before the first destination exists, treat the chrome as visible so it does not animate in on launch.
-    val showBar = entry == null || tab != null
+    val onTab = entry == null || tab != null
+    // Scrolling down tucks the bar (and lowers the add button) away; scrolling up or switching tab brings it back.
+    val density = LocalDensity.current
+    val barVisibility = remember { BarVisibility(hideAfterPx = with(density) { 24.dp.toPx() }) }
+    LaunchedEffect(tab) { barVisibility.show() }
+    val showBar = onTab && !barVisibility.hidden
     val showFab = entry == null || tab == Tab.HOME || tab == Tab.LIBRARY
     val opened = remember { OpenedItem() }
     // The bar keeps showing the tab you just left while it slides away.
@@ -121,7 +128,8 @@ private fun CaddisShell(main: MainViewModel, capture: CaptureViewModel) {
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
-            Box(Modifier.weight(1f)) {
+            // Only tab screens drive the bar; scrolling an item page must not leave it tucked away for the way back.
+            Box(Modifier.weight(1f).then(if (tab != null) Modifier.nestedScroll(barVisibility.connection) else Modifier)) {
                 CompositionLocalProvider(LocalOpenedItem provides opened) {
                     CaddisNavHost(nav, opened, ::openItem)
                 }
@@ -134,10 +142,11 @@ private fun CaddisShell(main: MainViewModel, capture: CaptureViewModel) {
                 BottomBar(tab ?: lastTab[0] ?: Tab.HOME) { t -> nav.navigateToTab(t) }
             }
         }
-        // Capture is a plus button on Home and Library (Experience overview).
+        // Capture is a plus button on Home and Library (Experience overview). It rides down with the bar.
+        val fabBottom by animateDpAsState(if (showBar) 84.dp else 20.dp, tween(Motion.Medium, easing = Motion.Standard), label = "fab")
         AddButton(
             visible = showFab,
-            modifier = Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 18.dp, bottom = 84.dp),
+            modifier = Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 18.dp, bottom = fabBottom),
             onClick = { capture.openAdd(clipboard.getText()?.text) },
         )
         val toastBottom by animateDpAsState(if (showBar) 84.dp else 20.dp, tween(Motion.Medium, easing = Motion.Standard), label = "toast")

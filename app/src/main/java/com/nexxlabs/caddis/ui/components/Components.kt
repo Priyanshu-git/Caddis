@@ -246,6 +246,35 @@ fun Thumb(item: Item, size: Dp, modifier: Modifier = Modifier, loading: Boolean 
 
 private fun Modifier.matchParentSizeCompat(w: Dp, h: Dp) = this.size(width = w, height = h)
 
+/** The green tick on the corner of a finished save's thumbnail. The word ("Made it") is in the row's text, so this is not announced. */
+/** A 48 dp square button with only an icon, looking like a default [CButton]. [label] is what TalkBack reads. */
+@Composable
+fun CIconButton(icon: ImageVector, label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val c = C.colors
+    val shape = RoundedCornerShape(14.dp)
+    val source = remember { MutableInteractionSource() }
+    Box(
+        modifier
+            .pressScale(source)
+            .size(48.dp)
+            .clip(shape)
+            .background(c.surface)
+            .border(1.dp, c.line, shape)
+            .clickable(interactionSource = source, indication = LocalIndication.current, role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
+    ) { Icon(icon, null, tint = c.fg, modifier = Modifier.size(22.dp)) }
+}
+
+@Composable
+fun CompletedTick(modifier: Modifier = Modifier, size: Dp = 20.dp) {
+    val c = C.colors
+    Box(
+        modifier.size(size).clip(CircleShape).background(c.good).border(2.dp, c.bg, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) { Icon(CIcons.Check, null, tint = c.onAccent, modifier = Modifier.size(size * 0.6f)) }
+}
+
 @Composable
 fun ItemRow(
     item: Item,
@@ -255,6 +284,8 @@ fun ItemRow(
     right: (@Composable () -> Unit)? = null,
     modifier: Modifier = Modifier,
     share: String? = null,
+    /** A finished save keeps its normal look and gains a small tick on its thumbnail. */
+    completed: Boolean = false,
 ) {
     val c = C.colors
     Column(modifier) {
@@ -267,7 +298,10 @@ fun ItemRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Thumb(item, 52.dp, share = share)
+            Box {
+                Thumb(item, 52.dp, share = share)
+                if (completed) CompletedTick(Modifier.align(Alignment.BottomEnd).offset(x = 5.dp, y = 5.dp))
+            }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(item.displayTitle, style = CaddisType.strong, color = c.fg, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(meta, style = CaddisType.fine, color = c.fg2, maxLines = 1, overflow = TextOverflow.Ellipsis)

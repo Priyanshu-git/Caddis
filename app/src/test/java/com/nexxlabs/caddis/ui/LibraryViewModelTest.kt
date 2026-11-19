@@ -131,25 +131,59 @@ class LibraryViewModelTest {
     }
 
     @Test
-    fun `kept saves are counted for the Kept chip and the chip filters to them`() = runBlocking {
+    fun `the Just keep intent filters from the sheet, and the filter button counts it`() = runBlocking {
         val ref = save("https://example.com/size-chart")
         save("https://example.com/other")
         f.repo.setIntent(ref.id, Intents.KEEP)
-        val s = state { it.keptCount == 1 && it.items.size == 2 }
-        assertEquals(1, s.keptCount)
+        state { it.items.size == 2 }
 
         vm.setIntentFilter(Intents.KEEP)
-        assertEquals(listOf(ref.id), state { it.filters.intentId == Intents.KEEP }.items.map { it.id })
-        vm.setIntentFilter(Intents.KEEP) // tapping Kept again clears it
+        val s = state { it.filters.intentId == Intents.KEEP }
+        assertEquals(listOf(ref.id), s.items.map { it.id })
+        assertEquals(1, s.filters.sheetCount(platformInRow = true))
+        vm.setIntentFilter(Intents.KEEP) // choosing it again clears it
         assertEquals(2, state { it.filters.intentId == null }.items.size)
     }
 
     @Test
-    fun `the Kept chip is not counted by the filter button`() {
-        val kept = Filters(intentId = Intents.KEEP)
-        assertEquals(0, kept.sheetCount(platformInRow = true, keptInRow = true))
-        assertEquals(1, kept.sheetCount(platformInRow = true))
-        assertEquals(1, Filters(intentId = "cook").sheetCount(platformInRow = true, keptInRow = true))
+    fun `finished saves move to the Completed section, latest finished first, and stay out of the active list`() = runBlocking {
+        val a = save("https://example.com/a")
+        val b = save("https://example.com/b")
+        val c = save("https://example.com/c")
+        f.repo.markDone(a.id)
+        f.clock.advance(java.time.Duration.ofMinutes(5))
+        f.repo.markDone(b.id)
+
+        val s = state { it.sections.completed.size == 2 }
+        assertEquals(listOf(c.id), s.sections.active.map { it.id })
+        assertEquals(listOf(b.id, a.id), s.sections.completed.map { it.id })
+        assertEquals(3, s.items.size)
+    }
+
+    @Test
+    fun `marking a completed save incomplete puts it back in the active list`() = runBlocking {
+        val a = save("https://example.com/a")
+        f.repo.markDone(a.id)
+        state { it.sections.completed.size == 1 }
+
+        f.repo.markActive(a.id)
+        val s = state { it.sections.completed.isEmpty() }
+        assertEquals(listOf(a.id), s.sections.active.map { it.id })
+    }
+
+    @Test
+    fun `filters narrow the Completed section too`() = runBlocking {
+        val yt = save("https://www.youtube.com/watch?v=abc123")
+        val other = save("https://www.nytimes.com/a")
+        f.repo.applyDetails(yt.id, LinkDetails(siteName = "YouTube"))
+        f.repo.markDone(yt.id)
+        f.repo.markDone(other.id)
+        state { it.sections.completed.size == 2 }
+
+        vm.setPlatform(Platform.named("YouTube"))
+        val s = state { it.filters.platform != null }
+        assertEquals(listOf(yt.id), s.sections.completed.map { it.id })
+        assertTrue(s.sections.active.isEmpty())
     }
 
     @Test

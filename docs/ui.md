@@ -12,6 +12,9 @@ never guilt-inducing.
 - `CaddisShell`: `rememberNavController`, `Column { NavHost (weight 1) ; BottomBar }`, overlaid `AddButton` (FAB), `ToastHost`,
   `CaptureSheetHost`. Chrome visibility: bottom bar on the three tab routes; FAB only on Home and Library. The bar keeps showing
   the tab you left while it animates away. Toasts sit above the bar (84 dp) or near the bottom when the bar is hidden.
+  **Hide on scroll** (`BarVisibility.kt`): on tab screens a `nestedScroll` connection around the NavHost feeds finger drags to
+  `BarVisibility`; dragging content up 24 dp hides the bar (and the FAB and toasts glide down to 20 dp), any drag the other way, a
+  drag with nothing left to scroll, or a tab change shows it again. Item/note/other non-tab routes never drive it.
 - `BottomBar.kt`: `enum Tab(HOME "home", LIBRARY "library", PROFILE "profile")`. The selected tab is found with `route.startsWith(tab.route)`.
   Tabs have no ripple. The active mark is one `accentTint` pill that glides behind the tabs (`animateFloatAsState` slot index,
   380 ms ease-out, drawn with `graphicsLayer.translationX`), while the icon and label colours cross-fade over `Motion.Short`.
@@ -49,7 +52,7 @@ Adding a route: add a `composable(...)` (use `screen(...)` if it shows a thumbna
 | 3 / 4 / 5 | Save sheet / Duplicate / Add | `ui/capture/CaptureSheets.kt` (`SaveSheet`, `DuplicateSheet`, `AddSheet`) |
 | 7, 8, 21 | Home, all clear, This week | `HomeScreen` (`PickCard`, `WeekCard`, empty state) |
 | 9 / 10 | Bring back later (Tonight, This weekend, Next week, Pick a date, **Not again**) / Change intent (and Edit details); Just keep reads "For when you need it" | `ui/sheets/Sheets.kt` (`LaterSheet`, `IntentSheet`, `EditDetailsSheet`) |
-| 11, 13, 17, 18 | Library, filters, search | `LibraryScreen` (+ `FilterSheet`; its Platform group is built from `LibraryState.platforms`, not a fixed list; the chip row also has a **Kept · n** chip for Just keep) |
+| 11, 13, 17, 18 | Library, filters, search | `LibraryScreen` (`SearchHeader`: title + search icon + Trash at rest; the icon animates into a full-width field over `Motion.Medium` (title and Trash fade out, icon turns into a back arrow, keyboard opens); the body fades between the library and `SearchBody`; icon description is "Search your saves", then "Close search"; the field is "Search saves"); the list is the active saves, then `CompletedHeader` ("COMPLETED · n", Show/Hide, collapsed by default, `stateDescription` Expanded/Collapsed) and, when open, the latest 3 completed rows plus `ShowAllCompleted`; completed rows use `ItemRow(completed = true)`, which draws `CompletedTick` on the thumbnail) (+ `FilterSheet`; its Platform group is built from `LibraryState.platforms`, not a fixed list; `showStatus = false` on the Library; there is no Kept chip) |
 | 12 | Collection shelf | `ShelfScreen` |
 | 14 / 19 / 20 | Collections / Tidy-up / Trash | `ui/manage/ManageScreens.kt` |
 | 15 / 16 | Item page / Note editor | `ui/item/ItemScreen.kt`, `NoteScreen.kt` |
@@ -85,13 +88,13 @@ Home before the first save: `HomeState.firstRun` (library has no saves at all) s
 | `MainViewModel` | `onboarded: StateFlow<Boolean?>`, `pendingRoute`, `messenger` | Activity-scoped. |
 | `CaptureViewModel` | `sheet: StateFlow<CaptureSheet>`, `nav: SharedFlow<CaptureNav>`, `intents`, `collections` (newest first), `savedItem` | **One instance per activity** (MainActivity and ShareActivity each have their own). Saves run on the app scope. |
 | `HomeViewModel` | `HomeState` | `HomePicker` + 5-minute tick. |
-| `LibraryViewModel` | `LibraryState` (items, hits, intents, collections+counts, filters, query, searching, showCollections, recent) | Shared by Library and Shelf. |
+| `LibraryViewModel` | `LibraryState` (items, sections (`LibrarySections`: active, completed), hits, intents, collections+counts, filters, query, searching, showCollections, recent) | Shared by Library and Shelf. |
 | `ItemViewModel` | `item`, `intents`, `collections` (newest first), `saving` | Note autosave, item actions, `saveDetails`, `toggleCollection`, `createCollection` (toast with Undo). |
 | `TidyViewModel`, `TrashViewModel`, `CollectionsViewModel` | see `ManageViewModels.kt` | |
 | `ProfileViewModel` | `settings`, `rules`, `intents` (`IntentRow`), `cacheBytes`, intent errors, `update` | Notifications, background-work toggles, intents/rules, export, cache, delete all, start/finish an app update. |
 
 `ItemActions` (`ui/ItemActions.kt`) is a singleton used by Home, Library, Item and Tidy ViewModels: `done`, `markActive`, `delete`,
-`later`, `open`, `share`, `today()`. It also hosts display helpers: `Item.meta()`, `Item.savedLabel()`, `Item.rightTag(intents)`,
+`later`, `open`, `share`, `today()`. It also hosts display helpers: `Item.meta()`, `Item.savedLabel()`, `Item.rightTag(intents)`, `Item.completedMeta(intents)`,
 `intentName(intents, id)`, `LocalDate.dayMonth()`.
 
 `Messenger.show(message, actionLabel = "Undo", undo?)` emits a `Toast`; `ToastHost` shows one at a time for 5 s with an action link (**Undo**, or `actionLabel`, e.g. **Restart**) when `undo` is set.
@@ -149,7 +152,7 @@ Layout, top to bottom: `TopBar` (back, save status, ⋮ `More` menu) → title (
 selected chip per collection described "Collection: <name>", then "+ Collection"/"+ Add" described "Add to a collection") → divider → the body, whose
 minimum height reaches the bottom of the screen so a tap anywhere under the text writes in it. There is no helper copy under the body.
 - **Save status** shows only after something was changed on this visit: "Saving…" while the autosave pause runs, then a check and "Saved" (`fg2`, no green dot).
-- **⋮ menu** (`DropdownMenu` on `surface`): the intent's done label (or "Mark active" when done), "Bring back later" (`LaterSheet`), "Delete" (`crit`; moves it to Trash and goes back).
+- **⋮ menu** (`DropdownMenu` on `surface`): the intent's done label (or "Mark incomplete" when done), "Bring back later" (`LaterSheet`), "Delete" (`crit`; moves it to Trash and goes back).
 - **Collections sheet**: tapping any collection chip opens a `CSheet` with `CollectionChips` (tick chips, dashed "New" first) and Done; closing with a name typed creates it.
 - **Formatting bar** (`FormatBar`): flat, full width, top hairline, 48 dp, docked above the keyboard (the screen uses `imePadding`), shown **only while the body has focus**.
   Icon buttons (`CIcons.Bold`, `Italic`, `BulletList`, `NumberList`, `Code`, `Link`), a divider, then `Undo` (dimmed when there is nothing to undo).
