@@ -27,13 +27,14 @@ import com.nexxlabs.caddis.ui.manage.CollectionsScreen
 import com.nexxlabs.caddis.ui.manage.TidyScreen
 import com.nexxlabs.caddis.ui.manage.TrashScreen
 import com.nexxlabs.caddis.ui.navMotion
-import com.nexxlabs.caddis.ui.profile.AccountScreen
-import com.nexxlabs.caddis.ui.profile.DataScreen
-import com.nexxlabs.caddis.ui.profile.IntentsScreen
-import com.nexxlabs.caddis.ui.profile.NotificationSettingsScreen
-import com.nexxlabs.caddis.ui.profile.PrivacyScreen
-import com.nexxlabs.caddis.ui.profile.ProfileScreen
-import com.nexxlabs.caddis.ui.profile.RulesScreen
+import com.nexxlabs.caddis.ui.settings.AboutScreen
+import com.nexxlabs.caddis.ui.settings.ExportScreen
+import com.nexxlabs.caddis.ui.settings.IntentsScreen
+import com.nexxlabs.caddis.ui.settings.PrivacyScreen
+import com.nexxlabs.caddis.ui.settings.RemindersScreen
+import com.nexxlabs.caddis.ui.settings.RulesScreen
+import com.nexxlabs.caddis.ui.settings.SettingsScreen
+import com.nexxlabs.caddis.ui.settings.YourDataScreen
 
 internal const val HOME_ROUTE = "home?week={week}"
 
@@ -75,7 +76,7 @@ private fun CaddisNavGraph(nav: NavHostController, opened: OpenedItem, openItem:
                 onManageCollections = { nav.navigate("collections") },
             )
         }
-        composable("profile") { ProfileScreen(navigate = { nav.navigate(it) }) }
+        composable("settings") { SettingsScreen(navigate = { nav.navigate(it) }) }
         screen("item/{id}") {
             ItemScreen(onBack = back, onManageIntents = { nav.navigate("intents") })
         }
@@ -84,11 +85,12 @@ private fun CaddisNavGraph(nav: NavHostController, opened: OpenedItem, openItem:
         composable("collections") { CollectionsScreen(onBack = back, onOpen = { nav.navigate("shelf/$it") }) }
         composable("tidy") { TidyScreen(onBack = back, onLibrary = { nav.navigateToTab("library") }) }
         composable("trash") { TrashScreen(onBack = back) }
-        composable("notifications") { NotificationSettingsScreen(onBack = back) }
+        composable("reminders") { RemindersScreen(onBack = back) }
         composable("rules") { RulesScreen(onBack = back) }
         composable("intents") { IntentsScreen(onBack = back) }
-        composable("data") { DataScreen(onBack = back) }
-        composable("account") { AccountScreen(onBack = back, onDeleted = { nav.navigate("home") { popUpTo(0) } }) }
+        composable("data") { YourDataScreen(onBack = back, navigate = { nav.navigate(it) }, onDeleted = { nav.navigate("home") { popUpTo(0) } }) }
+        composable("export") { ExportScreen(onBack = back) }
+        composable("about") { AboutScreen(onBack = back, navigate = { nav.navigate(it) }) }
         composable("privacy") { PrivacyScreen(onBack = back) }
     }
 }
@@ -108,7 +110,7 @@ private fun NavGraphBuilder.screen(
  * state on the way to Home would bring the tab you just left back. Home therefore never restores.
  *
  * Tapping the tab you are already on does nothing: the pop-and-restore below would otherwise tear the
- * screen down and rebuild it (a visible redraw), for Library and Profile as much as for Home.
+ * screen down and rebuild it (a visible redraw), for Library and Settings as much as for Home.
  */
 internal fun NavHostController.navigateToTab(route: String) {
     if (currentDestination?.route?.startsWith(route) == true) return

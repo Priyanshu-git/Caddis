@@ -71,9 +71,9 @@ import com.nexxlabs.caddis.ui.components.Sub
 import com.nexxlabs.caddis.ui.components.Tag
 import com.nexxlabs.caddis.ui.components.Toggle
 import com.nexxlabs.caddis.ui.pressScale
-import com.nexxlabs.caddis.ui.profile.ProfileViewModel
-import com.nexxlabs.caddis.ui.profile.SettingRowNoLine
-import com.nexxlabs.caddis.ui.profile.rememberNotificationToggle
+import com.nexxlabs.caddis.ui.settings.SettingsViewModel
+import com.nexxlabs.caddis.ui.settings.SettingRowNoLine
+import com.nexxlabs.caddis.ui.settings.rememberNotificationToggle
 import com.nexxlabs.caddis.ui.theme.C
 import com.nexxlabs.caddis.ui.theme.CaddisType
 import kotlinx.coroutines.launch
@@ -93,7 +93,7 @@ private fun PagerState.offsetOf(page: Int): Float = (currentPage - page) + curre
  * reminders. Skip leaves from any intro card. System back goes one card back, and leaves the app from the first.
  */
 @Composable
-fun OnboardingScreen(onDone: () -> Unit, vm: ProfileViewModel = hiltViewModel()) {
+fun OnboardingScreen(onDone: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
     val pager = rememberPagerState(pageCount = { Onboarding.PAGE_COUNT })
     val scope = rememberCoroutineScope()
     val page = pager.currentPage
@@ -306,7 +306,7 @@ private fun IntroPage(
 
 /** "Want a nudge now and then?": the one real choice in onboarding. Everything is off until it is turned on. */
 @Composable
-private fun NudgesPage(pager: PagerState, vm: ProfileViewModel) {
+private fun NudgesPage(pager: PagerState, vm: SettingsViewModel) {
     val s by vm.settings.collectAsStateWithLifecycle()
     val daily = rememberNotificationToggle { vm.setDaily(it) }
     val weekly = rememberNotificationToggle { vm.setWeekly(it) }
@@ -327,9 +327,6 @@ private fun NudgesPage(pager: PagerState, vm: ProfileViewModel) {
                     SettingRowNoLine("Daily reminder", if (st.dailyReminder) "At most one a day" else "Off until you turn it on") {
                         Toggle(st.dailyReminder, "Daily reminder") { daily(it) }
                     }
-                }
-                CCard(Modifier.fillMaxWidth().padding(bottom = 10.dp), onClick = vm::cycleQuiet) {
-                    SettingRowNoLine("Quiet hours", "No reminders in this window") { Text(st.quietHours.label, style = CaddisType.strong, color = C.colors.fg) }
                 }
                 CCard(Modifier.fillMaxWidth()) {
                     SettingRowNoLine("Weekly summary", "A recap of your week, on Sunday") { Toggle(st.weeklySummary, "Weekly summary") { weekly(it) } }

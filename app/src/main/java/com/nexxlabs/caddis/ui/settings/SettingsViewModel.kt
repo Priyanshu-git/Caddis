@@ -1,4 +1,4 @@
-package com.nexxlabs.caddis.ui.profile
+package com.nexxlabs.caddis.ui.settings
 
 import android.content.Context
 import android.content.Intent as AndroidIntent
@@ -17,7 +17,6 @@ import com.nexxlabs.caddis.domain.analytics.AnalyticsEvent
 import com.nexxlabs.caddis.domain.analytics.AnalyticsSink
 import com.nexxlabs.caddis.domain.model.Intent
 import com.nexxlabs.caddis.domain.model.IntentRule
-import com.nexxlabs.caddis.domain.schedule.QuietHours
 import com.nexxlabs.caddis.ui.Messenger
 import coil3.SingletonImageLoader
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -27,6 +26,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -38,7 +38,7 @@ import javax.inject.Inject
 data class IntentRow(val intent: Intent, val count: Int)
 
 @HiltViewModel
-class ProfileViewModel @Inject constructor(
+class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val repo: LibraryRepository,
     private val settingsRepo: SettingsRepository,
@@ -48,13 +48,49 @@ class ProfileViewModel @Inject constructor(
     private val updater: AppUpdater,
 ) : ViewModel() {
 
-    /** A newer Caddis on Google Play, for the Profile row. */
+    /** A newer Caddis on Google Play, for the Settings row. */
     val update: StateFlow<UpdateState> = updater.state
 
     fun startUpdate(launcher: ActivityResultLauncher<IntentSenderRequest>) = updater.start(launcher)
     fun restartToUpdate() = updater.restart()
 
+    /** A short message for the toast line, for screens that have no ViewModel of their own to speak through. */
+    fun tell(message: String) = messenger.show(message)
+
+    /** Where "Check for updates" stands. Only [UpToDate] means Google Play actually answered. */
+    enum class CheckStatus { Idle, Checking, UpToDate, Unreachable }
+
+    val checkStatus = MutableStateFlow(CheckStatus.Idle)
+
+    /**
+     * "Check for updates": asks Play now. An update that is waiting opens Play's dialog, a downloaded one restarts the app,
+     * and otherwise [checkStatus] says what happened, so the row can show it in place. It never says "up to date" unless Play answered.
+     */
+    fun checkForUpdate(launcher: ActivityResultLauncher<IntentSenderRequest>) {
+        if (checkStatus.value == CheckStatus.Checking) return
+        checkStatus.value = CheckStatus.Checking
+        viewModelScope.launch {
+            var result = CheckStatus.Idle
+            try {
+                if (!updater.refresh()) {
+                    result = CheckStatus.Unreachable
+                } else {
+                    when (updater.state.value) {
+                        is UpdateState.Available -> updater.start(launcher)
+                        UpdateState.Ready -> updater.restart()
+                        UpdateState.Downloading -> Unit
+                        UpdateState.None -> result = CheckStatus.UpToDate
+                    }
+                }
+            } finally {
+                checkStatus.value = result
+            }
+        }
+    }
+
     val settings: StateFlow<Settings?> = settingsRepo.settings.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    /** How many saves are in Trash, for the Your data rows. */
+    val trashCount: StateFlow<Int> = repo.observeTrash().map { it.size }.stateIn(viewModelScope, SharingStarted.Eagerly, 0)
     val rules: StateFlow<Map<String, IntentRule>> = repo.observeRules().stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
     val intents: StateFlow<List<IntentRow>> = combine(repo.observeIntents(), repo.observeLibrary()) { ints, items ->
@@ -75,11 +111,6 @@ class ProfileViewModel @Inject constructor(
     fun setWeekly(on: Boolean) = viewModelScope.launch {
         settingsRepo.setWeeklySummary(on)
         analytics.log(AnalyticsEvent.NotificationSetting("weekly_summary", on))
-    }
-
-    fun cycleQuiet() = viewModelScope.launch {
-        val q = settings.value?.quietHours ?: QuietHours.TEN_TO_SEVEN
-        settingsRepo.setQuietHours(q.next())
     }
 
     /** Ends first launch. [skippedAtStep] is the intro card Skip was tapped on, or null when the person went through. */

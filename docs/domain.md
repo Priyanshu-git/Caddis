@@ -156,20 +156,18 @@ First launch is five intro cards then the reminders question; pages are counted 
 When Caddis opens Google Play's update dialog by itself. `UpdatePrompts.shouldAsk(availableVersion, lastAsked, now, onboarded)`:
 false until onboarding is done; true for a version never asked about (a newer version is asked at once, even right after an older one);
 for the same version, true only once `REPEAT_AFTER` (7 days) has passed since `Asked(versionCode, at)`, and true if the clock was set back
-(`at` is in the future). The Profile row is not governed by this.
+(`at` is in the future). The Settings row is not governed by this.
 
 ## Reminders (`schedule/Reminders.kt`)
 
-`QuietHours` (`TEN_TO_SEVEN` 22→7, `ELEVEN_TO_SIX` 23→6, `NINE_TO_EIGHT` 21→8; `contains(hour)` handles
-the midnight wrap; `next()` cycles). **Persisted by ordinal** — do not reorder.
+There are no quiet hours: a reminder may go out at any hour the hourly check runs.
 
 `Reminders.decide(state, now, hasPick)`:
 
-1. In quiet hours → `None`.
-2. `lastDailySent == today` → `None` (**one notification a day, shared by daily and weekly**).
-3. Weekly on, Sunday, hour ≥ 18, and `lastWeeklySentWeek != this week` → `Weekly`.
-4. Daily on and `hasPick` → `Daily`.
-5. Else `None`.
+1. `lastDailySent == today` → `None` (**one notification a day, shared by daily and weekly**).
+2. Weekly on, Sunday, hour ≥ 18, and `lastWeeklySentWeek != this week` → `Weekly`.
+3. Daily on and `hasPick` → `Daily`.
+4. Else `None`.
 
 ## Details (`details/`)
 

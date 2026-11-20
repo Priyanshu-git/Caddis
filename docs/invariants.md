@@ -14,7 +14,7 @@ break. Section 3 are **known gaps**.
    (`EditableField.PLATFORM`): a name the person typed is kept over the page's `og:site_name`.
 3. **Home shows at most 3** (`HomePicker.maxPicks`). Notes never appear on Home. A deferred item (`returnAt` in the future) never appears before its date.
 4. **Zero taps to organise:** the intent is guessed, not asked for; changing it is optional.
-5. **Calm:** no streaks, no guilt copy, at most one notification a day (daily and weekly share the budget), none in quiet hours, no catch-up bursts.
+5. **Calm:** no streaks, no guilt copy, at most one notification a day (daily and weekly share the budget), no catch-up bursts. There are deliberately no quiet hours (the hourly check may send at any hour).
    Notifications are opt-in (off by default).
 6. **Just keep** (`keep`) cannot be deleted, has no return rule, and receives the saves of any deleted intent. It means "for when I need it":
    Tidy-up never asks about it, and Home brings one such link back at most once a month, only into a free slot (`HomePicker.keptReminder`).
@@ -76,10 +76,10 @@ break. Section 3 are **known gaps**.
 
 **Weekly counters**
 - Counters are incremental, not recomputed. Undo/restore subtract from the week of the **original** `doneAt`/`deletedAt`. Deleting a *done* item adds to `deleted` and leaves `used` alone.
-- `deleteAllData()` clears the weekly rows; `ProfileViewModel.deleteAll` is what also resets settings (keeping `onboarded`) and the image cache.
+- `deleteAllData()` clears the weekly rows; `SettingsViewModel.deleteAll` is what also resets settings (keeping `onboarded`) and the image cache.
 
 **Persistence**
-- Enums are stored by **name**; renaming an enum constant needs a migration. `QuietHours` is stored by **ordinal**; don't reorder it.
+- Enums are stored by **name**; renaming an enum constant needs a migration. (The old `quiet_hours` DataStore key is no longer read; `reset()` clears it.)
 - Weekday rules are stored as a bitmask (Monday = bit 0). `Instant`s are epoch millis. `userEdited` is a comma-separated string.
 - `items_fts` is an external-content FTS4 table over `items`; its indexed `note` column holds raw Markdown. Changing its columns is a schema change.
 - Backup rules include `caddis.db` and the `sharedpref` domain. DataStore preferences are stored under `files/datastore/`, which those rules do not include, so restored installs get the
@@ -100,7 +100,9 @@ break. Section 3 are **known gaps**.
 ## 3. Known gaps and limits
 
 - App updates come from Google Play's in-app update API: they only appear for installs from Google Play (not debug or sideloaded builds), and Play decides when a release is offered (staged rollout, cache). The unit tests use Play's `FakeAppUpdateManager`; the real dialog has to be checked with an internal-testing track (see [development.md](development.md)).
-- No sign-in or sync, and no UI that mentions them (no account card on Profile, no Sync or Sign-in rows). Profile has a **Delete all data** row that opens the `account` route (`AccountScreen`, titled "Delete all data"); it is the screen's only action. Do not bring account or sync copy back until the feature exists.
+- The bottom-bar tab is **Settings**, not Profile: there is no account to have a profile of. Keep the name honest; do not reintroduce "Profile" or a person icon while there is no sign-in.
+- "Check for updates" must never say "Up to date" unless Play actually answered (`AppUpdater.refresh()` returns true). It shows nothing before the first tap, and "Couldn't check" when Play could not be reached (debug, sideloaded and offline runs).
+- No sign-in or sync, and no UI that mentions them (no account card on Settings, no Sync or Sign-in rows). **Delete all data** lives at the bottom of Your data (route `data`), apart from the other rows, behind a confirm dialog. Do not bring account or sync copy back until the feature exists.
 - `AnalyticsSink` logs only in debug builds; release builds emit nothing.
 - Crashlytics uploads only from release builds that were built with `app/google-services.json` (gitignored). Without the file (CI, fresh clones) the Firebase plugins are skipped and crash reporting is off. Crash reports still include a stack trace and an installation id, so the privacy policy must say so.
 - "Read the full policy" opens `FULL_POLICY_URL` (a GitHub gist). The full text lives in that gist and the short version in `PrivacyScreen`; both must be updated with any change to data collection, permissions or network use.
@@ -120,7 +122,7 @@ break. Section 3 are **known gaps**.
   Instagram and Facebook usually serve such a wall to a non-browser client, so those saves mostly stay `instagram.com`/`facebook.com` with the share-text title.
 - UI composables are not unit-tested; the screens are covered end to end by the instrumented journey tests (`app/src/androidTest/…/journeys`), which need a
   device or emulator and are **not** run by CI. See [development.md](development.md#app-instrumented-appsrcandroidtestjava).
-- After **Delete all data**, the "All your Caddis data on this phone was deleted." toast is replaced at once by "Thumbnail cache cleared." (`ProfileViewModel.deleteAll`
+- After **Delete all data**, the "All your Caddis data on this phone was deleted." toast is replaced at once by "Thumbnail cache cleared." (`SettingsViewModel.deleteAll`
   also calls `clearCache()`, which posts its own toast). Only the second one is seen.
 - New default intents will not reach existing installs (defaults are seeded only when no intents exist).
 - Home screen widget, location-based return and import are not implemented.

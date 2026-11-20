@@ -87,12 +87,12 @@ unless asked.
 - **Item page** and **Note editor** (rich text stored as Markdown, autosave, links, undo; formatting bar above the keyboard; done/later/delete in its ⋮ menu).
 - **Finish**: Done/Mark incomplete, delete to Trash with Undo, Trash screen (restore / delete forever),
   Tidy-up (keep or delete link saves untouched for 90 days; never Just keep saves, notes or saves set to "Not again").
-- **Notifications** (opt-in): one daily pick and a Sunday-evening weekly summary, quiet hours,
-  shared one-a-day budget; local only.
-- **Profile**: return rules, intents, notifications, low-battery pause for background
-  fetching, export (JSON and HTML bookmarks), thumbnail cache (200 MB cap) with clear, privacy
-  points, a "Delete all data" screen (route `account`; there is no account, and no sync or sign-in UI).
-- **App updates**: on installs from Google Play, a flexible in-app update is offered once per version (again after 7 days), downloads in the background, and offers a restart; Profile has a matching row.
+- **Notifications** (opt-in): one daily pick and a Sunday-evening weekly summary,
+  shared one-a-day budget; local only. No quiet hours: the hourly check sends whenever it runs and something fits.
+- **Settings** (third tab; was Profile): a short hub (intents, return rules, reminders, rate/share/feedback buttons, your data, about and privacy) that opens sub screens:
+  reminders (daily and weekly switches), your data (export, thumbnail cache with clear, Trash, low-battery pause, delete all data), about and privacy (version, check for updates, the short privacy policy).
+  There is no account, and no sync or sign-in UI.
+- **App updates**: on installs from Google Play, a flexible in-app update is offered once per version (again after 7 days), downloads in the background, and offers a restart; Settings has a matching banner and a Check for updates row.
 - **Share out**: Share action on the item page (title, clean link, "Shared via Caddis app").
 - **Theme**: light/dark paper palette with one teal accent, Bricolage Grotesque + DM Sans,
   calm motion, shared-element thumbnail transitions, predictive back.

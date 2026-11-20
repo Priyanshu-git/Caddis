@@ -154,7 +154,7 @@ stay as they were. **Counters are not recomputed from items.**
 
 `exportJson()` / `exportHtml()` read everything (including Trash for JSON) and delegate to `Exporter`.
 `deleteAllData()`: one transaction clearing items, collections (refs cascade), corrections, intents (rules cascade) and
-weekly rows; then `seedDefaultsIfNeeded()`. The caller (`ProfileViewModel.deleteAll`) also resets settings and the
+weekly rows; then `seedDefaultsIfNeeded()`. The caller (`SettingsViewModel.deleteAll`) also resets settings and the
 image cache.
 
 ## `SettingsRepository` (DataStore `Preferences`, file `settings`)
@@ -166,7 +166,6 @@ image cache.
 | `onboarded` | `onboarded` (bool) | false |
 | `dailyReminder` | `daily_reminder` (bool) | false (opt-in) |
 | `weeklySummary` | `weekly_summary` (bool) | false (opt-in) |
-| `quietHours` | `quiet_hours` (int, **enum ordinal**) | `TEN_TO_SEVEN` |
 | `pauseOnLowBattery` | `pause_low_battery` (bool) | true |
 | `lastDailySent` | `last_daily_sent` (ISO date string) | null |
 | `lastWeeklySentWeek` | `last_weekly_week` (ISO date string) | null |

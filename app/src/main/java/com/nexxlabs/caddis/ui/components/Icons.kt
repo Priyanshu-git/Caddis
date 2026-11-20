@@ -38,7 +38,26 @@ object CIcons {
     val Search = icon("search", circle(11f, 11f, 6.5f), "M16 16l4.5 4.5")
     val House = icon("house", "M4 11l8-6.5L20 11v8a1 1 0 01-1 1h-4v-5H9v5H5a1 1 0 01-1-1z")
     val Library = icon("library", rect(4f, 4f, 4f, 16f, 1f), rect(10f, 4f, 4f, 16f, 1f), "M16.5 5.5l3.2 14")
-    val User = icon("user", circle(12f, 9f, 3.5f), "M5 20c1.2-4 4-5.5 7-5.5s5.8 1.5 7 5.5")
+    // Settings rows.
+    val Tag = icon("tag", "M3.5 12.2V4.5a1 1 0 011-1h7.7l8 8a1 1 0 010 1.4l-7.3 7.3a1 1 0 01-1.4 0z", circle(8f, 8f, 1.2f))
+    val Bell = icon("bell", "M6 17 L6 11 A6 6 0 0 1 18 11 L18 17 L19.5 19 L4.5 19 Z", "M10 21 L14 21")
+    val CalendarWeek = icon("calendar-week", rect(4f, 5f, 16f, 15f, 2f), "M4 10h16M8 3v4M16 3v4")
+    val Battery = icon("battery", rect(3f, 8f, 16f, 8f, 2f), "M21 11v2M6.5 11v2")
+    val Download = icon("download", "M12 4v11M7.5 11l4.5 4.5 4.5-4.5M5 20h14")
+    val Refresh = icon("refresh", "M4 12 A8 8 0 0 1 18 6.7 L20 9 M20 4.5 L20 9 L15.5 9 M20 12 A8 8 0 0 1 6 17.3 L4 15 M4 19.5 L4 15 L8.5 15")
+    val Star = icon("star", "M12 3.8l2.5 5.2 5.7.8-4.1 4 1 5.7-5.1-2.7-5.1 2.7 1-5.7-4.1-4 5.7-.8z")
+    val Mail = icon("mail", rect(3f, 5f, 18f, 14f, 2f), "M4 7l8 6 8-6")
+    val Shield = icon("shield", "M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z", "M9 12l2 2 4-4")
+    val ExternalLink = icon("external-link", "M14 4 L20 4 L20 10 M20 4 L11 13 M18 14 L18 19 A1 1 0 0 1 17 20 L5 20 A1 1 0 0 1 4 19 L4 7 A1 1 0 0 1 5 6 L10 6")
+    val Phone = icon("phone", rect(7f, 3f, 10f, 18f, 2f), "M11 18h2")
+    val Info = icon("info", circle(12f, 12f, 9f), "M12 11v5M12 7.8v.1")
+    val Up = icon("up", "M6 15l6-6 6 6")
+    val BellOff = icon("bell-off", "M6 17 L6 11 A6 6 0 0 1 7.5 7 M18 11 L18 17 L19.5 19 L9 19 M10 21 L14 21 M4 4 L20 20")
+    /** A gear, for the Settings tab (Feather's "settings" outline, MIT). */
+    val Gear = icon(
+        "gear", circle(12f, 12f, 3f),
+        "M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z",
+    )
     val Check = icon("check", "M5 12.5l4.5 4.5L19 7.5")
     val Close = icon("x", "M6 6l12 12M18 6L6 18")
     val Play = icon("play", "M8 5.5v13l11-6.5z")

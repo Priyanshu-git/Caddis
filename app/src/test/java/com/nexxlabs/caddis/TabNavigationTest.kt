@@ -27,7 +27,7 @@ class TabNavigationTest {
         nav.graph = nav.createGraph(startDestination = HOME_ROUTE) {
             composable(HOME_ROUTE, arguments = listOf(navArgument("week") { type = NavType.BoolType; defaultValue = false })) {}
             composable("library") {}
-            composable("profile") {}
+            composable("settings") {}
             composable("item/{id}") {}
         }
     }
@@ -35,12 +35,12 @@ class TabNavigationTest {
     private fun route() = nav.currentBackStackEntry?.destination?.route
 
     @Test
-    fun `home tab returns home from library and profile`() {
+    fun `home tab returns home from library and settings`() {
         nav.navigateToTab("library")
         nav.navigateToTab("home")
         assertEquals(HOME_ROUTE, route())
 
-        nav.navigateToTab("profile")
+        nav.navigateToTab("settings")
         nav.navigateToTab("library")
         nav.navigateToTab("home")
         assertEquals(HOME_ROUTE, route())
@@ -63,7 +63,7 @@ class TabNavigationTest {
         assertEquals(HOME_ROUTE, route())
         nav.navigateToTab("library")
         nav.navigate("item/1")
-        nav.navigateToTab("profile")
+        nav.navigateToTab("settings")
         nav.navigateToTab("home")
         assertEquals(HOME_ROUTE, route())
     }
@@ -79,10 +79,10 @@ class TabNavigationTest {
         nav.navigateToTab("library")
         assertSame(library, nav.currentBackStackEntry)
 
-        nav.navigateToTab("profile")
-        val profile = nav.currentBackStackEntry
-        nav.navigateToTab("profile")
-        assertSame(profile, nav.currentBackStackEntry)
+        nav.navigateToTab("settings")
+        val settings = nav.currentBackStackEntry
+        nav.navigateToTab("settings")
+        assertSame(settings, nav.currentBackStackEntry)
     }
 
     @Test

@@ -70,7 +70,7 @@ object Motion {
 /** How a navigation should feel: peers fade through, going deeper slides in, going back slides out. */
 enum class NavMotion { TabSwitch, Forward, Back }
 
-internal val TAB_ROUTES = listOf("home", "library", "profile")
+internal val TAB_ROUTES = listOf("home", "library", "settings")
 
 internal fun isTabRoute(route: String?): Boolean = route != null && TAB_ROUTES.any { route.startsWith(it) }
 

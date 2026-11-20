@@ -7,7 +7,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import javax.inject.Inject
 
-/** A newer Caddis on Google Play: offered once on its own, always available in Profile, restart when it is downloaded. */
+/** A newer Caddis on Google Play: offered once on its own, always available in Settings, restart when it is downloaded. */
 @HiltAndroidTest
 class UpdateJourneyTest : JourneyTest() {
 
@@ -36,12 +36,12 @@ class UpdateJourneyTest : JourneyTest() {
     }
 
     @Test
-    fun profile_offersTheUpdate_andThenOffersARestart() {
+    fun settings_offersTheUpdate_andThenOffersARestart() {
         updater.offer(versionCode = 9)
         // Already asked today, so nothing opens by itself.
         runBlocking { settings.markUpdateAsked(9, clock.instant()) }
         launchApp()
-        goTo("Profile")
+        goTo("Settings")
 
         awaitText("Update Caddis")
         assertEquals(0, updater.starts.get())
@@ -58,12 +58,55 @@ class UpdateJourneyTest : JourneyTest() {
     }
 
     @Test
-    fun profile_showsNothingWhenThereIsNoUpdate() {
+    fun settings_showsNothingWhenThereIsNoUpdate() {
         launchApp()
-        goTo("Profile")
-        awaitText("Pause on low battery")
+        goTo("Settings")
+        awaitText("Reminders")
 
         awaitNoText("Update Caddis")
         awaitNoText("Restart to update")
+    }
+
+    private fun openAbout() {
+        launchApp()
+        goTo("Settings")
+        tapText("About and privacy")
+        awaitText("Check for updates")
+    }
+
+    @Test
+    fun checkForUpdates_saysNothingUntilYouAsk_thenSaysYouAreUpToDate() {
+        openAbout()
+        awaitNoText("Up to date")
+
+        tapText("Check for updates")
+
+        awaitText("Up to date")
+        assertEquals(0, updater.starts.get())
+    }
+
+    @Test
+    fun checkForUpdates_saysWhenGooglePlayCannotBeReached_insteadOfUpToDate() {
+        updater.goOffline()
+        openAbout()
+
+        tapText("Check for updates")
+
+        awaitText("Couldn't check")
+        awaitNoText("Up to date")
+    }
+
+    @Test
+    fun checkForUpdates_opensPlaysDialogWhenOneIsWaiting() {
+        updater.offer(versionCode = 9)
+        runBlocking { settings.markUpdateAsked(9, clock.instant()) }
+        openAbout()
+        awaitText("Update ready")
+        val before = updater.refreshes.get()
+
+        tapText("Check for updates")
+
+        eventually("asked Play again and opened the dialog") { updater.refreshes.get() > before && updater.starts.get() == 1 }
+        awaitText("Updating…")
     }
 }

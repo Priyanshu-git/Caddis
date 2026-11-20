@@ -7,7 +7,6 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import com.nexxlabs.caddis.domain.schedule.QuietHours
 import com.nexxlabs.caddis.domain.schedule.ReminderState
 import com.nexxlabs.caddis.domain.update.UpdatePrompts
 import kotlinx.coroutines.flow.Flow
@@ -23,7 +22,6 @@ data class Settings(
     /** BRB-04: notifications are opt-in. */
     val dailyReminder: Boolean = false,
     val weeklySummary: Boolean = false,
-    val quietHours: QuietHours = QuietHours.TEN_TO_SEVEN,
     /** NFR battery: pause background work on low battery if chosen. */
     val pauseOnLowBattery: Boolean = true,
     val lastDailySent: LocalDate? = null,
@@ -31,7 +29,7 @@ data class Settings(
     /** The last time Google Play's update dialog was opened on its own (see [UpdatePrompts]). */
     val updateAsked: UpdatePrompts.Asked? = null,
 ) {
-    fun reminderState() = ReminderState(dailyReminder, weeklySummary, quietHours, lastDailySent, lastWeeklySentWeek)
+    fun reminderState() = ReminderState(dailyReminder, weeklySummary, lastDailySent, lastWeeklySentWeek)
 }
 
 @Singleton
@@ -41,7 +39,6 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
         val onboarded = booleanPreferencesKey("onboarded")
         val daily = booleanPreferencesKey("daily_reminder")
         val weekly = booleanPreferencesKey("weekly_summary")
-        val quiet = intPreferencesKey("quiet_hours")
         val battery = booleanPreferencesKey("pause_low_battery")
         val lastDaily = stringPreferencesKey("last_daily_sent")
         val lastWeekly = stringPreferencesKey("last_weekly_week")
@@ -54,7 +51,6 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
             onboarded = p[K.onboarded] ?: false,
             dailyReminder = p[K.daily] ?: false,
             weeklySummary = p[K.weekly] ?: false,
-            quietHours = QuietHours.entries.getOrElse(p[K.quiet] ?: 0) { QuietHours.TEN_TO_SEVEN },
             pauseOnLowBattery = p[K.battery] ?: true,
             lastDailySent = p[K.lastDaily]?.let(LocalDate::parse),
             lastWeeklySentWeek = p[K.lastWeekly]?.let(LocalDate::parse),
@@ -67,7 +63,6 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
     suspend fun setOnboarded() = store.edit { it[K.onboarded] = true }
     suspend fun setDailyReminder(on: Boolean) = store.edit { it[K.daily] = on }
     suspend fun setWeeklySummary(on: Boolean) = store.edit { it[K.weekly] = on }
-    suspend fun setQuietHours(q: QuietHours) = store.edit { it[K.quiet] = q.ordinal }
     suspend fun setPauseOnLowBattery(on: Boolean) = store.edit { it[K.battery] = on }
     suspend fun markDailySent(date: LocalDate) = store.edit { it[K.lastDaily] = date.toString() }
     suspend fun markWeeklySent(date: LocalDate, week: LocalDate) = store.edit {

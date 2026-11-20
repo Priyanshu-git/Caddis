@@ -35,8 +35,11 @@ sealed interface UpdateState {
 interface AppUpdater {
     val state: StateFlow<UpdateState>
 
-    /** Asks Google Play what is waiting and updates [state]. Never throws; a failed check leaves [state] as it was. */
-    suspend fun refresh()
+    /**
+     * Asks Google Play what is waiting and updates [state]. Never throws; a failed check leaves [state] as it was.
+     * Returns whether Play answered: false when Caddis is not installed from Play, Play is missing, or the phone is offline.
+     */
+    suspend fun refresh(): Boolean
 
     /** Opens Play's update dialog for the version in [UpdateState.Available]. Does nothing otherwise. */
     fun start(launcher: ActivityResultLauncher<IntentSenderRequest>)
@@ -68,13 +71,13 @@ class PlayAppUpdater @Inject constructor(private val manager: AppUpdateManager) 
         manager.registerListener(listener)
     }
 
-    override suspend fun refresh() {
+    override suspend fun refresh(): Boolean {
         val latest = try {
             manager.requestAppUpdateInfo()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            return // Not installed from Play, no Play services, or offline: nothing to offer.
+            return false // Not installed from Play, no Play services, or offline: nothing to offer.
         }
         info = latest
         _state.value = when {
@@ -82,6 +85,7 @@ class PlayAppUpdater @Inject constructor(private val manager: AppUpdateManager) 
             latest.installStatus() == InstallStatus.DOWNLOADING || latest.installStatus() == InstallStatus.PENDING -> UpdateState.Downloading
             else -> available(latest)
         }
+        return true
     }
 
     override fun start(launcher: ActivityResultLauncher<IntentSenderRequest>) {

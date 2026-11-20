@@ -111,7 +111,13 @@ class FakeUpdater @Inject constructor() : AppUpdater {
     fun offer(versionCode: Int) { current.value = UpdateState.Available(versionCode) }
     fun downloaded() { current.value = UpdateState.Ready }
 
-    override suspend fun refresh() {}
+    /** False while a test calls [goOffline]: Play could not be reached. */
+    @Volatile private var reachable = true
+    val refreshes = AtomicInteger()
+
+    fun goOffline() { reachable = false }
+
+    override suspend fun refresh(): Boolean { refreshes.incrementAndGet(); return reachable }
 
     override fun start(launcher: ActivityResultLauncher<IntentSenderRequest>) {
         if (current.value !is UpdateState.Available) return

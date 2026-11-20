@@ -42,7 +42,8 @@ class TrashAndTidyJourneyTest : JourneyTest() {
         val id = save("https://example.com/pasta", "Pasta night").id
         delete(id)
         launchApp()
-        goTo("Profile")
+        goTo("Settings")
+        tapText("Your data")
         tapText("Trash")
         awaitText("Pasta night")
 

@@ -218,6 +218,6 @@ abstract class JourneyTest {
 
     protected fun undo() = tapText("Undo")
 
-    /** Home, Library or Profile in the bottom bar. */
+    /** Home, Library or Settings in the bottom bar. */
     protected fun goTo(tabName: String) = tapTab(tabName)
 }

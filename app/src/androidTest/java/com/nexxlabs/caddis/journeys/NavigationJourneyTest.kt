@@ -12,14 +12,14 @@ class NavigationJourneyTest : JourneyTest() {
     private val addButton get() = described("Add a link or note")
 
     @Test
-    fun theBottomBar_switchesBetweenHomeLibraryAndProfile() {
+    fun theBottomBar_switchesBetweenHomeLibraryAndSettings() {
         launchApp()
         awaitText("Today")
 
         goTo("Library")
         await(described("Search your saves"))
-        goTo("Profile")
-        awaitText("Pause on low battery")
+        goTo("Settings")
+        awaitText("Reminders")
         goTo("Home")
         awaitText("Today")
     }
@@ -34,21 +34,21 @@ class NavigationJourneyTest : JourneyTest() {
         await(described("Search your saves"))
         assertTrue(exists(addButton))
 
-        goTo("Profile")
-        awaitText("Pause on low battery")
+        goTo("Settings")
+        awaitText("Reminders")
         awaitGone(addButton)
     }
 
     @Test
     fun theBottomBar_hidesOnDeeperScreens_andReturnsOnBack() {
         launchApp()
-        goTo("Profile")
+        goTo("Settings")
         tapText("Return rules")
         awaitGone(tab("Library"))
         awaitGone(addButton)
 
         back()
-        awaitText("Pause on low battery")
+        awaitText("Reminders")
         await(tab("Library"))
     }
 
@@ -70,8 +70,8 @@ class NavigationJourneyTest : JourneyTest() {
         tapTab("Collections")
         awaitText("Manage collections")
 
-        goTo("Profile")
-        awaitText("Pause on low battery")
+        goTo("Settings")
+        awaitText("Reminders")
         goTo("Library")
         awaitText("Manage collections")
     }

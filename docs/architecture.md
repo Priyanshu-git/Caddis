@@ -44,7 +44,7 @@ SettingsRepository (DataStore) ◄── ViewModels, workers
 | `link` | `Links` (check, normalize, extractFirst, couldBeNote, noteTitleFrom, host), `LinkCheck`, `PlatformDetector`/`Detection`, `DefaultTitles` |
 | `platform` | `PlatformFacets`/`PlatformFacet` (dynamic filter list). There is no registry of sites. |
 | `intent` | `IntentGuesser`, `GuessInput`, `CorrectionStats` |
-| `schedule` | `ReturnScheduler`, `HomePicker`/`Pick`, `TidyUp`, `Trash`, `Weeks`, `doneLabel()` (Scheduling.kt); `Reminders`, `ReminderState`, `ReminderDecision`, `QuietHours` (Reminders.kt) |
+| `schedule` | `ReturnScheduler`, `HomePicker`/`Pick`, `TidyUp`, `Trash`, `Weeks`, `doneLabel()` (Scheduling.kt); `Reminders`, `ReminderState`, `ReminderDecision` (Reminders.kt) |
 | `search` | `SearchQuery` (FTS match string, "matched in…" text), `resultBucket()` |
 | `details` | `LinkDetails`, `DetailsParser`, `Item.mergeDetails`, `formatLength` (Details.kt); `DetailEdits`, `EditLimits`, `Item.withEdits`, `Item.withLink`, `Item.needsDetails` (Edits.kt); `Favicons` |
 | `notes` | `Markdown.toPlainText`, `Markdown.preview`, `NoteMarkdown` (editor HTML ⇄ stored Markdown, with escaping), `EditHistory` (note editor undo) |
@@ -74,7 +74,7 @@ Details of every rule: [domain.md](domain.md).
 | `ui/` | `ItemActions` (shared item actions), `Messenger` (toasts), `Motion.kt` (animation vocabulary). Sub-packages below. |
 | `ui/shell/` | `CaddisRoot`, `CaddisShell`, `BottomBar` (+ `Tab`), `BarVisibility` (hide-on-scroll), `ToastHost`. |
 | `ui/nav/Navigation.kt` | The route table (`CaddisNavHost`), `HOME_ROUTE`, `navigateToTab`. |
-| `ui/home/`, `ui/library/`, `ui/item/`, `ui/capture/`, `ui/manage/`, `ui/profile/`, `ui/sheets/` | Screens and their ViewModels. See [ui.md](ui.md). |
+| `ui/home/`, `ui/library/`, `ui/item/`, `ui/capture/`, `ui/manage/`, `ui/settings/`, `ui/sheets/` | Screens and their ViewModels. See [ui.md](ui.md). |
 | `ui/components/` | Shared composables (`Components.kt`, `Fields.kt`, `Icons.kt`, `Sheet.kt`). |
 | `ui/theme/Theme.kt` | `CaddisColors`, light/dark palettes, fonts, `CaddisType`, `C.colors`, `CaddisTheme`. |
 

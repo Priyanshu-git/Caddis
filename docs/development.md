@@ -56,7 +56,7 @@ JUnit 5 (`org.junit.jupiter.api.Test`) with Kotest matchers (`shouldBe`). Pure f
 | `intent/IntentGuesserTest` | keyword order, defaults, corrections threshold, deleted intents |
 | `schedule/SchedulingTest` | `ReturnScheduler`, `HomePicker` (incl. the Just keep reminder), `TidyUp` (what is never offered), `Trash`, `Weeks`, rule labels |
 | `onboarding/OnboardingTest` | page order, back/next at the ends, skip, main-button label, progress step, the finished event |
-| `schedule/RemindersTest` | opt-in, one a day, quiet hours, weekly on Sunday evening |
+| `schedule/RemindersTest` | opt-in, one a day, any hour may send (no quiet hours), weekly on Sunday evening |
 | `details/DetailsTest` | site name, kind and oEmbed discovery from a page, oEmbed parsing, generic titles, `mergeDetails`, `formatLength` |
 | `details/EditsAndIconsTest` | `withEdits`, `withLink`, favicon parsing/fallbacks/merge, `couldBeNote` |
 | `share/ShareTextTest` | share text, tracking-param stripping, private words never shared |
@@ -78,6 +78,7 @@ JUnit 4. Robolectric config in `app/src/test/resources/robolectric.properties` (
 - `data/DetailsFetcherTest`: `MockWebServer` (no real network). Page parsing and site names, retry vs give-up, Instagram/Facebook fetched like any site, bot-check pages, advertised oEmbed + page,
   User-Agent behaviour.
 - `ui/CaptureViewModelTest`, `ui/ItemActionsShareTest`, `TabNavigationTest` (uses `navigation-testing`), `MotionTest`.
+- `ui/SettingsViewModelUpdateTest` (Check for updates: dialog, up to date, Play unreachable, ready, downloading; the Trash count) and `ui/AppLinksTest` (the Rate, Share, Feedback and notification-settings intents).
 - `ui/NoteEditorRoundTripTest`: the real editor state (Robolectric) loading stored notes through `NoteMarkdown` and saving them again: typed special characters, bold and
   italic, lists, empty lines, spaces and notes written by earlier versions all come back unchanged. It also plays every order of switching bold and italic on and off
   while typing (~55,000 sequences, the real `toggleSpanStyle`/`addTextAfterSelection`) and bold/italic applied to selections afterwards, and compares the style of every character.
@@ -98,14 +99,14 @@ CI does not run them (it has no emulator). The runner is `com.nexxlabs.caddis.Hi
   - **`FakeDetails`** (the `DetailsScheduler`): no WorkManager and no network. By default a fetch "gives up", so a save shows the title built from its link.
     `serve(url, LinkDetails(…))` makes details arrive, `hold()`/`release()` keep them waiting (to see the skeleton).
   - **`FakeUpdater`** (the `AppUpdater`): nothing waits until a test calls `offer(versionCode)`; opening the dialog (`start`) begins the download, `downloaded()` finishes it,
-    `starts` / `restarts` count what the app asked for.
+    `starts` / `restarts` / `refreshes` count what the app asked for; `goOffline()` makes `refresh()` report that Play could not be reached.
 - `journeys/JourneyTest`: base class. `HiltAndroidRule` + `createEmptyComposeRule`, grants `POST_NOTIFICATIONS` up front (no system dialog), and gives
   `launchApp(route?)`, data helpers (`save`, `saveNote`, `library()`, `item()`, `trash()`), finders (`button`, `tab`, `field(label)`, `described`) and waiters
   (`awaitText`, `await`, `eventually`). Failures print the on-screen semantics tree.
 - One class per journey (all `@HiltAndroidTest`): `OnboardingJourneyTest`, `AddJourneyTest` (plus button, clipboard, duplicate, note), `ShareSheetJourneyTest`
   (`ShareActivity`), `HomeJourneyTest`, `LibraryJourneyTest` (search, filters, collections), `ItemJourneyTest` (item page, edit details, note editor),
-  `TrashAndTidyJourneyTest`, `ProfileJourneyTest` (notifications, rules, intents, export, delete all), `NavigationJourneyTest`,
-  `UpdateJourneyTest` (Google Play update offer, Profile row, restart), `NoteEditorJourneyTest` and `NoteLifecycleJourneyTest` (below).
+  `TrashAndTidyJourneyTest`, `SettingsJourneyTest` (notifications, rules, intents, export, delete all), `NavigationJourneyTest`,
+  `UpdateJourneyTest` (Google Play update offer, Settings row, check for updates, restart), `NoteEditorJourneyTest` and `NoteLifecycleJourneyTest` (below).
 - `journeys/NoteJourneyBase`: base for the note journeys. It types through the editor's own `InputConnection` one call at a time, like a keyboard
   (`commit`, `composing`, `enter`, `backspace`, `select`, `deleteSelection`, `typeSlowly`), opens notes (`openNote`, `openEditor`, `start`), leaves
   them (`leaveEditor` closes the keyboard first, as the first Back only hides it) and reads back `shown()`/`visible()`, `lit("Bold")` (toolbar
@@ -173,7 +174,7 @@ Worker in `work/Work.kt` (`@HiltWorker`), scheduled from `WorkScheduler`; respec
 (unique work names); [architecture.md](architecture.md).
 
 ### Add a setting
-Key + field + setter in `SettingsRepository` (`Settings` default), expose via `ProfileViewModel`, UI in `ProfileScreens.kt`. Do not store enums by ordinal
+Key + field + setter in `SettingsRepository` (`Settings` default), expose via `SettingsViewModel`, UI in `SettingsScreens.kt`. Do not store enums by ordinal
 unless you also freeze their order.
 
 ## Windows / tooling notes
@@ -187,4 +188,4 @@ unless you also freeze their order.
 
 The in-app update API only works for an app installed from Google Play, so the unit tests use Play's `FakeAppUpdateManager` and the journeys use `FakeUpdater`.
 To see the real dialog: upload build N to an **internal testing** track and install it from Play on a device, then upload a higher `versionCode` to the same track.
-Open Caddis (after onboarding): Play's dialog should appear once; Profile shows "Update Caddis" until installed. Play can take a while to offer a new release.
+Open Caddis (after onboarding): Play's dialog should appear once; Settings shows "Update Caddis" until installed. Play can take a while to offer a new release.

@@ -8,9 +8,13 @@ import androidx.test.espresso.intent.Intents
 import androidx.test.espresso.intent.Intents.intended
 import androidx.test.espresso.intent.Intents.intending
 import androidx.test.espresso.intent.matcher.IntentMatchers.hasAction
+import androidx.test.espresso.intent.matcher.IntentMatchers.hasData
+import androidx.test.espresso.intent.matcher.IntentMatchers.hasExtra
+import com.nexxlabs.caddis.ui.settings.AppLinks
+import org.hamcrest.Matchers.allOf
 import com.nexxlabs.caddis.domain.model.Intents as IntentIds
 import com.nexxlabs.caddis.domain.model.TimeOfDay
-import com.nexxlabs.caddis.domain.schedule.QuietHours
+import com.nexxlabs.caddis.BuildConfig
 import dagger.hilt.android.testing.HiltAndroidTest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -22,9 +26,9 @@ import org.junit.Test
 import java.io.File
 import java.time.DayOfWeek
 
-/** Profile: reminders, return rules, intents, your data, privacy and the account. */
+/** Settings: the hub, reminders, return rules, intents, your data, about and privacy. */
 @HiltAndroidTest
-class ProfileJourneyTest : JourneyTest() {
+class SettingsJourneyTest : JourneyTest() {
 
     private var intentsStarted = false
 
@@ -33,16 +37,26 @@ class ProfileJourneyTest : JourneyTest() {
         if (intentsStarted) Intents.release()
     }
 
-    private fun openProfile() {
+    private fun openSettings() {
         launchApp()
-        goTo("Profile")
-        awaitText("Pause on low battery")
+        goTo("Settings")
+        awaitText("Return rules")
     }
 
-    private fun openFromProfile(row: String, title: String = row) {
-        openProfile()
+    private fun openFromSettings(row: String, title: String = row) {
+        openSettings()
         tapText(row)
         awaitText(title)
+    }
+
+    /** Settings, then Your data. */
+    private fun openYourData() = openFromSettings("Your data", "Pause on low battery")
+
+    /** Settings, then Your data, then Export and cache. */
+    private fun openExport() {
+        openYourData()
+        tapText("Export and cache")
+        awaitText("Export your library")
     }
 
     private fun rule(intent: String) = runBlocking { repo.observeRules().first() }.getValue(intent)
@@ -50,13 +64,19 @@ class ProfileJourneyTest : JourneyTest() {
     // ---------- the menu ----------
 
     @Test
-    fun profile_listsEverythingYouCanChange() {
-        openProfile()
+    fun settings_listsEverythingYouCanChange() {
+        openSettings()
 
         assertShowing(
-            "Return rules", "Intents", "Notifications",
-            "Pause on low battery", "Export and cache", "Trash", "Delete all data", "Privacy policy",
+            "Intents", "Return rules", "Reminders",
+            "Enjoying Caddis?", "Rate", "Share", "Feedback",
+            "Your data", "About and privacy",
         )
+        // Everything else is one tap down, not on the hub.
+        awaitNoText("Pause on low battery")
+        awaitNoText("Trash")
+        awaitNoText("Delete all data")
+        awaitNoText("Privacy policy")
         // No promises about accounts or sync.
         awaitNoText("sync", substring = true)
         awaitNoText("account", substring = true)
@@ -66,7 +86,7 @@ class ProfileJourneyTest : JourneyTest() {
 
     @Test
     fun backgroundWork_canBePausedOnLowBattery() {
-        openProfile()
+        openYourData()
         assertTrue(runBlocking { settings.current() }.pauseOnLowBattery)
         awaitNoText("mobile data", substring = true)
 
@@ -78,8 +98,8 @@ class ProfileJourneyTest : JourneyTest() {
     // ---------- notifications ----------
 
     @Test
-    fun notifications_areOffUntilYouTurnThemOn() {
-        openFromProfile("Notifications")
+    fun reminders_areOffUntilYouTurnThemOn() {
+        openFromSettings("Reminders", "Daily reminder")
 
         assertShowing("Reminders are off", "Turn on the daily reminder to see one.")
         tap(described("Daily reminder"))
@@ -91,20 +111,54 @@ class ProfileJourneyTest : JourneyTest() {
     }
 
     @Test
-    fun quietHours_cycleFromTheNotificationsScreen() {
-        openFromProfile("Notifications")
-        assertShowing(QuietHours.TEN_TO_SEVEN.label)
+    fun reminders_haveNoQuietHours_soNothingToSet() {
+        openFromSettings("Reminders", "Daily reminder")
 
-        tapText("Quiet hours")
-        awaitText(QuietHours.ELEVEN_TO_SIX.label)
-        eventually("saved") { runBlocking { settings.current() }.quietHours == QuietHours.ELEVEN_TO_SIX }
+        assertShowing("Daily reminder", "Weekly summary")
+        awaitNoText("Quiet hours")
+    }
+
+    // ---------- about caddis ----------
+
+    @Test
+    fun enjoyingCaddis_rateShareAndFeedbackOpenTheRightApps() {
+        Intents.init()
+        intentsStarted = true
+        val ok = Instrumentation.ActivityResult(Activity.RESULT_OK, null)
+        intending(hasAction(Intent.ACTION_VIEW)).respondWith(ok)
+        intending(hasAction(Intent.ACTION_CHOOSER)).respondWith(ok)
+        intending(hasAction(Intent.ACTION_SENDTO)).respondWith(ok)
+        openSettings()
+
+        tapText("Rate")
+        intended(allOf(hasAction(Intent.ACTION_VIEW), hasData(AppLinks.PLAY_URL)))
+
+        tapText("Share")
+        intended(hasAction(Intent.ACTION_CHOOSER))
+
+        tapText("Feedback")
+        intended(
+            allOf(
+                hasAction(Intent.ACTION_SENDTO),
+                hasData("mailto:"),
+                hasExtra(Intent.EXTRA_EMAIL, arrayOf(AppLinks.FEEDBACK_EMAIL)),
+            ),
+        )
+    }
+
+    @Test
+    fun aboutAndPrivacy_showsTheVersion_andNeverClaimsToBeUpToDateUntilChecked() {
+        openFromSettings("About and privacy", "Check for updates")
+
+        assertShowing("Caddis", "Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})", "Privacy policy")
+        awaitNoText("Up to date")
     }
 
     // ---------- return rules ----------
 
     @Test
     fun returnRules_changeWhichDaysAndWhenASaveComesBack() {
-        openFromProfile("Return rules")
+        openFromSettings("Return rules")
         assertShowing("Weekend mornings")
         assertEquals(setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY), rule(IntentIds.COOK).days)
 
@@ -119,7 +173,7 @@ class ProfileJourneyTest : JourneyTest() {
 
     @Test
     fun returnRules_anIntentWithNoDays_neverReturns() {
-        openFromProfile("Return rules")
+        openFromSettings("Return rules")
 
         tapDescribed("Saturday")
         tapDescribed("Sunday")
@@ -130,7 +184,7 @@ class ProfileJourneyTest : JourneyTest() {
 
     @Test
     fun returnRules_limitHowManyComeBackADay() {
-        openFromProfile("Return rules")
+        openFromSettings("Return rules")
         val start = rule(IntentIds.COOK).maxPerDay
 
         tapDescribed("More")
@@ -143,7 +197,7 @@ class ProfileJourneyTest : JourneyTest() {
 
     @Test
     fun intents_canBeCreated_withTheirOwnDoneWord() {
-        openFromProfile("Intents")
+        openFromSettings("Intents")
         awaitText("Default, always kept", substring = true)
         awaitText("Intents say why you kept something.", substring = true)
 
@@ -158,7 +212,7 @@ class ProfileJourneyTest : JourneyTest() {
 
     @Test
     fun intents_cannotShareAName() {
-        openFromProfile("Intents")
+        openFromSettings("Intents")
 
         type("New intent name", "Read")
         tapButton("Create intent")
@@ -169,7 +223,7 @@ class ProfileJourneyTest : JourneyTest() {
     @Test
     fun intents_canBeRenamed() {
         runBlocking { repo.createIntent("Gift", "Gifted") }
-        openFromProfile("Intents")
+        openFromSettings("Intents")
 
         tapText("Gift")
         replaceText("Intent name", "Present")
@@ -184,7 +238,7 @@ class ProfileJourneyTest : JourneyTest() {
     fun deletingAnIntent_movesItsSavesToJustKeep() {
         val intent = runBlocking { repo.createIntent("Gift", "Gifted") } as com.nexxlabs.caddis.data.LibraryRepository.NameResult.Ok
         val saved = save("https://example.com/scarf", "A scarf", intent.id)
-        openFromProfile("Intents")
+        openFromSettings("Intents")
 
         tapText("Gift")
         tapButton("Delete")
@@ -198,7 +252,7 @@ class ProfileJourneyTest : JourneyTest() {
 
     @Test
     fun justKeep_isLocked() {
-        openFromProfile("Intents")
+        openFromSettings("Intents")
 
         tapText("Just keep")
         // It does not open an editor.
@@ -213,7 +267,7 @@ class ProfileJourneyTest : JourneyTest() {
         intentsStarted = true
         intending(hasAction(Intent.ACTION_CHOOSER)).respondWith(Instrumentation.ActivityResult(Activity.RESULT_OK, null))
         save("https://example.com/pasta", "Pasta night")
-        openFromProfile("Export and cache", "Export your library")
+        openExport()
 
         tapButton("JSON")
         intended(hasAction(Intent.ACTION_CHOOSER))
@@ -226,7 +280,7 @@ class ProfileJourneyTest : JourneyTest() {
 
     @Test
     fun clearCache_saysSo() {
-        openFromProfile("Export and cache", "Export your library")
+        openExport()
         assertShowing("Thumbnail cache")
 
         tapText("Clear cache")
@@ -237,7 +291,9 @@ class ProfileJourneyTest : JourneyTest() {
 
     @Test
     fun privacy_isShortAndPlain() {
-        openFromProfile("Privacy policy")
+        openFromSettings("About and privacy", "Check for updates")
+        tapText("Privacy policy")
+        awaitText("Your library is yours")
 
         assertShowing("Your library is yours", "No ads, no analytics, no selling data", "The clipboard", "No AI")
     }
@@ -246,16 +302,17 @@ class ProfileJourneyTest : JourneyTest() {
     fun deleteAllData_asksFirst_thenClearsEverything_butKeepsYouInTheApp() {
         save("https://example.com/pasta", "Pasta night")
         saveNote("Gift ideas")
-        openFromProfile("Delete all data", "Export your library first if you want a copy.")
+        openYourData()
+        awaitText("Export first if you want a copy.", substring = true)
         awaitNoText("sync", substring = true)
 
-        tapText("Delete it all")
+        tapText("Delete all data")
         awaitText("Delete all your data?")
         tapButton("Cancel")
         awaitNoText("Delete all your data?")
         assertEquals("cancelling deletes nothing", 2, library().size)
 
-        tapText("Delete it all")
+        tapText("Delete all data")
         tapButton("Delete everything")
 
         // Home, empty. (Not asserted: which toast shows. Clearing the image cache posts its own, right after the delete one.)

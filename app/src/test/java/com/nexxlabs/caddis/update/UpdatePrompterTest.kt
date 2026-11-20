@@ -33,7 +33,7 @@ private class FakeUpdater(initial: UpdateState = UpdateState.None) : AppUpdater 
     var refreshes = 0
     var restarts = 0
 
-    override suspend fun refresh() { refreshes++ }
+    override suspend fun refresh(): Boolean { refreshes++; return true }
     override fun start(launcher: ActivityResultLauncher<IntentSenderRequest>) = Unit
     override fun restart() { restarts++ }
 }

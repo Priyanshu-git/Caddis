@@ -15,7 +15,7 @@ class MotionTest {
         assertTrue(isTabRoute(HOME_ROUTE))
         assertTrue(isTabRoute("home"))
         assertTrue(isTabRoute("library"))
-        assertTrue(isTabRoute("profile"))
+        assertTrue(isTabRoute("settings"))
         assertFalse(isTabRoute("item/{id}"))
         assertFalse(isTabRoute("note/{id}"))
         assertFalse(isTabRoute("privacy"))
@@ -25,7 +25,7 @@ class MotionTest {
     @Test
     fun `moving between tabs fades through, forwards or backwards`() {
         assertEquals(NavMotion.TabSwitch, navMotion(HOME_ROUTE, "library", pop = false))
-        assertEquals(NavMotion.TabSwitch, navMotion("library", "profile", pop = false))
+        assertEquals(NavMotion.TabSwitch, navMotion("library", "settings", pop = false))
         // Tapping Home from Library pops the stack, but it is still a tab-to-tab move.
         assertEquals(NavMotion.TabSwitch, navMotion("library", HOME_ROUTE, pop = true))
     }
@@ -34,7 +34,7 @@ class MotionTest {
     fun `going deeper slides in and going back slides out`() {
         assertEquals(NavMotion.Forward, navMotion("library", "item/{id}", pop = false))
         assertEquals(NavMotion.Forward, navMotion("item/{id}", "note/{id}", pop = false))
-        assertEquals(NavMotion.Forward, navMotion("profile", "privacy", pop = false))
+        assertEquals(NavMotion.Forward, navMotion("settings", "privacy", pop = false))
         assertEquals(NavMotion.Back, navMotion("item/{id}", "library", pop = true))
         assertEquals(NavMotion.Back, navMotion("note/{id}", "item/{id}", pop = true))
     }

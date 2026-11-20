@@ -43,7 +43,7 @@ import com.nexxlabs.caddis.ui.theme.CaddisType
 internal enum class Tab(val route: String, val label: String, val icon: ImageVector) {
     HOME("home", "Home", CIcons.House),
     LIBRARY("library", "Library", CIcons.Library),
-    PROFILE("profile", "Profile", CIcons.User),
+    SETTINGS("settings", "Settings", CIcons.Gear),
 }
 
 internal fun NavHostController.navigateToTab(t: Tab) = navigateToTab(t.route)

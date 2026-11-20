@@ -15,7 +15,7 @@ never guilt-inducing.
   **Hide on scroll** (`BarVisibility.kt`): on tab screens a `nestedScroll` connection around the NavHost feeds finger drags to
   `BarVisibility`; dragging content up 24 dp hides the bar (and the FAB and toasts glide down to 20 dp), any drag the other way, a
   drag with nothing left to scroll, or a tab change shows it again. Item/note/other non-tab routes never drive it.
-- `BottomBar.kt`: `enum Tab(HOME "home", LIBRARY "library", PROFILE "profile")`. The selected tab is found with `route.startsWith(tab.route)`.
+- `BottomBar.kt`: `enum Tab(HOME "home", LIBRARY "library", SETTINGS "settings")`. The selected tab is found with `route.startsWith(tab.route)`.
   Tabs have no ripple. The active mark is one `accentTint` pill that glides behind the tabs (`animateFloatAsState` slot index,
   380 ms ease-out, drawn with `graphicsLayer.translationX`), while the icon and label colours cross-fade over `Motion.Short`.
 - `ShareActivity` hosts only `CaptureSheetHost(vm)` in a translucent window with `CaddisTheme`.
@@ -28,14 +28,15 @@ never guilt-inducing.
 | --- | --- | --- | --- |
 | `home?week={week}` | `HomeScreen` (`home/HomeScreen.kt`) | `HomeViewModel` | `screen()` (shared-element capable) |
 | `library` | `LibraryScreen` (`library/LibraryScreen.kt`) | `LibraryViewModel` | search, filters, collections tab |
-| `profile` | `ProfileScreen` (`profile/ProfileScreens.kt`) | `ProfileViewModel` | navigates by route string |
+| `settings` | `SettingsScreen` (`settings/SettingsScreens.kt`) | `SettingsViewModel` | navigates by route string |
 | `item/{id}` | `ItemScreen` (`item/ItemScreen.kt`) | `ItemViewModel` (reads `id` from `SavedStateHandle`) | `screen()` |
 | `note/{id}` | `NoteScreen` (`item/NoteScreen.kt`) | `ItemViewModel` | standalone notes only; a link's note is a plain text box on `item/{id}` |
 | `shelf/{collectionId}` | `ShelfScreen` (`library/ShelfScreen.kt`) | `LibraryViewModel` (reads `collectionId`) | `screen()` |
 | `collections` | `CollectionsScreen` (`manage/ManageScreens.kt`) | `CollectionsViewModel` | |
 | `tidy` | `TidyScreen` | `TidyViewModel` | |
 | `trash` | `TrashScreen` | `TrashViewModel` | |
-| `notifications`, `rules`, `intents`, `data`, `account`, `privacy` | `NotificationSettingsScreen`, `RulesScreen`, `IntentsScreen`, `DataScreen`, `AccountScreen`, `PrivacyScreen` (`profile/ProfileScreens.kt`) | `ProfileViewModel` (except Privacy) | |
+| `reminders`, `data`, `export`, `about`, `privacy` | `RemindersScreen`, `YourDataScreen`, `ExportScreen`, `AboutScreen`, `PrivacyScreen` (`settings/SettingsScreens.kt`) | `SettingsViewModel` (except Privacy) | `data` is "Your data"; `export` is "Export and cache" (the old `data` screen); `about` is "About and privacy" |
+| `rules`, `intents` | `RulesScreen`, `IntentsScreen` (`settings/IntentScreens.kt`) | `SettingsViewModel` | |
 
 External routes handed to `MainActivity` (`route` extra): `item/<id>`, `note/<id>`, `home?week=true`.
 
@@ -56,7 +57,7 @@ Adding a route: add a `composable(...)` (use `screen(...)` if it shows a thumbna
 | 12 | Collection shelf | `ShelfScreen` |
 | 14 / 19 / 20 | Collections / Tidy-up / Trash | `ui/manage/ManageScreens.kt` |
 | 15 / 16 | Item page / Note editor | `ui/item/ItemScreen.kt`, `NoteScreen.kt` |
-| 22–29 | Notifications, rules, intents, data, account, privacy, profile | `ui/profile/ProfileScreens.kt` |
+| 22–29 | Settings hub, reminders, your data, export, about, privacy, rules, intents | `ui/settings/SettingsScreens.kt`, `IntentScreens.kt` |
 
 ## Onboarding (`ui/onboarding/OnboardingScreen.kt`)
 
@@ -72,10 +73,10 @@ slight scale) so the two move at different speeds. The dots stretch towards the 
 Cards: Welcome (`AppMark`, headline, privacy line), then `IntroPage` for Save from any app, Say why you kept it, It comes back when it fits and
 Finish it, or keep it. Their drawings (`ShareArt`, `WhyArt`, `BackArt`, `FinishArt`) are static pictures made from the app's own pieces with made-up
 examples; they are hidden from screen readers and nothing in them is tappable. The reminders page (`NudgesPage`) is the earlier onboarding screen: daily
-reminder, quiet hours and weekly summary, all off by default, using `rememberNotificationToggle` and `SettingRowNoLine` from `ProfileScreens.kt`.
+reminder and weekly summary, both off by default, using `rememberNotificationToggle` and `SettingRowNoLine` from `SettingsComponents.kt`.
 Copy is in `res/values/strings.xml` (`onboarding_*`), except the reminders page, which keeps its earlier inline text.
 
-Both exits (Continue/Not now, and Skip) call `ProfileViewModel.finishOnboarding(skippedAtStep)`: logs `OnboardingFinished` and sets `onboarded`.
+Both exits (Continue/Not now, and Skip) call `SettingsViewModel.finishOnboarding(skippedAtStep)`: logs `OnboardingFinished` and sets `onboarded`.
 `CaddisRoot` then fades to the shell.
 
 Home before the first save: `HomeState.firstRun` (library has no saves at all) shows "Nothing saved yet" and three ways to save instead of
@@ -91,7 +92,7 @@ Home before the first save: `HomeState.firstRun` (library has no saves at all) s
 | `LibraryViewModel` | `LibraryState` (items, sections (`LibrarySections`: active, completed), hits, intents, collections+counts, filters, query, searching, showCollections, recent) | Shared by Library and Shelf. |
 | `ItemViewModel` | `item`, `intents`, `collections` (newest first), `saving` | Note autosave, item actions, `saveDetails`, `toggleCollection`, `createCollection` (toast with Undo). |
 | `TidyViewModel`, `TrashViewModel`, `CollectionsViewModel` | see `ManageViewModels.kt` | |
-| `ProfileViewModel` | `settings`, `rules`, `intents` (`IntentRow`), `cacheBytes`, intent errors, `update` | Notifications, background-work toggles, intents/rules, export, cache, delete all, start/finish an app update. |
+| `SettingsViewModel` | `settings`, `rules`, `intents` (`IntentRow`), `cacheBytes`, intent errors, `update`, `checking` | Notifications, background-work toggles, intents/rules, export, cache, delete all, check for / start / finish an app update, `tell(message)` toast. |
 
 `ItemActions` (`ui/ItemActions.kt`) is a singleton used by Home, Library, Item and Tidy ViewModels: `done`, `markActive`, `delete`,
 `later`, `open`, `share`, `today()`. It also hosts display helpers: `Item.meta()`, `Item.savedLabel()`, `Item.rightTag(intents)`, `Item.completedMeta(intents)`,
@@ -99,8 +100,26 @@ Home before the first save: `HomeState.firstRun` (library has no saves at all) s
 
 `Messenger.show(message, actionLabel = "Undo", undo?)` emits a `Toast`; `ToastHost` shows one at a time for 5 s with an action link (**Undo**, or `actionLabel`, e.g. **Restart**) when `undo` is set.
 
-**Update row (Profile).** When `ProfileViewModel.update` (`AppUpdater.state`) is not `None`, Profile shows an **Update** section above Preferences: `Available` → "Update Caddis" (opens Play's dialog),
-`Downloading` → "Updating Caddis" (no action), `Ready` → "Restart to update" (installs). `MainActivity` registers the Play dialog launcher and runs `UpdatePrompter` while started.
+**Settings (`settings/`).** The third tab (gear icon, route `settings`; it was "Profile" until there was nothing profile-like on it: no account, no sync). It is a short hub that opens sub screens;
+every card is a `SettingsGroup` (a `CCard` with no padding) of rows separated by `GroupDivider`, built from `NavRow` (icon tile, title, optional line and value, chevron or the external-link arrow) and `ToggleRow`
+(`SettingsComponents.kt`). Icon tiles are neutral (`tint` on `fg2`) so the accent stays for what is on or active.
+
+- **Hub (`SettingsScreen`)**, top to bottom: the update banner (only while Play has something), then Intents (count) / Return rules / Reminders (summary: Off, Daily on, Weekly on, Daily and weekly),
+  then an "Enjoying Caddis?" card with three one-tap buttons (**Rate**, **Share**, **Feedback**), then Your data (live "N MB cached · N in Trash") / About and privacy (version).
+- **Update banner.** When `SettingsViewModel.update` (`AppUpdater.state`) is not `None`: `Available` → "Update Caddis" (the card and its **Update** button open Play's dialog), `Downloading` → "Updating Caddis" (no action),
+  `Ready` → "Restart to update" (**Restart** installs). `MainActivity` registers the Play dialog launcher and runs `UpdatePrompter` while started.
+- **Reminders (`reminders`)**: Daily reminder and Weekly summary switches (permission asked on API 33+ only when one is turned on), a preview card that dims when the daily reminder is off, and a warning card with
+  **Open Android settings** (`AppLinks.notificationSettings`) when a reminder is on but Android blocks notifications (`rememberNotificationsEnabled`, re-read on resume). There are **no quiet hours**.
+- **Your data (`data`)**: Export and cache (size) → `export`, Trash (count) → `trash`, the Pause on low battery switch, and **Delete all data**, a separate danger button at the bottom that opens the confirm dialog
+  ("Delete all your data?" → **Delete everything**) and returns to Home with the back stack cleared.
+- **Export and cache (`export`)**: JSON / HTML bookmarks buttons, the thumbnail cache meter, **Clear cache**.
+- **About and privacy (`about`)**: the app mark, "Version name (code)", **Check for updates** and **Privacy policy** → `privacy`. *Check for updates* → `SettingsViewModel.checkForUpdate(launcher)`:
+  `AppUpdater.refresh()` now, then `Available` opens Play's dialog, `Ready` restarts, and otherwise `checkStatus` (`Idle`, `Checking`, `UpToDate`, `Unreachable`) fills a status pill on the row. "Up to date" appears
+  only after Play answered; a failed check shows "Couldn't check"; nothing is shown before the first tap. Update states take precedence ("Update ready", "Updating…", "Restart to update").
+- **Rate / Share / Feedback** start the intents built by `AppLinks` (`settings/AppLinks.kt`): `ACTION_VIEW` on the Play listing URL, a chooser for `ACTION_SEND` text (one-line pitch + the Play link, nothing from the library),
+  and `ACTION_SENDTO` `mailto:` to the feedback inbox with the subject "Caddis feedback" (no body, no device or library data). If nothing can handle one, a toast says so (the feedback toast prints the address).
+  The Play URL and inbox address live only in `AppLinks`.
+- **Return rules / Intents** (`IntentScreens.kt`): Return rules is one card of rows, the open one with its editor below it; Intents keeps its own row/edit-card layout.
 
 ## Capture sheets (`CaptureSheet` state machine)
 

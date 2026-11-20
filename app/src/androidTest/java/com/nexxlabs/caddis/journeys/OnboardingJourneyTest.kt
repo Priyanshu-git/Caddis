@@ -6,7 +6,6 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import com.nexxlabs.caddis.domain.analytics.AnalyticsEvent
-import com.nexxlabs.caddis.domain.schedule.QuietHours
 import com.nexxlabs.caddis.ui.onboarding.ONBOARDING_PAGER_TAG
 import dagger.hilt.android.testing.HiltAndroidTest
 import kotlinx.coroutines.runBlocking
@@ -166,19 +165,5 @@ class OnboardingJourneyTest : JourneyTest() {
         eventually("daily reminder saved") { runBlocking { settings.current().dailyReminder } }
         assertTrue(runBlocking { settings.current().onboarded })
         assertTrue(analytics.events.any { it is AnalyticsEvent.OnboardingFinished && it.dailyReminder })
-    }
-
-    @Test
-    fun quietHours_cycleThroughTheThreeWindows() {
-        toReminders()
-        assertShowing(QuietHours.TEN_TO_SEVEN.label)
-
-        tapText("Quiet hours")
-        awaitText(QuietHours.ELEVEN_TO_SIX.label)
-        tapText("Quiet hours")
-        awaitText(QuietHours.NINE_TO_EIGHT.label)
-        tapText("Quiet hours")
-        awaitText(QuietHours.TEN_TO_SEVEN.label)
-        assertEquals(QuietHours.TEN_TO_SEVEN, runBlocking { settings.current().quietHours })
     }
 }
