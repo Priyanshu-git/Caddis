@@ -26,7 +26,7 @@ import org.junit.Test
 import java.io.File
 import java.time.DayOfWeek
 
-/** Settings: the hub, reminders, return rules, intents, your data, about and privacy. */
+/** Settings: the hub, reminders, return rules, intents, your data, about us. */
 @HiltAndroidTest
 class SettingsJourneyTest : JourneyTest() {
 
@@ -70,7 +70,7 @@ class SettingsJourneyTest : JourneyTest() {
         assertShowing(
             "Intents", "Return rules", "Reminders",
             "Enjoying Caddis?", "Rate", "Share", "Feedback",
-            "Your data", "About and privacy",
+            "Your data", "About us",
         )
         // Everything else is one tap down, not on the hub.
         awaitNoText("Pause on low battery")
@@ -147,10 +147,10 @@ class SettingsJourneyTest : JourneyTest() {
     }
 
     @Test
-    fun aboutAndPrivacy_showsTheVersion_andNeverClaimsToBeUpToDateUntilChecked() {
-        openFromSettings("About and privacy", "Check for updates")
+    fun aboutUs_showsTheVersion_andNeverClaimsToBeUpToDateUntilChecked() {
+        openFromSettings("About us", "Check for updates")
 
-        assertShowing("Caddis", "Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})", "Privacy policy")
+        assertShowing("Caddis", "Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})", "Privacy policy", "Made by Nexxlabs", AppLinks.FEEDBACK_EMAIL)
         awaitNoText("Up to date")
     }
 
@@ -291,7 +291,7 @@ class SettingsJourneyTest : JourneyTest() {
 
     @Test
     fun privacy_isShortAndPlain() {
-        openFromSettings("About and privacy", "Check for updates")
+        openFromSettings("About us", "Check for updates")
         tapText("Privacy policy")
         awaitText("Your library is yours")
 

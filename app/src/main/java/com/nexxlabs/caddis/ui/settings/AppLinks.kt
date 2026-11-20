@@ -6,7 +6,7 @@ import android.net.Uri
 /** Where Caddis points people outside the app: its Google Play page and the feedback inbox. */
 object AppLinks {
     const val PLAY_URL = "https://play.google.com/store/apps/details?id=com.nexxlabs.caddis"
-    const val FEEDBACK_EMAIL = "nexxlabs.app@gmail.com"
+    const val FEEDBACK_EMAIL = "nexxlabs.apps@gmail.com"
     const val FEEDBACK_SUBJECT = "Caddis feedback"
     const val SHARE_TEXT = "Caddis turns what you save into what you use.\n$PLAY_URL"
 

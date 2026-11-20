@@ -60,11 +60,11 @@ fun RulesScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
             SettingsGroup {
                 intents.forEachIndexed { i, row ->
                     val r = rules[row.intent.id]
-                    if (i > 0) GroupDivider(12.dp)
+                    if (i > 0) GroupDivider(14.dp)
                     Row(
-                        Modifier.fillMaxWidth().heightIn(min = 56.dp)
+                        Modifier.fillMaxWidth().heightIn(min = 68.dp)
                             .clickable(enabled = r != null) { open = if (open == row.intent.id) null else row.intent.id }
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                            .padding(horizontal = 14.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
@@ -142,8 +142,8 @@ fun IntentsScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
                     }
                 } else {
                     Column {
-                        Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).then(if (!locked) Modifier.clickable { editing = i.id; confirm.armed = null; vm.intentError.value = "" } else Modifier), verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
+                        Row(Modifier.fillMaxWidth().heightIn(min = 68.dp).then(if (!locked) Modifier.clickable { editing = i.id; confirm.armed = null; vm.intentError.value = "" } else Modifier), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f).padding(vertical = 14.dp)) {
                                 Text(i.name, style = CaddisType.strong, color = c.fg)
                                 Fine("$n ${if (n == 1) "save" else "saves"} · Done says “${i.doneLabel}”" + if (locked) " · Default, always kept" else "")
                             }

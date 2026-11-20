@@ -70,7 +70,7 @@ class UpdateJourneyTest : JourneyTest() {
     private fun openAbout() {
         launchApp()
         goTo("Settings")
-        tapText("About and privacy")
+        tapText("About us")
         awaitText("Check for updates")
     }
 

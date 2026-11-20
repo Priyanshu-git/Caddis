@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -90,7 +91,7 @@ fun SettingsScreen(navigate: (String) -> Unit, vm: SettingsViewModel = hiltViewM
             }
             Spacer(Modifier.height(12.dp))
             SettingsGroup {
-                Column(Modifier.padding(12.dp)) {
+                Column(Modifier.padding(14.dp)) {
                     Text("Enjoying Caddis?", style = CaddisType.strong, color = C.colors.fg)
                     Fine("Tell someone, or tell us.")
                     Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -113,7 +114,7 @@ fun SettingsScreen(navigate: (String) -> Unit, vm: SettingsViewModel = hiltViewM
                     subtitle = "${bytes / (1024 * 1024)} MB cached · " + if (trash == 0) "Trash is empty" else "$trash in Trash",
                 )
                 GroupDivider()
-                NavRow(CIcons.Info, "About and privacy", { navigate("about") }, subtitle = "Version ${BuildConfig.VERSION_NAME}")
+                NavRow(CIcons.Info, "About us", { navigate("about") }, subtitle = "Version, updates, privacy")
             }
         }
     }
@@ -272,7 +273,7 @@ fun ExportScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
     }
 }
 
-/** About and privacy: the version, whether it is current, and the privacy policy. */
+/** About us: the app, its version, whether it is current, the privacy policy, and who made it. */
 @Composable
 fun AboutScreen(onBack: () -> Unit, navigate: (String) -> Unit, vm: SettingsViewModel = hiltViewModel()) {
     val update by vm.update.collectAsStateWithLifecycle()
@@ -290,27 +291,22 @@ fun AboutScreen(onBack: () -> Unit, navigate: (String) -> Unit, vm: SettingsView
         else -> null
     }
     Column(Modifier.fillMaxSize()) {
-        TopBar("About and privacy", onBack)
-        Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 18.dp).padding(bottom = 40.dp)) {
+        TopBar("About us", onBack)
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 18.dp)) {
+            Column(Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 30.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                AppMark(72.dp)
+                Text("Caddis", style = CaddisType.h2, color = c.fg, modifier = Modifier.padding(top = 14.dp))
+                Fine("Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})", Modifier.padding(top = 2.dp))
+            }
             SettingsGroup {
-                Row(
-                    Modifier.fillMaxWidth().heightIn(min = 74.dp).padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    AppMark(44.dp)
-                    Column {
-                        Text("Caddis", style = CaddisType.h2, color = c.fg)
-                        Fine("Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
-                    }
-                }
-                GroupDivider()
                 NavRow(CIcons.Refresh, "Check for updates", { vm.checkForUpdate(updateDialog) }, trailing = { status?.let { (text, color) -> StatusPill(text, color) } })
+                GroupDivider()
+                NavRow(CIcons.Shield, "Privacy policy", { navigate("privacy") })
             }
-            Spacer(Modifier.height(12.dp))
-            SettingsGroup {
-                NavRow(CIcons.Shield, "Privacy policy", { navigate("privacy") }, subtitle = "Read the short version")
-            }
+        }
+        Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = 28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("Made by Nexxlabs", style = CaddisType.strong, color = c.fg2)
+            Fine(AppLinks.FEEDBACK_EMAIL, Modifier.padding(top = 4.dp))
         }
     }
 }

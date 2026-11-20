@@ -35,7 +35,7 @@ never guilt-inducing.
 | `collections` | `CollectionsScreen` (`manage/ManageScreens.kt`) | `CollectionsViewModel` | |
 | `tidy` | `TidyScreen` | `TidyViewModel` | |
 | `trash` | `TrashScreen` | `TrashViewModel` | |
-| `reminders`, `data`, `export`, `about`, `privacy` | `RemindersScreen`, `YourDataScreen`, `ExportScreen`, `AboutScreen`, `PrivacyScreen` (`settings/SettingsScreens.kt`) | `SettingsViewModel` (except Privacy) | `data` is "Your data"; `export` is "Export and cache" (the old `data` screen); `about` is "About and privacy" |
+| `reminders`, `data`, `export`, `about`, `privacy` | `RemindersScreen`, `YourDataScreen`, `ExportScreen`, `AboutScreen`, `PrivacyScreen` (`settings/SettingsScreens.kt`) | `SettingsViewModel` (except Privacy) | `data` is "Your data"; `export` is "Export and cache" (the old `data` screen); `about` is "About us" |
 | `rules`, `intents` | `RulesScreen`, `IntentsScreen` (`settings/IntentScreens.kt`) | `SettingsViewModel` | |
 
 External routes handed to `MainActivity` (`route` extra): `item/<id>`, `note/<id>`, `home?week=true`.
@@ -105,7 +105,7 @@ every card is a `SettingsGroup` (a `CCard` with no padding) of rows separated by
 (`SettingsComponents.kt`). Icon tiles are neutral (`tint` on `fg2`) so the accent stays for what is on or active.
 
 - **Hub (`SettingsScreen`)**, top to bottom: the update banner (only while Play has something), then Intents (count) / Return rules / Reminders (summary: Off, Daily on, Weekly on, Daily and weekly),
-  then an "Enjoying Caddis?" card with three one-tap buttons (**Rate**, **Share**, **Feedback**), then Your data (live "N MB cached · N in Trash") / About and privacy (version).
+  then an "Enjoying Caddis?" card with three one-tap buttons (**Rate**, **Share**, **Feedback**), then Your data (live "N MB cached · N in Trash") / About us (version).
 - **Update banner.** When `SettingsViewModel.update` (`AppUpdater.state`) is not `None`: `Available` → "Update Caddis" (the card and its **Update** button open Play's dialog), `Downloading` → "Updating Caddis" (no action),
   `Ready` → "Restart to update" (**Restart** installs). `MainActivity` registers the Play dialog launcher and runs `UpdatePrompter` while started.
 - **Reminders (`reminders`)**: Daily reminder and Weekly summary switches (permission asked on API 33+ only when one is turned on), a preview card that dims when the daily reminder is off, and a warning card with
@@ -113,7 +113,7 @@ every card is a `SettingsGroup` (a `CCard` with no padding) of rows separated by
 - **Your data (`data`)**: Export and cache (size) → `export`, Trash (count) → `trash`, the Pause on low battery switch, and **Delete all data**, a separate danger button at the bottom that opens the confirm dialog
   ("Delete all your data?" → **Delete everything**) and returns to Home with the back stack cleared.
 - **Export and cache (`export`)**: JSON / HTML bookmarks buttons, the thumbnail cache meter, **Clear cache**.
-- **About and privacy (`about`)**: the app mark, "Version name (code)", **Check for updates** and **Privacy policy** → `privacy`. *Check for updates* → `SettingsViewModel.checkForUpdate(launcher)`:
+- **About us (`about`)** (the hub row says "Version, updates, privacy"): a centred app mark, "Caddis" and "Version name (code)", one card with **Check for updates** and **Privacy policy** → `privacy`, and a footer pinned to the bottom ("Made by Nexxlabs" and the feedback address). *Check for updates* → `SettingsViewModel.checkForUpdate(launcher)`:
   `AppUpdater.refresh()` now, then `Available` opens Play's dialog, `Ready` restarts, and otherwise `checkStatus` (`Idle`, `Checking`, `UpToDate`, `Unreachable`) fills a status pill on the row. "Up to date" appears
   only after Play answered; a failed check shows "Couldn't check"; nothing is shown before the first tap. Update states take precedence ("Update ready", "Updating…", "Restart to update").
 - **Rate / Share / Feedback** start the intents built by `AppLinks` (`settings/AppLinks.kt`): `ACTION_VIEW` on the Play listing URL, a chooser for `ACTION_SEND` text (one-line pitch + the Play link, nothing from the library),

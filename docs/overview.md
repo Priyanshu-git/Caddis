@@ -89,8 +89,8 @@ unless asked.
   Tidy-up (keep or delete link saves untouched for 90 days; never Just keep saves, notes or saves set to "Not again").
 - **Notifications** (opt-in): one daily pick and a Sunday-evening weekly summary,
   shared one-a-day budget; local only. No quiet hours: the hourly check sends whenever it runs and something fits.
-- **Settings** (third tab; was Profile): a short hub (intents, return rules, reminders, rate/share/feedback buttons, your data, about and privacy) that opens sub screens:
-  reminders (daily and weekly switches), your data (export, thumbnail cache with clear, Trash, low-battery pause, delete all data), about and privacy (version, check for updates, the short privacy policy).
+- **Settings** (third tab; was Profile): a short hub (intents, return rules, reminders, rate/share/feedback buttons, your data, about us) that opens sub screens:
+  reminders (daily and weekly switches), your data (export, thumbnail cache with clear, Trash, low-battery pause, delete all data), about us (version, check for updates, the short privacy policy).
   There is no account, and no sync or sign-in UI.
 - **App updates**: on installs from Google Play, a flexible in-app update is offered once per version (again after 7 days), downloads in the background, and offers a restart; Settings has a matching banner and a Check for updates row.
 - **Share out**: Share action on the item page (title, clean link, "Shared via Caddis app").

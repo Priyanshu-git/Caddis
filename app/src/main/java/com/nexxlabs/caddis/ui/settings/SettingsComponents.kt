@@ -101,9 +101,9 @@ internal fun SettingRowNoLine(title: String, sub: String, trailing: @Composable 
 internal fun SettingsGroup(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) =
     CCard(modifier.fillMaxWidth(), padding = 0.dp, content = content)
 
-/** The hairline between two rows of a group, starting after the icon tile. */
+/** The hairline between two rows of a group, starting after the icon tile (14 dp edge + 32 dp tile + 11 dp gap). */
 @Composable
-internal fun GroupDivider(inset: Dp = 55.dp) = HorizontalDivider(Modifier.padding(start = inset), color = C.colors.line)
+internal fun GroupDivider(inset: Dp = 57.dp) = HorizontalDivider(Modifier.padding(start = inset), color = C.colors.line)
 
 /** The small rounded square that carries a row's icon. Neutral, so the accent stays for what is on or active. */
 @Composable
@@ -130,7 +130,7 @@ internal fun NavRow(
 ) {
     val c = C.colors
     Row(
-        modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 8.dp),
+        modifier.fillMaxWidth().heightIn(min = 68.dp).clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(11.dp),
     ) {
@@ -148,7 +148,7 @@ internal fun NavRow(
 @Composable
 internal fun ToggleRow(icon: ImageVector, title: String, subtitle: String, on: Boolean, onChange: (Boolean) -> Unit) {
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable { onChange(!on) }.padding(horizontal = 12.dp, vertical = 8.dp),
+        Modifier.fillMaxWidth().heightIn(min = 68.dp).clickable { onChange(!on) }.padding(horizontal = 14.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(11.dp),
     ) {

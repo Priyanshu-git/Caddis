@@ -212,13 +212,13 @@ Google Play's **flexible** in-app update (`com.google.android.play:app-update`);
 4. Accepting downloads in the background while Caddis stays usable. When it is `Ready` a toast says "Update ready." with **Restart** (once per run of the app, however often the
    app is reopened); Settings keeps a "Restart to update" row. Restart installs and relaunches (`completeUpdate()`).
 5. Settings shows "Update Caddis" whenever an update is `Available`, whatever was asked before; tapping it opens Play's dialog (not limited by the 7-day rule).
-   **Settings → About and privacy → Check for updates** asks Play right then (same dialog, same rule exemption); when nothing is waiting the row shows "Up to date", and when Play cannot be reached it shows "Couldn't check" rather than claiming that.
+   **Settings → About us → Check for updates** asks Play right then (same dialog, same rule exemption); when nothing is waiting the row shows "Up to date", and when Play cannot be reached it shows "Couldn't check" rather than claiming that.
 6. No analytics, no extra permission; Google Play does the checking and downloading.
 
 ## 16. Rate, share, send feedback
 
 Settings hub → "Enjoying Caddis?". **Rate** opens the Google Play listing (`AppLinks.PLAY_URL`; the Play app handles the link when installed). **Share** opens the system share sheet with
-"Caddis turns what you save into what you use." and the same link. **Feedback** opens the person's email app with a blank message to `nexxlabs.app@gmail.com`, subject "Caddis feedback". Nothing from the
+"Caddis turns what you save into what you use." and the same link. **Feedback** opens the person's email app with a blank message to `nexxlabs.apps@gmail.com`, subject "Caddis feedback". Nothing from the
 library, no device details and no analytics are attached; the person writes and sends the email themselves. With no handler installed, a toast says so.
 
 ## 13. Bottom-bar navigation

@@ -41,7 +41,7 @@ class AppLinksTest {
 
         assertEquals(Intent.ACTION_SENDTO, i.action)
         assertEquals("mailto:", i.data.toString())
-        assertArrayEquals(arrayOf("nexxlabs.app@gmail.com"), i.getStringArrayExtra(Intent.EXTRA_EMAIL))
+        assertArrayEquals(arrayOf("nexxlabs.apps@gmail.com"), i.getStringArrayExtra(Intent.EXTRA_EMAIL))
         assertEquals("Caddis feedback", i.getStringExtra(Intent.EXTRA_SUBJECT))
         assertFalse(i.hasExtra(Intent.EXTRA_TEXT))
     }
