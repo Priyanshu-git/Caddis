@@ -28,8 +28,11 @@ enum class ItemStatus { ACTIVE, DONE, DELETED }
 
 enum class IntentSource { GUESSED, USER }
 
-/** When an item may appear on Home (BRB-02/03). */
-enum class ReturnRule { DEFAULT, TONIGHT, WEEKEND, NEXT_WEEK, DATE, NEVER }
+/**
+ * When an item may appear on Home (BRB-02/03). [REMINDER] is the exception: the person set an exact time, a
+ * notification goes out then, and the item stays on Home until they open, finish or move it.
+ */
+enum class ReturnRule { DEFAULT, TONIGHT, WEEKEND, NEXT_WEEK, DATE, NEVER, REMINDER }
 
 enum class TimeOfDay(val label: String, val startHour: Int, val endHour: Int) {
     MORNING("Morning", 5, 12),
@@ -83,6 +86,9 @@ data class Item(
     val revision: Long = 1,
 ) {
     val isNote: Boolean get() = type == ItemType.NOTE
+
+    /** The person asked to be reminded at [returnAt] (a notification, not just a place on Home). */
+    val hasReminder: Boolean get() = returnRule == ReturnRule.REMINDER && returnAt != null
 
     /** Display title: what we know, falling back to a readable default built from the link (MET-05). */
     val displayTitle: String
