@@ -10,14 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,7 +34,6 @@ import com.nexxlabs.caddis.domain.model.IntentSource
 import com.nexxlabs.caddis.domain.model.Intents
 import com.nexxlabs.caddis.domain.model.Item
 import com.nexxlabs.caddis.domain.model.Platform
-import com.nexxlabs.caddis.domain.model.ReturnRule
 import com.nexxlabs.caddis.ui.components.BtnStyle
 import com.nexxlabs.caddis.ui.components.CButton
 import com.nexxlabs.caddis.ui.components.CField
@@ -51,62 +43,6 @@ import com.nexxlabs.caddis.ui.components.Fine
 import com.nexxlabs.caddis.ui.components.canReset
 import com.nexxlabs.caddis.ui.theme.C
 import com.nexxlabs.caddis.ui.theme.CaddisType
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneOffset
-
-/** Screen 9: "Bring it back" — tonight, this weekend, next week or a chosen date (BRB-03). */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun LaterSheet(item: Item, today: LocalDate, onPick: (ReturnRule, LocalDate?) -> Unit, onDismiss: () -> Unit) {
-    var picking by remember { mutableStateOf(false) }
-    CSheet(onDismiss) {
-        Text("Bring it back", style = CaddisType.sheetTitle, color = C.colors.fg)
-        Fine(item.displayTitle, Modifier.padding(top = 2.dp, bottom = 8.dp))
-        LaterRow("Tonight", "7 pm") { onPick(ReturnRule.TONIGHT, null) }
-        LaterRow("This weekend", "Saturday morning") { onPick(ReturnRule.WEEKEND, null) }
-        LaterRow("Next week", "Monday") { onPick(ReturnRule.NEXT_WEEK, null) }
-        LaterRow("Pick a date", "Calendar") { picking = true }
-        LaterRow("Not again", "Stays in your Library") { onPick(ReturnRule.NEVER, null) }
-        Fine("A date or time you pick won’t reappear before then.", Modifier.padding(top = 12.dp))
-        CButton("Cancel", onClick = onDismiss, style = BtnStyle.Ghost, modifier = Modifier.fillMaxWidth())
-    }
-    if (picking) {
-        val minUtc = today.plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()
-        val state = rememberDatePickerState(
-            initialSelectedDateMillis = today.plusDays(8).atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli(),
-            selectableDates = object : SelectableDates {
-                override fun isSelectableDate(utcTimeMillis: Long) = utcTimeMillis >= minUtc
-            },
-        )
-        DatePickerDialog(
-            onDismissRequest = { picking = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    val ms = state.selectedDateMillis
-                    picking = false
-                    if (ms != null) onPick(ReturnRule.DATE, Instant.ofEpochMilli(ms).atZone(ZoneOffset.UTC).toLocalDate())
-                }) { Text("Set", color = C.colors.accent) }
-            },
-            dismissButton = { TextButton(onClick = { picking = false }) { Text("Cancel", color = C.colors.fg2) } },
-        ) { DatePicker(state = state) }
-    }
-}
-
-@Composable
-private fun LaterRow(title: String, hint: String, onClick: () -> Unit) {
-    val c = C.colors
-    Column {
-        Row(
-            Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable(role = Role.Button, onClick = onClick),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(title, style = CaddisType.strong.copy(fontSize = CaddisType.bodyLarge.fontSize), color = c.fg, modifier = Modifier.weight(1f))
-            Text(hint, style = CaddisType.body, color = c.fg2)
-        }
-        HorizontalDivider(color = c.line)
-    }
-}
 
 /** Screen 10: change intent in one tap (INT-02). */
 @Composable

@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -46,7 +47,10 @@ class MainActivity : ComponentActivity() {
                 .withEndAction { provider.remove() }
                 .start()
         }
-        if (savedInstanceState == null) main.pendingRoute.value = intent?.getStringExtra(EXTRA_ROUTE)
+        if (savedInstanceState == null) {
+            main.pendingRoute.value = intent?.getStringExtra(EXTRA_ROUTE)
+            clearNotificationFrom(intent)
+        }
         setContent { CaddisRoot(main, capture) }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) { updatePrompter.run { updater.start(updateDialog) } }
@@ -56,10 +60,18 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         intent.getStringExtra(EXTRA_ROUTE)?.let { main.pendingRoute.value = it }
+        clearNotificationFrom(intent)
+    }
+
+    /** The Open button on a reminder does not dismiss it on its own, so the notification is cleared here. */
+    private fun clearNotificationFrom(intent: Intent?) {
+        val id = intent?.getIntExtra(EXTRA_CANCEL_NOTIFICATION, -1) ?: -1
+        if (id >= 0) NotificationManagerCompat.from(this).cancel(id)
     }
 
     companion object {
         const val EXTRA_ROUTE = "route"
+        const val EXTRA_CANCEL_NOTIFICATION = "cancel_notification"
         const val ROUTE_ITEM_PREFIX = "item/"
         const val ROUTE_WEEK = "home?week=true"
     }

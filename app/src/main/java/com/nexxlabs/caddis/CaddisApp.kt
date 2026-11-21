@@ -5,6 +5,7 @@ import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.nexxlabs.caddis.data.LibraryRepository
 import com.nexxlabs.caddis.notify.Notifier
+import com.nexxlabs.caddis.notify.ReminderAlarms
 import com.nexxlabs.caddis.work.WorkScheduler
 import com.google.firebase.FirebaseApp
 import com.google.firebase.crashlytics.FirebaseCrashlytics
@@ -29,6 +30,7 @@ class CaddisApp : Application(), Configuration.Provider, SingletonImageLoader.Fa
     @Inject lateinit var repo: LibraryRepository
     @Inject lateinit var work: WorkScheduler
     @Inject lateinit var notifier: Notifier
+    @Inject lateinit var reminderAlarms: ReminderAlarms
     @Inject lateinit var appScope: CoroutineScope
     @Inject lateinit var http: OkHttpClient
 
@@ -45,6 +47,8 @@ class CaddisApp : Application(), Configuration.Provider, SingletonImageLoader.Fa
             repo.purgeExpiredTrash()
             // Fallback when Android delayed background work: retry missing details on open.
             repo.scheduleMissingDetails()
+            // Send any "Remind me" that came due while the app was stopped, and set the alarm for the next one.
+            reminderAlarms.run()
         }
     }
 

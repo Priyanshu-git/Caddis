@@ -59,6 +59,7 @@ import com.nexxlabs.caddis.ui.savedLabel
 import com.nexxlabs.caddis.ui.sheets.EditDetailsSheet
 import com.nexxlabs.caddis.ui.sheets.IntentSheet
 import com.nexxlabs.caddis.ui.sheets.LaterSheet
+import com.nexxlabs.caddis.domain.schedule.ItemReminder
 import com.nexxlabs.caddis.ui.theme.C
 import com.nexxlabs.caddis.ui.theme.CaddisType
 
@@ -95,6 +96,14 @@ fun ItemScreen(onBack: () -> Unit, onManageIntents: () -> Unit, vm: ItemViewMode
                 CChip(it.platform.label)
                 androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
                 Fine(it.kind.label + formatLength(it.lengthSeconds, it.kind.isVideo).let { l -> if (l.isBlank()) "" else " · $l" })
+            }
+            if (it.hasReminder && it.status == ItemStatus.ACTIVE) {
+                val remindAt = it.returnAt!!
+                val remindTag = vm.now().let { n -> ItemReminder.tag(remindAt, n.toInstant(), n.zone) }
+                CChip(
+                    remindTag, selected = true, leading = CIcons.Bell, onClick = { sheet = "later" },
+                    modifier = Modifier.padding(bottom = 8.dp), contentDescription = "Reminder $remindTag. Change",
+                )
             }
             Text(it.displayTitle, style = CaddisType.itemTitle, color = c.fg)
             val by = buildString {
@@ -166,7 +175,13 @@ fun ItemScreen(onBack: () -> Unit, onManageIntents: () -> Unit, vm: ItemViewMode
     }
 
     when (sheet) {
-        "later" -> LaterSheet(it, vm.today(), onPick = { r, d -> vm.later(r, d); sheet = null }, onDismiss = { sheet = null })
+        "later" -> LaterSheet(
+            it, vm::now,
+            onPick = { r, d -> vm.later(r, d); sheet = null },
+            onRemind = { at -> vm.remind(at); sheet = null },
+            onClearReminder = { vm.clearReminder(); sheet = null },
+            onDismiss = { sheet = null },
+        )
         "edit" -> EditDetailsSheet(it, onSave = vm::saveDetails, onDone = { sheet = null })
         "intent" -> IntentSheet(it, intents, onPick = vm::setIntent, onManage = { sheet = null; onManageIntents() }, onDismiss = { sheet = null })
     }

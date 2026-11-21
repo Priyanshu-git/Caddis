@@ -28,6 +28,8 @@ data class Settings(
     val lastWeeklySentWeek: LocalDate? = null,
     /** The last time Google Play's update dialog was opened on its own (see [UpdatePrompts]). */
     val updateAsked: UpdatePrompts.Asked? = null,
+    /** The last moment the "Remind me" notifications were checked; anything due after it still has to go out. */
+    val lastReminderSweep: Instant? = null,
 ) {
     fun reminderState() = ReminderState(dailyReminder, weeklySummary, lastDailySent, lastWeeklySentWeek)
 }
@@ -44,6 +46,7 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
         val lastWeekly = stringPreferencesKey("last_weekly_week")
         val updateVersion = intPreferencesKey("update_asked_version")
         val updateAt = longPreferencesKey("update_asked_at")
+        val reminderSweep = longPreferencesKey("reminder_sweep_at")
     }
 
     val settings: Flow<Settings> = store.data.map { p ->
@@ -55,6 +58,7 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
             lastDailySent = p[K.lastDaily]?.let(LocalDate::parse),
             lastWeeklySentWeek = p[K.lastWeekly]?.let(LocalDate::parse),
             updateAsked = p[K.updateVersion]?.let { v -> p[K.updateAt]?.let { UpdatePrompts.Asked(v, Instant.ofEpochMilli(it)) } },
+            lastReminderSweep = p[K.reminderSweep]?.let(Instant::ofEpochMilli),
         )
     }
 
@@ -69,6 +73,8 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
         it[K.lastDaily] = date.toString()
         it[K.lastWeekly] = week.toString()
     }
+
+    suspend fun markReminderSweep(at: Instant) = store.edit { it[K.reminderSweep] = at.toEpochMilli() }
 
     suspend fun markUpdateAsked(versionCode: Int, at: Instant) = store.edit {
         it[K.updateVersion] = versionCode

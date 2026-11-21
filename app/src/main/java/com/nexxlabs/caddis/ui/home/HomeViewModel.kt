@@ -12,6 +12,7 @@ import com.nexxlabs.caddis.domain.model.ReturnRule
 import com.nexxlabs.caddis.domain.model.WeeklySummary
 import com.nexxlabs.caddis.domain.model.label
 import com.nexxlabs.caddis.domain.schedule.HomePicker
+import com.nexxlabs.caddis.domain.schedule.ReminderSweep
 import com.nexxlabs.caddis.domain.schedule.TidyUp
 import com.nexxlabs.caddis.domain.schedule.Weeks
 import com.nexxlabs.caddis.ui.ItemActions
@@ -25,9 +26,11 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Clock
+import java.time.Instant
 import java.time.LocalDate
 import javax.inject.Inject
 
@@ -57,7 +60,22 @@ class HomeViewModel @Inject constructor(
     private var shownCount = 0
 
     /** Picks depend on the clock (time of day), so re-evaluate every few minutes. */
-    private val tick = flow { while (true) { emit(clock.instant()); delay(5 * 60_000L) } }
+    private val everyFewMinutes = flow { while (true) { emit(clock.instant()); delay(5 * 60_000L) } }
+
+    /** A reminder comes due at an exact moment, so Home looks again then instead of waiting for the next tick. */
+    private val whenReminderDue = repo.observeLibrary().flatMapLatest { items ->
+        flow {
+            var after = clock.instant()
+            while (true) {
+                val next = ReminderSweep.next(items, after) ?: break
+                delay((next.toEpochMilli() - clock.instant().toEpochMilli()).coerceAtLeast(0) + 500)
+                after = next
+                emit(clock.instant())
+            }
+        }
+    }
+
+    private val tick = merge(everyFewMinutes, whenReminderDue)
 
     private val weekStart = tick.map { Weeks.weekStart(it, clock.zone) }.distinctUntilChanged()
 
@@ -99,6 +117,10 @@ class HomeViewModel @Inject constructor(
     fun open(item: Item) { actedOn = true; actions.open(item, AnalyticsEvent.OpenEntry.HOME) }
     fun done(item: Item) { actedOn = true; actions.done(item, state.value.intents) }
     fun later(item: Item, rule: ReturnRule, date: LocalDate? = null) { actedOn = true; actions.later(item, rule, date) }
+    fun remind(item: Item, at: Instant) { actedOn = true; actions.remind(item, at) }
+    fun clearReminder(item: Item) { actedOn = true; actions.clearReminder(item) }
+
+    fun now(): java.time.ZonedDateTime = clock.instant().atZone(clock.zone)
 
     fun summaryViewed(fromNotification: Boolean) = analytics.log(AnalyticsEvent.SummaryViewed(fromNotification))
 

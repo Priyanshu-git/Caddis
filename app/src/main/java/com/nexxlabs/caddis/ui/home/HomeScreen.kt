@@ -45,12 +45,12 @@ import com.nexxlabs.caddis.ui.components.Tag
 import com.nexxlabs.caddis.ui.components.Thumb
 import com.nexxlabs.caddis.ui.intentName
 import com.nexxlabs.caddis.ui.meta
+import com.nexxlabs.caddis.domain.schedule.ItemReminder
 import com.nexxlabs.caddis.ui.sheets.LaterSheet
 import com.nexxlabs.caddis.ui.theme.C
 import com.nexxlabs.caddis.ui.theme.CaddisType
 import androidx.compose.ui.res.stringResource
 import com.nexxlabs.caddis.R
-import java.time.LocalDate
 
 /** Screens 7, 8, 21: Home — at most 3 picks, then This week, then the tidy-up card. */
 @Composable
@@ -129,7 +129,13 @@ fun HomeScreen(
     }
 
     laterFor?.let { item ->
-        LaterSheet(item, LocalDate.now(), onPick = { rule, date -> vm.later(item, rule, date); laterFor = null }, onDismiss = { laterFor = null })
+        LaterSheet(
+            item, vm::now,
+            onPick = { rule, date -> vm.later(item, rule, date); laterFor = null },
+            onRemind = { at -> vm.remind(item, at); laterFor = null },
+            onClearReminder = { vm.clearReminder(item); laterFor = null },
+            onDismiss = { laterFor = null },
+        )
     }
 }
 
@@ -175,7 +181,13 @@ private fun PickCard(
         ) {
             Thumb(item, if (featured) 84.dp else 68.dp, share = "home")
             Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Tag(intentLabel)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (item.hasReminder) {
+                        val at = item.returnAt!!.atZone(java.time.ZoneId.systemDefault()).toLocalTime()
+                        Tag("Your reminder · ${ItemReminder.clock(at)}", on = true)
+                    }
+                    Tag(intentLabel)
+                }
                 Text(item.displayTitle, style = CaddisType.cardTitle, color = c.fg, maxLines = 3, overflow = TextOverflow.Ellipsis)
                 Fine(item.meta() + if (item.sourceFrom.isNotBlank()) " · from ${item.sourceFrom}" else "")
             }
