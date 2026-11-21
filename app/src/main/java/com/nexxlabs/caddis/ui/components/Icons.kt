@@ -77,11 +77,11 @@ object CIcons {
     val Mark = icon("mark", circle(9f, 9f, 3f), circle(16f, 11f, 2f), circle(12f, 17f, 3.2f))
 
     // Note editor toolbar.
-    val Bold = icon("bold", "M7.5 5h5.5a3.5 3.5 0 010 7H7.5zM7.5 12h6.5a3.5 3.5 0 010 7H7.5z")
+    val Bold = icon("bold", "M7.5 5 H13 A3.5 3.5 0 0 1 13 12 H7.5 Z M7.5 12 H14 A3.5 3.5 0 0 1 14 19 H7.5 Z")
     val Italic = icon("italic", "M10 5h8M6 19h8M14.5 5l-5 14")
     val BulletList = icon("bullet-list", "M10 7h10M10 12h10M10 17h10", circle(5f, 7f, 0.5f), circle(5f, 12f, 0.5f), circle(5f, 17f, 0.5f))
-    val NumberList = icon("number-list", "M11 7h9M11 12h9M11 17h9", "M4.5 5.5l1.5-1v5", "M4 14.6a1.4 1.4 0 012.6.6c0 1.1-2.6 2.2-2.6 3.3h2.8")
+    val NumberList = icon("number-list", "M11 7h9M11 12h9M11 17h9", "M4.5 5.5l1.5-1v5", "M4 14.6 A1.4 1.4 0 0 1 6.6 15.2 C6.6 16.3 4 17.4 4 18.5 H6.8")
     val Code = icon("code", "M8 8l-4 4 4 4M16 8l4 4-4 4M13.5 5.5l-3 13")
-    val Link = icon("link", "M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1", "M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1")
-    val Undo = icon("undo", "M9 14L4 9l5-5", "M4 9h10.5a5.5 5.5 0 010 11H11")
+    val Link = icon("link", "M10 14 A4 4 0 0 0 15.7 14 L18.7 11 A4 4 0 0 0 13 5.3 L12 6.3", "M14 10 A4 4 0 0 0 8.3 10 L5.3 13 A4 4 0 0 0 11 18.7 L12 17.7")
+    val Undo = icon("undo", "M9 14L4 9l5-5", "M4 9 H14.5 A5.5 5.5 0 0 1 14.5 20 H11")
 }
