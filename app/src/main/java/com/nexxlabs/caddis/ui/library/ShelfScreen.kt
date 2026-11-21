@@ -29,6 +29,7 @@ import com.nexxlabs.caddis.ui.components.CIcons
 import com.nexxlabs.caddis.ui.components.EmptyState
 import com.nexxlabs.caddis.ui.components.IconBtn
 import com.nexxlabs.caddis.ui.components.ItemRow
+import com.nexxlabs.caddis.ui.components.PlaceholderRows
 import com.nexxlabs.caddis.ui.components.Sub
 import com.nexxlabs.caddis.ui.components.Tag
 import com.nexxlabs.caddis.ui.calmItem
@@ -58,7 +59,8 @@ fun ShelfScreen(onBack: () -> Unit, onOpenItem: (Item) -> Unit, vm: LibraryViewM
             items(StatusFilter.entries) { st -> CChip(st.label, s.filters.status == st, onClick = { vm.setStatus(st) }) }
         }
         LazyColumn(contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 40.dp)) {
-            if (s.items.isEmpty()) item(key = "empty") { EmptyState(null, "Nothing here yet.", { CButton("Clear filters", onClick = vm::resetFilters, small = true) }, rings = false) }
+            if (!s.loaded) item(key = "loading") { PlaceholderRows(modifier = calmItem()) }
+            else if (s.items.isEmpty()) item(key = "empty") { EmptyState(null, "Nothing here yet.", { CButton("Clear filters", onClick = vm::resetFilters, small = true) }, rings = false) }
             items(s.items, key = { it.id }) { i ->
                 ItemRow(i, i.meta(), onClick = { onOpenItem(i) }, right = i.rightTag(s.intents)?.let { t -> { Tag(t) } }, modifier = calmItem(), share = "shelf")
             }

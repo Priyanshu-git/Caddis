@@ -106,6 +106,12 @@ All via `ItemActions` (app scope) so leaving a screen never drops them:
 `LibraryViewModel` keeps UI state (`Filters`, query, `searching`, `showCollections`, `recent`) in a private `MutableStateFlow` and
 combines it with the library, search results, intents and collections.
 
+- **First open never flashes "Nothing here"**: the library, intents and collections come from `LibraryFeed`, a singleton that `CaddisApp` starts at
+  launch, so the ViewModel's first state (`firstState()`) is already the real list. If Room has not answered yet, `LibraryState.loaded` is false and
+  `LibraryScreen` / `ShelfScreen` show `PlaceholderRows` instead of the count line and empty message (`loaded` is the only thing that allows the
+  empty messages). The placeholders wait 150 ms (`PLACEHOLDER_GRACE_MS`) so a quick load shows nothing, then pulse softly. A blank search query is
+  not debounced, only a typed one is (120 ms), so it never delays the first state.
+
 - **Filters**: Library chip row = Filter button + "All" + one chip per platform in the library (`LibraryState.platforms`, scrolls, tap again to clear); there is no Kept chip, Just keep is an ordinary choice in the sheet's Intent group. Filter sheet (intent and platform; the Library passes `showStatus = false`, the shelf still shows Status Active/Done/All; the button counts intent, plus platform in search), applied in memory by `Filters.apply`. The Platform group is **dynamic**: `LibraryState.platforms` comes from
   `PlatformFacets.of` over the saves in scope (a collection shelf lists only its own), most saves first; first 6 shown, then "More · n"; the
   chosen platform stays visible; the group is hidden when there are no link saves; a filter on a platform whose last save is gone is dropped.

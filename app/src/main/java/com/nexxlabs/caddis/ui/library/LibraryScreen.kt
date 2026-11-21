@@ -73,6 +73,7 @@ import com.nexxlabs.caddis.ui.components.Chips
 import com.nexxlabs.caddis.ui.components.EmptyState
 import com.nexxlabs.caddis.ui.components.Eyebrow
 import com.nexxlabs.caddis.ui.components.Fine
+import com.nexxlabs.caddis.ui.components.PlaceholderRows
 import com.nexxlabs.caddis.ui.components.IconBtn
 import com.nexxlabs.caddis.ui.components.ItemRow
 import com.nexxlabs.caddis.ui.components.Tag
@@ -132,6 +133,11 @@ fun LibraryScreen(
                                 PlatformChipRow(s, vm, onFilters = { filters = true })
                                 val sec = s.sections
                                 LazyColumn(contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 100.dp)) {
+                                    // Room has not answered yet: placeholder rows (after a short grace), never "Nothing here".
+                                    if (!s.loaded) {
+                                        item(key = "loading") { PlaceholderRows(modifier = calmItem()) }
+                                        return@LazyColumn
+                                    }
                                     item(key = "count") {
                                         val n = sec.active.size
                                         val what = buildString {

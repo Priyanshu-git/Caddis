@@ -131,6 +131,8 @@ every card is a `SettingsGroup` (a `CCard` with no padding) of rows separated by
 - `Components.kt`: `CButton` (`BtnStyle` Primary/Accent/Default/Danger/Ghost, `small`), `CChip`, `Tag`, `CCard` (`feature`, `onClick`,
   `borderColor`), `Thumb` (thumbnail → site icon → glyph; `share` key for shared-element transition), `ItemRow`, `IconBtn`, `TopBar`,
   `BigTitle`, `SectionTitle`, `Eyebrow`, `Fine`, `Sub`, `Dot`, `Toggle`, `SettingRow`, `Chevron`, `EmptyState`, `AppMark`, `TextFieldBox`.
+- `Placeholders.kt`: `PlaceholderRows` (greyed rows shaped like `ItemRow`, shown while a list is loading; appear after `PLACEHOLDER_GRACE_MS`, pulse
+  softly, hidden from screen readers). Use these, not `EmptyState`, for "not loaded yet".
 - `Fields.kt`: `CField` (text field with placeholder, label, `maxLength`, keyboard type, IME action).
 - `DetailField.kt`: `DetailField` (a labelled `CField` for the details editor, with an optional reset arrow `Reset <label>` and
   "Edited by you. Reset to let Caddis fill it in.") and `canReset`. Shared by the save sheet's inline editor and `EditDetailsSheet`

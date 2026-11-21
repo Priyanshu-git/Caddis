@@ -4,7 +4,7 @@ import android.app.Application
 import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
 import com.nexxlabs.caddis.Fixture
-import com.nexxlabs.caddis.data.LibraryRepository
+import com.nexxlabs.caddis.data.LibraryFeed
 import com.nexxlabs.caddis.data.SaveOutcome
 import com.nexxlabs.caddis.domain.analytics.AnalyticsEvent
 import com.nexxlabs.caddis.domain.details.LinkDetails
@@ -20,6 +20,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.resetMain
@@ -27,6 +28,7 @@ import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -40,6 +42,9 @@ import org.robolectric.RobolectricTestRunner
 class LibraryViewModelTest {
     private lateinit var f: Fixture
     private lateinit var vm: LibraryViewModel
+    private lateinit var feed: LibraryFeed
+    private lateinit var feedScope: CoroutineScope
+    private lateinit var actions: ItemActions
 
     @Before
     fun setUp() = runBlocking {
@@ -48,15 +53,43 @@ class LibraryViewModelTest {
         f = Fixture()
         f.repo.seedDefaultsIfNeeded()
         val app = ApplicationProvider.getApplicationContext<Application>()
-        val actions = ItemActions(app, f.repo, Messenger(), CoroutineScope(SupervisorJob() + Dispatchers.Unconfined), f.clock)
-        vm = LibraryViewModel(f.repo, actions, f.analytics, SavedStateHandle())
+        actions = ItemActions(app, f.repo, Messenger(), CoroutineScope(SupervisorJob() + Dispatchers.Unconfined), f.clock)
+        feedScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        feed = LibraryFeed(f.repo, feedScope)
+        vm = LibraryViewModel(f.repo, feed, actions, f.analytics, SavedStateHandle())
     }
 
     @After
     fun tearDown() {
+        feedScope.cancel()
         Dispatchers.resetMain()
         f.close()
     }
+
+    @Test
+    fun `a state that has not heard from Room is not loaded, so the screen can show placeholders instead of an empty message`() {
+        val s = LibraryState()
+        assertFalse(s.loaded)
+        assertTrue(s.items.isEmpty())
+    }
+
+    @Test
+    fun `the library is loaded once Room has answered, even when it has nothing in it`() = runBlocking {
+        val s = state { it.loaded }
+        assertTrue(s.items.isEmpty())
+    }
+
+    @Test
+    fun `a Library opened after the feed has the data starts with it, with no empty first frame`() = runBlocking {
+        save("https://example.com/a")
+        save("https://example.com/b")
+        withTimeout(5_000) { feed.items.first { it?.size == 2 } }
+        // Nobody has collected this ViewModel's state yet: its value is already the real list.
+        val late = LibraryViewModel(f.repo, feed, actions, f.analytics, SavedStateHandle())
+        assertTrue(late.state.value.loaded)
+        assertEquals(2, late.state.value.items.size)
+    }
+
 
     private suspend fun save(url: String) =
         (f.repo.saveLink(Links.check(url) as LinkCheck.Valid, AnalyticsEvent.SaveEntry.IN_APP) as SaveOutcome.Saved).item

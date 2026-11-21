@@ -3,6 +3,7 @@ package com.nexxlabs.caddis.ui.library
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nexxlabs.caddis.data.LibraryFeed
 import com.nexxlabs.caddis.data.LibraryRepository
 import com.nexxlabs.caddis.domain.analytics.AnalyticsEvent
 import com.nexxlabs.caddis.domain.analytics.AnalyticsSink
@@ -26,8 +27,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import javax.inject.Inject
@@ -65,6 +68,8 @@ data class Filters(
 data class SearchHit(val item: Item, val why: String)
 
 data class LibraryState(
+    /** False until Room has answered once. The screen shows placeholders then, never an empty message. */
+    val loaded: Boolean = false,
     /** Everything the filters let through, finished or not. The shelf lists these; the Library splits them in [sections]. */
     val items: List<Item> = emptyList(),
     /** The same saves as the Library shows them: active first, then a Completed section (LIB-01). */
@@ -93,6 +98,7 @@ private data class Ui(
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     private val repo: LibraryRepository,
+    private val feed: LibraryFeed,
     private val actions: ItemActions,
     private val analytics: AnalyticsSink,
     handle: SavedStateHandle,
@@ -105,12 +111,14 @@ class LibraryViewModel @Inject constructor(
         Ui(filters = if (shelfCollection != null) Filters(status = StatusFilter.ACTIVE, collectionId = shelfCollection) else Filters()),
     )
 
-    private val searchResults = ui.map { it.query.trim() }.distinctUntilChanged().debounce(120)
+    // Only a typed query waits for a pause; a blank one has nothing to look up, so it must not hold up the first state.
+    // The empty start means the combine below is not waiting on search before it can show the library.
+    private val searchResults = ui.map { it.query.trim() }.distinctUntilChanged()
+        .debounce { q -> if (q.isEmpty()) 0L else 120L }
         .flatMapLatest { q -> repo.search(q) }
+        .onStart { emit(emptyList()) }
 
-    val state: StateFlow<LibraryState> = combine(
-        repo.observeLibrary(), searchResults, repo.observeIntents(), repo.observeCollections(), ui,
-    ) { items, found, intents, collections, u ->
+    private fun build(items: List<Item>, found: List<Item>, intents: List<Intent>, collections: List<Collection>, u: Ui): LibraryState {
         val counts = collections.map { c -> c to items.count { c.id in it.collectionIds } }
         val q = u.query.trim()
         // Platforms come from the saves themselves; a collection shelf lists only its own.
@@ -120,7 +128,8 @@ class LibraryViewModel @Inject constructor(
         val filters = u.filters.platform?.takeIf { p -> platforms.none { it.platform == p } }
             ?.let { u.filters.copy(platform = null) } ?: u.filters
         val shown = filters.apply(items)
-        LibraryState(
+        return LibraryState(
+            loaded = true,
             items = shown,
             sections = LibrarySections.of(shown),
             hits = if (q.isEmpty()) emptyList() else filters.apply(found).map { SearchHit(it, SearchQuery.explain(it, q)) },
@@ -133,7 +142,24 @@ class LibraryViewModel @Inject constructor(
             showCollections = u.showCollections,
             recent = u.recent,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryState(filters = ui.value.filters))
+    }
+
+    /**
+     * The feed is read at app start, so by the time this ViewModel exists it usually already has the library:
+     * the first frame is the real one. If Room has not answered yet, the state is `loaded = false` and the
+     * screen shows placeholders, never "Nothing here".
+     */
+    private fun firstState(): LibraryState {
+        val items = feed.items.value
+        val intents = feed.intents.value
+        val collections = feed.collections.value
+        return if (items != null && intents != null && collections != null) build(items, emptyList(), intents, collections, ui.value)
+        else LibraryState(filters = ui.value.filters)
+    }
+
+    val state: StateFlow<LibraryState> = combine(
+        feed.items.filterNotNull(), searchResults, feed.intents.filterNotNull(), feed.collections.filterNotNull(), ui,
+    ) { items, found, intents, collections, u -> build(items, found, intents, collections, u) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), firstState())
 
     fun setIntentFilter(id: String?) = ui.update { it.copy(filters = it.filters.copy(intentId = if (it.filters.intentId == id) null else id)) }
     fun setPlatform(p: Platform?) = ui.update { it.copy(filters = it.filters.copy(platform = p)) }

@@ -63,6 +63,7 @@ Details of every rule: [domain.md](domain.md).
 | `CaddisApp.kt` | `@HiltAndroidApp` Application. Startup work, WorkManager config (Hilt worker factory), Coil `ImageLoader` factory, Crashlytics collection switch (on in release only, skipped when Firebase is not initialised). |
 | `MainActivity.kt`, `MainViewModel.kt` | Launcher activity (`singleTask`). Splash, edge-to-edge, hands a route extra to the shell; `MainViewModel` exposes `onboarded` (null until DataStore answers), `pendingRoute`, and the toast `Messenger`. |
 | `share/ShareActivity.kt` | Translucent share-sheet target. Saves in `onCreate`, shows the capture sheet, then finishes. |
+| `data/LibraryFeed.kt` | App-wide hot copy of the library, intents and collections (`StateFlow`, `null` = Room not answered yet), started by `CaddisApp` so the Library tab opens with data already in. |
 | `data/LibraryRepository.kt` | The only writer of library data; all queries as `Flow`. Also `DetailsScheduler` interface, `SaveOutcome`, `DetailsResult`, `NameResult`. |
 | `data/SettingsRepository.kt` | DataStore `Preferences` wrapper; `Settings` data class. |
 | `data/db/` | `CaddisDatabase`, entities (`Entities.kt`), DAOs (`Daos.kt`), `Mappers.kt` (entity ↔ domain, weekday bitmask), `Converters.kt`. |
@@ -97,7 +98,7 @@ Details of every rule: [domain.md](domain.md).
 `BindingsModule` binds `DetailsScheduler` to `WorkScheduler` so `LibraryRepository` can request
 background fetches without knowing about WorkManager (tests pass a recording fake).
 
-Singletons: `LibraryRepository`, `SettingsRepository`, `DetailsFetcher`, `WorkScheduler`,
+Singletons: `LibraryRepository`, `LibraryFeed`, `SettingsRepository`, `DetailsFetcher`, `WorkScheduler`,
 `Notifier`, `ItemActions`, `Messenger`, `PlayAppUpdater`, `UpdatePrompter`. ViewModels are `@HiltViewModel`; workers are `@HiltWorker`.
 
 ## Threads and scopes

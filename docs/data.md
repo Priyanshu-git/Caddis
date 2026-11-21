@@ -53,6 +53,10 @@ None yet: version 1 is the first release. On the first schema change, bump `vers
 `@Singleton`, constructor `(db, clock, analytics: AnalyticsSink, details: DetailsScheduler)`. **All writes go
 through here.** Reads are `Flow`s.
 
+`LibraryFeed` (`@Singleton`, `(repo, appScope)`) holds `observeLibrary`, `observeIntents` and `observeCollections` as eagerly started
+`StateFlow`s (`null` until Room answers; an empty library is `emptyList()`). `CaddisApp` injects it so reading starts at launch;
+`LibraryViewModel` seeds its first state from it.
+
 ### Reads
 
 | Method | Returns |

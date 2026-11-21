@@ -3,6 +3,7 @@ package com.nexxlabs.caddis
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import com.nexxlabs.caddis.data.LibraryFeed
 import com.nexxlabs.caddis.data.LibraryRepository
 import com.nexxlabs.caddis.notify.Notifier
 import com.nexxlabs.caddis.work.WorkScheduler
@@ -27,6 +28,8 @@ class CaddisApp : Application(), Configuration.Provider, SingletonImageLoader.Fa
 
     @Inject lateinit var workerFactory: HiltWorkerFactory
     @Inject lateinit var repo: LibraryRepository
+    /** Injected only so it starts reading at launch: the Library tab then opens with its data already in. */
+    @Inject lateinit var libraryFeed: LibraryFeed
     @Inject lateinit var work: WorkScheduler
     @Inject lateinit var notifier: Notifier
     @Inject lateinit var appScope: CoroutineScope
