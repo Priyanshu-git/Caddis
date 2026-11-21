@@ -61,7 +61,7 @@ class ItemViewModelNoteTest {
         id = f.repo.saveNote("Packing", saved).id
         val actions = ItemActions(
             ApplicationProvider.getApplicationContext(), f.repo, Messenger(),
-            CoroutineScope(SupervisorJob() + Dispatchers.Unconfined), f.clock,
+            CoroutineScope(SupervisorJob() + Dispatchers.Unconfined), f.clock, f.alarms,
         )
         vm = ItemViewModel(f.repo, actions, Messenger(), appScope, SavedStateHandle(mapOf("id" to id)))
         withContext(Dispatchers.Default) { withTimeout(5_000) { vm.item.first { it != null } } }

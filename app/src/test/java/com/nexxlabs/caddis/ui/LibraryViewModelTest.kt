@@ -53,7 +53,7 @@ class LibraryViewModelTest {
         f = Fixture()
         f.repo.seedDefaultsIfNeeded()
         val app = ApplicationProvider.getApplicationContext<Application>()
-        actions = ItemActions(app, f.repo, Messenger(), CoroutineScope(SupervisorJob() + Dispatchers.Unconfined), f.clock)
+        actions = ItemActions(app, f.repo, Messenger(), CoroutineScope(SupervisorJob() + Dispatchers.Unconfined), f.clock, f.alarms)
         feedScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         feed = LibraryFeed(f.repo, feedScope)
         vm = LibraryViewModel(f.repo, feed, actions, f.analytics, SavedStateHandle())

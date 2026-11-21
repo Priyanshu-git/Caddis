@@ -256,7 +256,13 @@ fun NoteScreen(onBack: () -> Unit, onManageIntents: () -> Unit, vm: ItemViewMode
             all = collections, selected = it.collectionIds, onToggle = vm::toggleCollection,
             onCreate = vm::createCollection, onDismiss = { sheet = null },
         )
-        NoteSheet.Later -> LaterSheet(it, vm.today(), onPick = { r, d -> vm.later(r, d); sheet = null }, onDismiss = { sheet = null })
+        NoteSheet.Later -> LaterSheet(
+            it, vm::now,
+            onPick = { r, d -> vm.later(r, d); sheet = null },
+            onRemind = { at -> vm.remind(at); sheet = null },
+            onClearReminder = { vm.clearReminder(); sheet = null },
+            onDismiss = { sheet = null },
+        )
         NoteSheet.Link -> LinkSheet(rich, onDismiss = { sheet = null })
         null -> Unit
     }

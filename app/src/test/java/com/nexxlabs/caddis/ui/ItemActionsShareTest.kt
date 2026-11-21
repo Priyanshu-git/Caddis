@@ -37,7 +37,7 @@ class ItemActionsShareTest {
     @Before fun setUp() {
         f = Fixture()
         app = ApplicationProvider.getApplicationContext()
-        actions = ItemActions(app, f.repo, Messenger(), CoroutineScope(SupervisorJob() + Dispatchers.Unconfined), f.clock)
+        actions = ItemActions(app, f.repo, Messenger(), CoroutineScope(SupervisorJob() + Dispatchers.Unconfined), f.clock, f.alarms)
     }
 
     @After fun tearDown() = f.close()

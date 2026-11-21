@@ -406,8 +406,25 @@ class LibraryRepository @Inject constructor(
 
     suspend fun setReturn(id: String, rule: ReturnRule, at: Instant?) = edit(id) { it.copy(returnRule = rule, returnAt = at) }
 
+    /** "Remind me": a notification at [at], and a place on Home from then until it is opened, finished or moved. */
+    suspend fun setReminder(id: String, at: Instant) = setReturn(id, ReturnRule.REMINDER, at)
+
+    /** Drops a reminder the person set; any other return rule is left alone. */
+    suspend fun clearReminder(id: String) {
+        val current = items.get(id)?.toDomain() ?: return
+        if (current.returnRule == ReturnRule.REMINDER) setReturn(id, ReturnRule.DEFAULT, null)
+    }
+
+    /** Saves with a reminder waiting or due, for the alarm and the notifications. */
+    suspend fun reminders(): List<Item> = items.active().map { it.toDomain() }.filter { it.returnRule == ReturnRule.REMINDER }
+
     suspend fun markOpened(id: String, entry: AnalyticsEvent.OpenEntry) {
-        val it = edit(id) { it.copy(lastOpenedAt = now()) } ?: return
+        val t = now()
+        // Opening the link answers a reminder that has come due; one still ahead is kept.
+        val it = edit(id) { e ->
+            val answered = e.returnRule == ReturnRule.REMINDER && e.returnAt?.isAfter(t) == false
+            e.copy(lastOpenedAt = t, returnRule = if (answered) ReturnRule.DEFAULT else e.returnRule, returnAt = if (answered) null else e.returnAt)
+        } ?: return
         analytics.log(AnalyticsEvent.ItemOpened(it.platform, entry))
     }
 
@@ -422,7 +439,8 @@ class LibraryRepository @Inject constructor(
                 if (last != today) {
                     // A "later" date gets one full day on Home. If it was already shown on an earlier
                     // day since it came due, it falls back to its intent rule from today.
-                    val clearReturn = e.returnAt != null && !e.returnAt.isAfter(t) &&
+                    // A reminder is the exception: it stays until the person opens, finishes or moves it.
+                    val clearReturn = e.returnRule != ReturnRule.REMINDER && e.returnAt != null && !e.returnAt.isAfter(t) &&
                         e.lastSurfacedAt != null && !e.lastSurfacedAt.isBefore(e.returnAt)
                     items.upsert(
                         e.copy(

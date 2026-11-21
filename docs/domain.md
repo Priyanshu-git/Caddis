@@ -104,7 +104,7 @@ try: diy, workout, routine, tips…). Edit them there; tests: `IntentGuesserTest
 
 | Rule | Result |
 | --- | --- |
-| `DEFAULT`, `NEVER` | `null` |
+| `DEFAULT`, `NEVER`, `REMINDER` | `null` (a reminder's moment comes from `ItemReminder`, below) |
 | `TONIGHT` | 19:00 today, or 19:00 tomorrow if already past |
 | `WEEKEND` | the next weekend morning (09:00) still ahead: Saturday, else Sunday, else next Saturday |
 | `NEXT_WEEK` | next Monday 09:00 |
@@ -113,11 +113,32 @@ try: diy, workout, routine, tips…). Edit them there; tests: `IntentGuesserTest
 `ReturnScheduler.label(rule, at, zone)` → "tonight at 7 pm", "Saturday morning"/"Sunday morning",
 "next Monday", "on 12 Nov". Used in toasts and Library tags ("Back …").
 
+### Remind me (`schedule/ItemReminders.kt`)
+
+`ReturnRule.REMINDER` means the person set an exact time: `returnAt` is that moment, a notification goes out then, and the save
+stays on Home until they open the link, finish it or move it (unlike a `DATE` return, which falls back after one day on Home).
+`Item.hasReminder` is `returnRule == REMINDER && returnAt != null`. No schema change: the rule is stored by name.
+
+`ItemReminder` (pure, English text, never the phone's locale):
+
+- `resolve(day, time, now)` → `Resolved(at, movedToNextDay)`. Only today can be in the past; then the same time **tomorrow** is used and
+  `movedToNextDay` is true. A reminder is always at least one minute ahead (the current minute counts as gone by).
+- `defaultFor(now)`: the next whole hour that is at least 30 minutes away. `inOneHour(now)` (seconds dropped), `tomorrowMorning(now)` (09:00 tomorrow).
+- `QUICK_TIMES` = 09:00, 19:00, 23:00 (beside "In 1 hour").
+- Words: `clock` ("11:00 pm"), `until` ("in 45 min", "in 1 h 20 min", "in 2 days"), `dayWord` (tonight / today / tomorrow / "Tue 24 Nov"),
+  `phrase` ("tonight at 11:00 pm", "on Tue 24 Nov at 9:00 am", for the toast), `tag` (Item page chip), `rowTag` (Library row: "Reminder 11:00 pm",
+  "Reminder tomorrow", "Reminder 24 Nov"), `notificationText` ("You asked to be reminded tonight." / "this morning" / "this afternoon"; more than
+  `LATE_AFTER` (30 min) late it names the clock time instead).
+
+`ReminderSweep` decides what is due. `after` is the last moment already handled, kept by the phone:
+`due(items, after, now)` = `ACTIVE` items with rule `REMINDER` and `returnAt` in `(after, now]`, earliest first; `next(items, after)` = the earliest
+`returnAt` after `after`. This is how a reminder that came due while the phone was off still goes out exactly once.
+
 `HomePicker(maxPicks = 3).pick(items, rules, now): List<Pick>`:
 
 - Candidates: `ACTIVE` **links only** (notes never appear), `returnRule != NEVER`.
 - **Explicit return** (`returnAt != null`): not eligible until `returnAt` has passed; once due it scores
-  `100 + ageBonus` and is **not** subject to `maxPerDay`.
+  `100 + ageBonus` and is **not** subject to `maxPerDay`. A due **reminder** (`REMINDER`) scores `200 + ageBonus`, so it leads Home.
 - Otherwise the item needs a rule for its intent (none → no rule-based return; Just keep only comes back through the kept reminder below), today must be in the
   rule's days, and the item must be at least `FRESH_GRACE` (**12 hours**) old.
 - Score = `10` + `6` if the rule's time of day equals now's slot + `lengthFit` + `ageBonus` −

@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import java.time.Instant
 import java.time.LocalDate
 import javax.inject.Inject
 
@@ -108,7 +109,10 @@ class ItemViewModel @Inject constructor(
     fun markActive() = item.value?.let { actions.markActive(it) }
     fun delete() = item.value?.let { actions.delete(it) }
     fun later(rule: ReturnRule, date: LocalDate?) = item.value?.let { actions.later(it, rule, date) }
+    fun remind(at: Instant) = item.value?.let { actions.remind(it, at) }
+    fun clearReminder() = item.value?.let { actions.clearReminder(it) }
     fun today() = actions.today()
+    fun now() = actions.now()
 
     fun refresh() = viewModelScope.launch {
         val it = item.value ?: return@launch

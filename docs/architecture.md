@@ -44,7 +44,7 @@ SettingsRepository (DataStore) ◄── ViewModels, workers
 | `link` | `Links` (check, normalize, extractFirst, couldBeNote, noteTitleFrom, host), `LinkCheck`, `PlatformDetector`/`Detection`, `DefaultTitles` |
 | `platform` | `PlatformFacets`/`PlatformFacet` (dynamic filter list). There is no registry of sites. |
 | `intent` | `IntentGuesser`, `GuessInput`, `CorrectionStats` |
-| `schedule` | `ReturnScheduler`, `HomePicker`/`Pick`, `TidyUp`, `Trash`, `Weeks`, `doneLabel()` (Scheduling.kt); `Reminders`, `ReminderState`, `ReminderDecision` (Reminders.kt) |
+| `schedule` | `ReturnScheduler`, `HomePicker`/`Pick`, `TidyUp`, `Trash`, `Weeks`, `doneLabel()` (Scheduling.kt); `Reminders`, `ReminderState`, `ReminderDecision` (Reminders.kt); `ItemReminder`, `ReminderSweep` (ItemReminders.kt: "Remind me") |
 | `search` | `SearchQuery` (FTS match string, "matched in…" text), `resultBucket()` |
 | `details` | `LinkDetails`, `DetailsParser`, `Item.mergeDetails`, `formatLength` (Details.kt); `DetailEdits`, `EditLimits`, `Item.withEdits`, `Item.withLink`, `Item.needsDetails` (Edits.kt); `Favicons` |
 | `notes` | `Markdown.toPlainText`, `Markdown.preview`, `NoteMarkdown` (editor HTML ⇄ stored Markdown, with escaping), `EditHistory` (note editor undo) |
@@ -70,7 +70,8 @@ Details of every rule: [domain.md](domain.md).
 | `data/details/` | `DetailsFetcher` (OkHttp, never throws), `UserAgentInterceptor`. |
 | `update/AppUpdater.kt`, `update/UpdatePrompter.kt` | Google Play flexible in-app update. `AppUpdater` (`PlayAppUpdater`) wraps Play's `AppUpdateManager` into `state: StateFlow<UpdateState>`; `UpdatePrompter` applies the domain `UpdatePrompts` rule on launch and announces a finished download. |
 | `work/Work.kt` | `WorkScheduler` (implements `DetailsScheduler`, schedules reminders), `DetailsWorker`, `ReminderWorker`. |
-| `notify/Notifier.kt` | Notification channels; daily pick and weekly summary notifications; permission check. |
+| `notify/Notifier.kt` | Notification channels (`reminders`, `your_reminders`, `weekly`); daily pick, weekly summary and "Remind me" notifications; permission check. |
+| `notify/ReminderAlarms.kt` | `ReminderAlarms` (`run()`: send what is due, set the next alarm; exact alarm when allowed, else a 10-minute window) and `ReminderReceiver` (alarm, boot, app update, clock/time zone change, exact-alarm switch, the notification's In 1 hour / Tomorrow buttons). |
 | `di/AppModule.kt` | Hilt: DB, DataStore, `Clock`, app `CoroutineScope`, `OkHttpClient`, `AnalyticsSink`; `BindingsModule` binds `DetailsScheduler → WorkScheduler`. Instrumented tests replace both with `androidTest/…/TestModule.kt` (so a binding added here needs a test counterpart there). |
 | `ui/` | `ItemActions` (shared item actions), `Messenger` (toasts), `Motion.kt` (animation vocabulary). Sub-packages below. |
 | `ui/shell/` | `CaddisRoot`, `CaddisShell`, `BottomBar` (+ `Tab`), `BarVisibility` (hide-on-scroll), `ToastHost`. |
@@ -135,7 +136,7 @@ counters, done/delete + counters, intent deletion + reassignment, delete-all).
 | `MainActivity` | Launcher. `launchMode=singleTask`, theme `Theme.Caddis.Splash`, `adjustResize`. `onNewIntent` accepts a `route` extra. |
 | `ShareActivity` | Exported; `ACTION_SEND` + `text/plain` only. `launchMode=standard`, `taskAffinity=""`, `excludeFromRecents`, theme `Theme.Caddis.Share` (translucent). |
 | Route extras | `MainActivity.EXTRA_ROUTE = "route"`; `ROUTE_ITEM_PREFIX = "item/"`; `ROUTE_WEEK = "home?week=true"`. Notifications and `ShareActivity` hand routes this way. Notes use `note/<id>`. |
-| Permissions | `INTERNET`, `ACCESS_NETWORK_STATE`, `POST_NOTIFICATIONS` (requested at runtime on API 33+ only when a reminder is turned on), `com.google.android.gms.permission.AD_ID` (declared only; the app reads no advertising ID and has no ads or analytics backend). |
+| Permissions | `INTERNET`, `ACCESS_NETWORK_STATE`, `POST_NOTIFICATIONS` (requested at runtime on API 33+ only when a reminder is turned on or a "Remind me" is set), `SCHEDULE_EXACT_ALARM` (Android 12+; on 14+ it starts off, so `ReminderAlarms.canScheduleExact()` is checked and the sheet offers **Allow exact alarms**), `RECEIVE_BOOT_COMPLETED` (alarms are forgotten on restart), `com.google.android.gms.permission.AD_ID` (declared only; the app reads no advertising ID and has no ads or analytics backend). |
 | `<queries>` | `VIEW https` (to open links in the original app) and `MAIN/LAUNCHER` (to resolve the sharing app's label). |
 | `FileProvider` | `${applicationId}.files`, path `cache-path exports/` — used to hand export files to the share sheet. |
 | Backup | `allowBackup=true`; rules include database `caddis.db` and the `sharedpref` domain. |

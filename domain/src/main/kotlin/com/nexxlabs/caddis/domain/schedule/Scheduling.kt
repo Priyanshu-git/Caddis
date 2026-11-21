@@ -23,7 +23,8 @@ object ReturnScheduler {
     val MORNING_TIME: LocalTime = LocalTime.of(9, 0)
 
     fun returnAt(rule: ReturnRule, now: ZonedDateTime, date: LocalDate? = null): Instant? = when (rule) {
-        ReturnRule.DEFAULT, ReturnRule.NEVER -> null
+        // A reminder's time comes from ItemReminder, not from a rule.
+        ReturnRule.DEFAULT, ReturnRule.NEVER, ReturnRule.REMINDER -> null
         ReturnRule.TONIGHT -> {
             val tonight = now.with(TONIGHT_TIME)
             (if (now.isBefore(tonight)) tonight else tonight.plusDays(1)).toInstant()
@@ -49,6 +50,7 @@ object ReturnScheduler {
             ReturnRule.WEEKEND -> if (d?.dayOfWeek == DayOfWeek.SUNDAY) "Sunday morning" else "Saturday morning"
             ReturnRule.NEXT_WEEK -> "next Monday"
             ReturnRule.DATE -> d?.let { "on ${it.dayOfMonth} ${it.month.name.take(1)}${it.month.name.substring(1, 3).lowercase()}" } ?: ""
+            ReturnRule.REMINDER -> at?.let { ItemReminder.phrase(it, it.minusSeconds(1), zone) } ?: ""
             ReturnRule.DEFAULT, ReturnRule.NEVER -> ""
         }
     }
@@ -81,7 +83,9 @@ class HomePicker(private val maxPicks: Int = 3) {
                 val explicit = item.returnAt
                 if (explicit != null) {
                     // BRB-02: a deferred item never reappears before its date.
-                    return@mapNotNull if (!explicit.isAfter(nowI)) Pick(item, 100 + ageBonus(item, nowI)) else null
+                    // A reminder the person set leads Home and stays until they act on it.
+                    val base = if (item.returnRule == ReturnRule.REMINDER) REMINDER_SCORE else 100
+                    return@mapNotNull if (!explicit.isAfter(nowI)) Pick(item, base + ageBonus(item, nowI)) else null
                 }
                 val rule = rules[item.intentId] ?: return@mapNotNull null // Just keep stays where it is
                 if (today !in rule.days) return@mapNotNull null
@@ -167,6 +171,7 @@ class HomePicker(private val maxPicks: Int = 3) {
     private fun stableTieBreak(id: String, day: LocalDate): Int = (id + day).hashCode()
 
     companion object {
+        private const val REMINDER_SCORE = 200
         val FRESH_GRACE: Duration = Duration.ofHours(12)
 
         /** How long a Just keep link rests between appearances on Home. */

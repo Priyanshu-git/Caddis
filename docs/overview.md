@@ -41,7 +41,7 @@ unless asked.
 | **Intent** | Why you kept it. Eight defaults (ids `cook, watch, read, learn, try, buy, go, keep`) plus custom ones (ids `u-xxxxxxxx`). Each has a `doneLabel`. `keep` ("Just keep") is protected, has no return rule, and means "for when I need it": Tidy-up never asks about it and Home shows one such link at most once a month, into a free slot. | `model/Intents.kt` |
 | **IntentSource** | `GUESSED` (by rules) or `USER`. Fetched details may still re-guess while `GUESSED`. | `Models.kt` |
 | **IntentRule** | Per intent: days of week, `TimeOfDay`, `maxPerDay` (1..3). Decides when saves of that intent return. | `Models.kt` |
-| **ReturnRule / returnAt** | A per-item "bring back later" override: `DEFAULT, TONIGHT, WEEKEND, NEXT_WEEK, DATE, NEVER`. `returnAt` is the moment it is due. | `Models.kt`, `schedule/Scheduling.kt` |
+| **ReturnRule / returnAt** | A per-item "bring back later" override: `DEFAULT, TONIGHT, WEEKEND, NEXT_WEEK, DATE, NEVER, REMINDER`. `returnAt` is the moment it is due. `REMINDER` is an exact time the person set: a notification at that moment, and it stays on Home until acted on. | `Models.kt`, `schedule/Scheduling.kt` |
 | **ItemStatus** | `ACTIVE`, `DONE`, `DELETED` (Trash). | `Models.kt` |
 | **Collection** | A named group; many-to-many with items; deleting a collection keeps its items. | `Models.kt` |
 | **WeeklySummary** | Per Monday–Sunday week: saved / used (done) / deleted counts. | `Models.kt` |
@@ -79,7 +79,7 @@ unless asked.
 - **Details**: background fetch of title/description/creator/thumbnail/length/site icon from the page's Open Graph tags and the oEmbed endpoint it advertises, for every site alike; readable fallback titles; Edit
   details sheet (link, title, by, description); Refresh button.
 - **Onboarding**: five intro cards you swipe through (save from any app, say why, it comes back when it fits, finish it or keep it), then an opt-in reminders question; Skip leaves early; Home explains how to save the first one.
-- **Home**: ≤3 picks, "Bring it back" later options (tonight / weekend / next week / date / not again),
+- **Home**: ≤3 picks, "Bring it back" with two modes: **Later** (tonight / weekend / next week / date / not again) and **Remind me** (an exact day and time, with a notification),
   Done and Open, This week card, "Time for a tidy-up" card, "Next up" hint when nothing fits.
 - **Library**: active saves and notes newest first, then a collapsed **Completed** section for finished ones (latest 3, then "Show all"); platform chips (only platforms the library has); Filter sheet (intent, platform);
   collections tab and shelves; offline keyword search (FTS4) with "why it matched" text and
