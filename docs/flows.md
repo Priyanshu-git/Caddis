@@ -77,7 +77,7 @@ Thumbnails: `Thumb` shows `thumbnailUrl`; if absent or failing, the site icon (`
 ## 5. Home
 
 `HomeViewModel.state` combines `observeLibrary`, `observeRules`, `observeIntents`, `observeWeek(<current week>)` and a
-**5-minute tick** (so time-of-day changes re-evaluate), then `HomePicker.pick(...)`. State: picks (≤ 3 items), intents, the
+**5-minute tick** (so time-of-day changes re-evaluate; it also wakes at the exact moment the next "Remind me" comes due, `ReminderSweep.next`), then `HomePicker.pick(...)`. State: picks (≤ 3 items), intents, the
 week summary + label, `staleCount` (`TidyUp.candidates`), and `nextUp` ("<Intent> saves return on <rule label>") when there are
 no picks but some intent has active saves and a rule.
 
@@ -85,6 +85,9 @@ no picks but some intent has active saves and a rule.
 - Actions go through `ItemActions`: **Open** (`markOpened` + `ACTION_VIEW`), **Done** (`markDone` + toast "Marked “<label>”." with
   Undo), **Later** (`LaterSheet` → `bringBackLater` + toast "Back <when>." with Undo restoring the previous rule/time). The sheet's
   **Not again** row sets `ReturnRule.NEVER` (toast "Won’t come back. Still in your Library."): the save stays in the Library, off Home and off Tidy-up.
+- **Remind me** is the second mode of the same sheet (see [Remind me](#remind-me)). A reminder that has come due is a Home card tagged "Your reminder · 11:00 pm"
+  and stays until the person opens the link (`markOpened` clears it), finishes it, deletes it or moves it (Later / a new reminder / Clear). `markSurfaced` never
+  clears it.
 - A **Just keep link** can be one of the picks: once a month, only when a slot is free (`HomePicker.keptReminder`, see [domain.md](domain.md)).
 - `HomeViewed(picksShown, actedOn)` is logged when the ViewModel is cleared.
 - Opening `home?week=true` (weekly summary notification) scrolls to the This week card and logs `SummaryViewed(fromNotification = true)`.
@@ -174,6 +177,28 @@ logs `TidyUpFinished(kept, deleted)` and shows "All tidy". "Open it first" opens
   taps open `item/<id>`) or `Notifier.showWeekly` ("N saved · N used · N deleted"; taps open `home?week=true`). Channels:
   `reminders` (default importance), `weekly` (low).
 - Sent dates are stored only when the notification was really posted.
+- **Reminders the person set** are a separate path (below) and are **outside** the one-a-day budget.
+
+### Remind me
+
+1. The **Bring it back** sheet (`LaterSheet`, from Home's Later, the item page's clock icon, the note page) has a **Later / Remind me** switch. A one-line explainer
+   under it follows the mode: Later "puts this back on Home at the time you choose. No sound, no buzz."; Remind me "You’ll get a notification at the exact time you set.
+   Tap it to open the link." An item that already has a reminder still ahead reopens on Remind me with "Update reminder" and "Clear reminder".
+2. Remind me shows a big time (tap → system time picker), Today / Tomorrow / a weekday / Date chips (system calendar, past days disabled), quick times
+   (In 1 hour, 9:00 am, 7:00 pm, 11:00 pm) and a summary ("Tomorrow · in 21 h 47 min"). A time already gone by today moves to tomorrow with a note.
+   The sheet's clock ticks every 15 s so these stay true while it is open.
+3. Blocked notifications replace the button with **Allow notifications** (asks on API 33+; a refusal that returns at once, meaning Android will not ask
+   again, opens the app's notification settings; the first "Don’t allow" does not) and **Use Later instead**. Exact alarms switched off (Android 12+) show a
+   note and **Allow exact alarms** (`ACTION_REQUEST_SCHEDULE_EXACT_ALARM`); both states re-read when the app comes back to the front.
+4. **Set** → `ItemActions.remind` → `repo.setReminder` (rule `REMINDER`, `returnAt`) → `ReminderAlarms.run()` → toast "We’ll remind you tonight at 11:00 pm." with Undo.
+   Clear → `repo.clearReminder` + toast "Reminder cleared." with Undo. Choosing any Later row replaces a reminder.
+5. `ReminderAlarms.run()` (the only entry point): sends a notification for every due reminder (`ReminderSweep.due` since the stored
+   `lastReminderSweep`), stores the new sweep time, then sets **one** alarm for the earliest reminder still ahead (or cancels it).
+   It runs when a reminder changes, when the alarm fires, at app start, after boot, after the app is updated, when the clock or time zone changes,
+   and when the exact-alarm switch changes (`ReminderReceiver`). Alarms are lost on force-stop, update and reboot, so those all re-run it.
+6. The notification (channel `your_reminders`, high importance, category reminder) shows the title and "You asked to be reminded tonight."; tapping it or **Open**
+   opens `item/<id>` (or `note/<id>`) and clears it; **In 1 hour** and **Tomorrow** (09:00) move the reminder and clear the notification without opening the app.
+   Opening, finishing, deleting or moving the save in the app also clears its notification.
 
 ## 11. Settings and data
 

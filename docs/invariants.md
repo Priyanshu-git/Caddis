@@ -14,7 +14,7 @@ break. Section 3 are **known gaps**.
    (`EditableField.PLATFORM`): a name the person typed is kept over the page's `og:site_name`.
 3. **Home shows at most 3** (`HomePicker.maxPicks`). Notes never appear on Home. A deferred item (`returnAt` in the future) never appears before its date.
 4. **Zero taps to organise:** the intent is guessed, not asked for; changing it is optional.
-5. **Calm:** no streaks, no guilt copy, at most one notification a day (daily and weekly share the budget), no catch-up bursts. There are deliberately no quiet hours (the hourly check may send at any hour).
+5. **Calm:** no streaks, no guilt copy, at most one notification a day (daily and weekly share the budget), no catch-up bursts. The one exception is a **reminder the person set** ("Remind me"): they asked for that exact notification, so it is outside the budget and never uses it up. There are deliberately no quiet hours (the hourly check may send at any hour).
    Notifications are opt-in (off by default).
 6. **Just keep** (`keep`) cannot be deleted, has no return rule, and receives the saves of any deleted intent. It means "for when I need it":
    Tidy-up never asks about it, and Home brings one such link back at most once a month, only into a free slot (`HomePicker.keptReminder`).
@@ -69,7 +69,10 @@ break. Section 3 are **known gaps**.
 - `FRESH_GRACE` is **12 hours** (the nearby comment says "a day"): a new save will not be picked until it is 12 h old, unless it has an explicit `returnAt` that has come due.
 - Explicit returns (`returnAt`) bypass the day-of-week rule and `maxPerDay`, and are scored `100 + ageBonus`.
 - `ReturnRule.NEVER` is set by the Later sheet's **Not again** row (item stays in the Library; Undo restores the old rule). `HomePicker` and `TidyUp` both skip it. "Never returns" for a whole intent still comes from a rule with no days.
-- `markSurfaced` counts once per item per day, and clears an expired `returnAt` after the item has been shown on a later day than it came due.
+- `markSurfaced` counts once per item per day, and clears an expired `returnAt` after the item has been shown on a later day than it came due. **Not for `REMINDER`**: that stays until the link is opened, or the item is finished, deleted or moved.
+- **Remind me**: a due reminder is scored `200 + ageBonus` (leads Home, outside `maxPerDay`). Notes can be reminded (the notification opens `note/<id>`), but notes still never appear on Home.
+- Android forgets alarms on force-stop, app update and reboot, so everything funnels through `ReminderAlarms.run()` (app start, boot, `MY_PACKAGE_REPLACED`, time/time-zone change, exact-alarm switch change). It keeps one alarm, for the earliest reminder, and a stored `lastReminderSweep` so a reminder missed while the phone was off is sent once, late, and the next time `run()` finds nothing new.
+- The `ReminderReceiver` is **not exported**: only the system (and the app itself) can deliver to it, so `adb shell am broadcast` cannot trigger it; test with the real alarm, a reboot or by opening the app.
 - `TidyUp` offers only ACTIVE **links** untouched 90 days, and skips Just keep, `NEVER` and notes; `HomePicker` also excludes notes. Tidy-up's "Keep" sets `lastReviewedAt`, which resets the 90 days.
 - `HomeScreen` passes `LocalDate.now()` to the Later sheet while `ItemViewModel` uses the injected clock; they agree outside of tests.
 - `TimeOfDay.of(hour)` returns `EVENING` for hours outside 5–23 (late night counts as evening for scoring).
@@ -103,6 +106,7 @@ break. Section 3 are **known gaps**.
 - The bottom-bar tab is **Settings**, not Profile: there is no account to have a profile of. Keep the name honest; do not reintroduce "Profile" or a person icon while there is no sign-in.
 - "Check for updates" must never say "Up to date" unless Play actually answered (`AppUpdater.refresh()` returns true). It shows nothing before the first tap, and "Couldn't check" when Play could not be reached (debug, sideloaded and offline runs).
 - No sign-in or sync, and no UI that mentions them (no account card on Settings, no Sync or Sign-in rows). **Delete all data** lives at the bottom of Your data (route `data`), apart from the other rows, behind a confirm dialog. Do not bring account or sync copy back until the feature exists.
+- "Remind me" without the exact-alarm switch (Android 12+; off by default for new installs on 14+) uses a 10-minute alarm window, not an exact alarm, and Doze can still hold such an alarm back; the sheet says "may deliver this a few minutes late". The permission is `SCHEDULE_EXACT_ALARM` on purpose: `USE_EXACT_ALARM` is reserved by Google Play for alarm-clock, timer and calendar apps. The privacy text has no list of permissions, so adding it needed no policy change (nothing new is collected or sent).
 - `AnalyticsSink` logs only in debug builds; release builds emit nothing.
 - Crashlytics uploads only from release builds that were built with `app/google-services.json` (gitignored). Without the file (CI, fresh clones) the Firebase plugins are skipped and crash reporting is off. Crash reports still include a stack trace and an installation id, so the privacy policy must say so.
 - "Read the full policy" opens `FULL_POLICY_URL` (a GitHub gist). The full text lives in that gist and the short version in `PrivacyScreen`; both must be updated with any change to data collection, permissions or network use.

@@ -75,6 +75,10 @@ JUnit 4. Robolectric config in `app/src/test/resources/robolectric.properties` (
   (`allowMainThreadQueries`) and a real `LibraryRepository` wired with the fakes. Use `Fixture` for any repository/ViewModel test; call `close()`.
 - `data/LibraryRepositoryTest`: seeding, saves, duplicates, search, done/undo counters, trash/restore/purge, intent corrections, details merging,
   intent deletion, collections, bring-back/surfacing, export/delete-all, edit-details and link-change behaviour.
+- `data/ReminderTest` ("Remind me", Robolectric): the stored reminder and what clears or keeps it (Later replaces it, opening the link answers a due one, `markSurfaced` never
+  clears it, finishing ends it), the alarm (earliest reminder, moves on clear, close alarm without the exact-alarm switch via `ShadowAlarmManager`) and the notification
+  (not before the time, once, a missed one sent late, none for done/cleared items or blocked notifications, outside the one-a-day budget, In 1 hour / Tomorrow). `Fixture` also
+  provides `settings`, `notifier` and `alarms` (`ReminderAlarms`) for these. The domain side is `ItemReminderResolveTest`, `ItemReminderWordsTest`, `ReminderSweepTest` and `ReminderOnHomeTest`.
 - `data/DetailsFetcherTest`: `MockWebServer` (no real network). Page parsing and site names, retry vs give-up, Instagram/Facebook fetched like any site, bot-check pages, advertised oEmbed + page,
   User-Agent behaviour.
 - `ui/CaptureViewModelTest`, `ui/ItemActionsShareTest`, `TabNavigationTest` (uses `navigation-testing`), `MotionTest`.
@@ -104,7 +108,7 @@ CI does not run them (it has no emulator). The runner is `com.nexxlabs.caddis.Hi
   `launchApp(route?)`, data helpers (`save`, `saveNote`, `library()`, `item()`, `trash()`), finders (`button`, `tab`, `field(label)`, `described`) and waiters
   (`awaitText`, `await`, `eventually`). Failures print the on-screen semantics tree.
 - One class per journey (all `@HiltAndroidTest`): `OnboardingJourneyTest`, `AddJourneyTest` (plus button, clipboard, duplicate, note), `ShareSheetJourneyTest`
-  (`ShareActivity`), `HomeJourneyTest`, `LibraryJourneyTest` (search, filters, collections), `ItemJourneyTest` (item page, edit details, note editor),
+  (`ShareActivity`), `HomeJourneyTest`, `ReminderJourneyTest` (Later / Remind me explainers, an exact time with Undo, reopening and clearing, a due reminder leading Home until opened), `LibraryJourneyTest` (search, filters, collections), `ItemJourneyTest` (item page, edit details, note editor),
   `TrashAndTidyJourneyTest`, `SettingsJourneyTest` (notifications, rules, intents, export, delete all), `NavigationJourneyTest`,
   `UpdateJourneyTest` (Google Play update offer, Settings row, check for updates, restart), `NoteEditorJourneyTest` and `NoteLifecycleJourneyTest` (below).
 - `journeys/NoteJourneyBase`: base for the note journeys. It types through the editor's own `InputConnection` one call at a time, like a keyboard

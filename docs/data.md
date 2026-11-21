@@ -117,10 +117,12 @@ through here.** Reads are `Flow`s.
 
 - `bringBackLater(id, rule, date?)`: computes `returnAt` with `ReturnScheduler` and stores rule + time; returns the toast label.
 - `setReturn(id, rule, at)`: raw setter (used by Undo).
-- `markOpened(id, entry)`: sets `lastOpenedAt`, logs `ItemOpened`.
+- `setReminder(id, at)`: rule `REMINDER` + `returnAt = at` (no schema change; the rule is stored by name). `clearReminder(id)`: back to `DEFAULT`/`null`, only when the rule
+  is `REMINDER` (a Later date is left alone). `reminders()`: the `ACTIVE` items whose rule is `REMINDER`, for the alarm and notifications.
+- `markOpened(id, entry)`: sets `lastOpenedAt`, logs `ItemOpened`. Also **answers a reminder that has come due** (clears `REMINDER` + `returnAt`); one still ahead is kept.
 - `markSurfaced(ids)`: once per item per calendar day: sets `lastSurfacedAt`, `surfacedCount + 1`. If the item has a
   due `returnAt` and it was already surfaced on/after that moment on an earlier day, clears `returnAt`/`returnRule`
-  (a "later" date gets one full day on Home, then falls back to its intent rule).
+  (a "later" date gets one full day on Home, then falls back to its intent rule). **Never for a `REMINDER`**: it stays until the person acts on it.
 - `keep(id)`: sets `lastReviewedAt` (Tidy-up "Keep": not offered again for 90 days).
 
 ### Collections
@@ -170,9 +172,11 @@ image cache.
 | `lastDailySent` | `last_daily_sent` (ISO date string) | null |
 | `lastWeeklySentWeek` | `last_weekly_week` (ISO date string) | null |
 | `updateAsked` | `update_asked_version` (int) + `update_asked_at` (epoch millis) | null |
+| `lastReminderSweep` | `reminder_sweep_at` (epoch millis) | null |
 
 `Settings.reminderState()` builds the domain `ReminderState`. `markWeeklySent(date, week)` also sets
 `last_daily_sent` (the one-a-day budget is shared). `reset()` clears everything **except** `onboarded`.
+`markReminderSweep(at)` stores the last moment "Remind me" notifications were checked (`ReminderAlarms.run`); null is treated as "now", so nothing old is sent on a first run.
 `current()` = first emission of `settings`. `markUpdateAsked(versionCode, at)` records the last time Google Play's update dialog was opened on its own
 (see [flows.md](flows.md#15-app-updates)); `reset()` clears it with the rest.
 

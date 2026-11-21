@@ -51,8 +51,8 @@ Adding a route: add a `composable(...)` (use `screen(...)` if it shows a thumbna
 | 2 | Onboarding: five swipeable intro cards, then "Want a nudge now and then?" | `ui/onboarding/OnboardingScreen.kt` (`OnboardingScreen`) |
 | 7a | Home, first run ("Nothing saved yet") | `HomeScreen` (`FirstRun`) |
 | 3 / 4 / 5 | Save sheet (the details card has one pencil, "Edit details", that opens an inline editor: Title, Platform, By, Who sent it) / Duplicate / Add | `ui/capture/CaptureSheets.kt` (`SaveSheet`, `DuplicateSheet`, `AddSheet`) |
-| 7, 8, 21 | Home, all clear, This week | `HomeScreen` (`PickCard`, `WeekCard`, empty state) |
-| 9 / 10 | Bring back later (Tonight, This weekend, Next week, Pick a date, **Not again**) / Change intent (and Edit details); Just keep reads "For when you need it" | `ui/sheets/Sheets.kt` (`LaterSheet`, `IntentSheet`, `EditDetailsSheet`) |
+| 7, 8, 21 | Home, all clear, This week | `HomeScreen` (`PickCard`, `WeekCard`, empty state). A due reminder's card carries an accent tag "Your reminder · 11:00 pm"; the item page shows a bell chip ("Tonight 11:00 pm") that reopens the sheet; Library rows show "Reminder 11:00 pm" (`ItemReminder.rowTag`) |
+| 9 / 10 | Bring it back: **Later** (Tonight, This weekend, Next week, Pick a date, **Not again**) or **Remind me** (exact time, see [flows.md](flows.md#remind-me)) / Change intent (and Edit details); Just keep reads "For when you need it" | `ui/sheets/LaterSheet.kt` (`LaterSheet`); `ui/sheets/Sheets.kt` (`IntentSheet`, `EditDetailsSheet`) |
 | 11, 13, 17, 18 | Library, filters, search | `LibraryScreen` (`SearchHeader`: title + search icon + Trash at rest; the icon animates into a full-width field over `Motion.Medium` (title and Trash fade out, icon turns into a back arrow, keyboard opens); the body fades between the library and `SearchBody`; icon description is "Search your saves", then "Close search"; the field is "Search saves"); the list is the active saves, then `CompletedHeader` ("COMPLETED · n", Show/Hide, collapsed by default, `stateDescription` Expanded/Collapsed) and, when open, the latest 3 completed rows plus `ShowAllCompleted`; completed rows use `ItemRow(completed = true)`, which draws `CompletedTick` on the thumbnail) (+ `FilterSheet`; its Platform group is built from `LibraryState.platforms`, not a fixed list; `showStatus = false` on the Library; there is no Kept chip) |
 | 12 | Collection shelf | `ShelfScreen` |
 | 14 / 19 / 20 | Collections / Tidy-up / Trash | `ui/manage/ManageScreens.kt` |
@@ -174,7 +174,7 @@ Layout, top to bottom: `TopBar` (back, save status, ⋮ `More` menu) → title (
 selected chip per collection described "Collection: <name>", then "+ Collection"/"+ Add" described "Add to a collection") → divider → the body, whose
 minimum height reaches the bottom of the screen so a tap anywhere under the text writes in it. There is no helper copy under the body.
 - **Save status** shows only after something was changed on this visit: "Saving…" while the autosave pause runs, then a check and "Saved" (`fg2`, no green dot).
-- **⋮ menu** (`DropdownMenu` on `surface`): the intent's done label (or "Mark incomplete" when done), "Bring back later" (`LaterSheet`), "Delete" (`crit`; moves it to Trash and goes back).
+- **⋮ menu** (`DropdownMenu` on `surface`): the intent's done label (or "Mark incomplete" when done), "Bring back later" (`LaterSheet`, Later / Remind me), "Delete" (`crit`; moves it to Trash and goes back).
 - **Collections sheet**: tapping any collection chip opens a `CSheet` with `CollectionChips` (tick chips, dashed "New" first) and Done; closing with a name typed creates it.
 - **Formatting bar** (`FormatBar`): flat, full width, top hairline, 48 dp, docked above the keyboard (the screen uses `imePadding`), shown **only while the body has focus**.
   Icon buttons (`CIcons.Bold`, `Italic`, `BulletList`, `NumberList`, `Code`, `Link`), a divider, then `Undo` (dimmed when there is nothing to undo).
